@@ -1,0 +1,10 @@
+bin/
+obj/
+publicado/
+datos/
+*.db
+*.db-shm
+*.db-wal
+.vs/
+.vscode/
+*.user

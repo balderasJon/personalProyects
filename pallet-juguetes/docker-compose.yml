@@ -1,0 +1,10 @@
+services:
+  pallet:
+    build: .
+    image: pallet-control:1.0
+    container_name: pallet-control
+    ports:
+      - "5080:5080"
+    volumes:
+      - ./datos:/app/datos
+    restart: unless-stopped

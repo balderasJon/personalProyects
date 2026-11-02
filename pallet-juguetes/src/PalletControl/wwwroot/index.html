@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Control Pallet de Juguetes</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect width='9' height='9' rx='2' fill='%232750D8'/%3E%3Crect x='11' width='9' height='9' rx='2' fill='%23B87400'/%3E%3Crect y='11' width='9' height='9' rx='2' fill='%23DCE4FB'/%3E%3Crect x='11' y='11' width='9' height='9' rx='2' fill='%23101A33'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="brandrow">
+    <div class="brand"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>Control Pallet de Juguetes</b></div>
+    <span class="status" id="status">Conectando…</span>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Secciones">
+    <button class="tab" role="tab" data-tab="resumen" aria-selected="true">Resumen</button>
+    <button class="tab" role="tab" data-tab="inventario">Inventario</button>
+    <button class="tab" role="tab" data-tab="ventas">Ventas<span class="cnt" id="cntApartado" hidden></span></button>
+    <button class="tab" role="tab" data-tab="gastos">Gastos</button>
+    <button class="tab" role="tab" data-tab="semana">Semana</button>
+    <button class="tab" role="tab" data-tab="ajustes">Ajustes</button>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+<!-- RESUMEN -->
+<section class="view" data-view="resumen">
+  <div class="head"><div><p class="eyebrow" id="hoyTxt"></p><h2>¿Cuánto llevamos recuperado?</h2></div>
+    <div class="row"><button class="btn" data-act="nuevoGasto">+ Gasto</button><button class="btn primary" data-act="nuevaVenta">+ Venta</button></div></div>
+  <div class="hero">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <span class="lbl">Falta por recuperar</span>
+      <span class="big" id="hFalta">$0</span>
+      <span class="muted small" id="hFaltaN"></span>
+      <div><div class="meter"><i id="hMeter" style="width:0"></i></div>
+        <div class="meter-l"><span>Recuperado: <b id="hRec">$0</b></span><span>Meta: <b id="hInv">$0</b></span></div></div>
+    </div>
+    <div style="min-width:0"><p class="small muted" style="margin-bottom:4px">Dinero acumulado por semana (cobrado menos gastos, desde −inversión)</p><div id="chart"></div></div>
+  </div>
+  <div class="grid g4" id="kpis"></div>
+  <div class="grid g2">
+    <div class="card"><h3>Pendientes</h3><div class="alerts" id="alerts"></div></div>
+    <div class="card"><h3>Inventario por clase</h3><div class="scroll" style="border:0"><table id="tblClase"></table></div>
+      <p class="small muted">A: se publica primero y se cuida el precio. B: después de los A. C: combos y paquetes.</p></div>
+  </div>
+</section>
+
+<!-- INVENTARIO -->
+<section class="view" data-view="inventario" hidden>
+  <div class="head"><div><p class="eyebrow">Hoja de inventario</p><h2>Juguetes del pallet</h2><p class="muted small" id="invSub"></p></div>
+    <div class="row"><button class="btn" data-act="importar">Importar desde Excel</button><button class="btn primary" data-act="nuevoProducto">+ Juguete</button></div></div>
+  <div class="filters">
+    <input class="inp" id="fBuscar" type="search" placeholder="Buscar por código, nombre o categoría" aria-label="Buscar">
+    <select class="sel" id="fClase" aria-label="Clase"><option value="">Todas las clases</option><option>A</option><option>B</option><option>C</option></select>
+    <select class="sel" id="fEstado" aria-label="Estado"><option value="">Todo estado</option><option value="nuevo">Nuevo</option><option value="danado">Dañado</option><option value="incompleto">Incompleto</option></select>
+    <label class="chk"><input type="checkbox" id="fStock"> Solo con piezas disponibles</label>
+  </div>
+  <div id="invBody"></div>
+</section>
+
+<!-- VENTAS -->
+<section class="view" data-view="ventas" hidden>
+  <div class="head"><div><p class="eyebrow">Del mensaje a la entrega</p><h2>Ventas</h2><p class="muted small" id="venSub"></p></div>
+    <div class="row"><div class="seg" role="group" aria-label="Vista"><button id="vBoard" aria-pressed="true">Tablero</button><button id="vList" aria-pressed="false">Lista</button></div>
+      <button class="btn primary" data-act="nuevaVenta">+ Venta</button></div></div>
+  <div class="callout sun"><b>Regla de oro:</b> pasen una venta a “Pagado” solo cuando el abono aparezca en su banca. Una captura de pantalla no demuestra que el pago llegó.</div>
+  <div class="filters">
+    <input class="inp" id="vBuscar" type="search" placeholder="Buscar cliente o juguete" aria-label="Buscar venta">
+    <select class="sel" id="vCanal" aria-label="Canal"><option value="">Todos los canales</option></select>
+    <select class="sel" id="vResp" aria-label="Responsable"><option value="">Ambos socios</option></select>
+  </div>
+  <div id="venBody"></div>
+</section>
+
+<!-- GASTOS -->
+<section class="view" data-view="gastos" hidden>
+  <div class="head"><div><p class="eyebrow">Costos de operar</p><h2>Gastos</h2><p class="muted small">Empaque, traslados, publicidad, comisiones e impuestos. Se restan del dinero recuperado.</p></div>
+    <button class="btn primary" data-act="nuevoGasto">+ Gasto</button></div>
+  <div class="grid g4" id="gasKpis"></div>
+  <div id="gasBody"></div>
+</section>
+
+<!-- SEMANA -->
+<section class="view" data-view="semana" hidden>
+  <div class="head"><div><p class="eyebrow">Revisión de 20 minutos</p><h2>Indicadores semanales</h2><p class="muted small">Anoten publicaciones, mensajes y horas cada semana. Ventas y dinero se calculan solos.</p></div>
+    <button class="btn primary" data-act="nuevaSemana">+ Registrar semana</button></div>
+  <div class="grid g4" id="semKpis"></div>
+  <div id="semBody"></div>
+</section>
+
+<!-- AJUSTES -->
+<section class="view" data-view="ajustes" hidden>
+  <div class="head"><div><p class="eyebrow">Configuración compartida</p><h2>Ajustes</h2></div></div>
+  <div class="grid g2">
+    <form class="card" id="cfgForm">
+      <h3>Datos del negocio</h3>
+      <div class="form">
+        <div class="f full"><label for="cInv">Inversión inicial (MXN)</label><input class="inp num" id="cInv" type="number" min="0" step="100"><span class="hint">Incluye flete e impuestos de compra.</span></div>
+        <div class="f"><label for="cA">Socio A · Producto</label><input class="inp" id="cA" type="text" maxlength="40"></div>
+        <div class="f"><label for="cB">Socio B · Clientes</label><input class="inp" id="cB" type="text" maxlength="40"></div>
+        <div class="f"><label for="cRep">Reparto para socio A (%)</label><input class="inp num" id="cRep" type="number" min="0" max="100" step="1"><span class="hint">El resto es del socio B.</span></div>
+        <div class="f"><label for="cBajo">Aviso de pocas piezas</label><input class="inp num" id="cBajo" type="number" min="0" step="1"><span class="hint">Avisa cuando quedan esta cantidad o menos.</span></div>
+        <div class="f full"><label for="cMeta">Meta de venta mensual (MXN)</label><input class="inp num" id="cMeta" type="number" min="0" step="500"><span class="hint">Opcional. Defínanla tras dos semanas de datos.</span></div>
+      </div>
+      <div class="row"><button class="btn primary" type="submit">Guardar ajustes</button></div>
+    </form>
+    <div class="card">
+      <h3>Exportar a Excel (CSV)</h3>
+      <p class="small muted">Descarga una copia de cada hoja para abrirla en Excel.</p>
+      <div class="row"><button class="btn" data-exp="inventario">Inventario</button><button class="btn" data-exp="ventas">Ventas</button><button class="btn" data-exp="gastos">Gastos</button><button class="btn" data-exp="semanas">Semanas</button></div>
+      <h3 style="margin-top:8px">Respaldo completo</h3>
+      <p class="small muted">Todos los datos en un archivo JSON, para guardarlo fuera de esta computadora.</p>
+      <div class="row"><a class="btn" href="/api/respaldo" download>Descargar respaldo</a></div>
+      <h3 style="margin-top:8px">Dónde se guardan los datos</h3>
+      <p class="small muted" id="modoTxt"></p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="panel" id="mPanel"></div></div>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
