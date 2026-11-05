@@ -7,13 +7,13 @@ using PalletControl.Data;
 using PalletControl.Endpoints;
 using PalletControl.Models;
 
-// Publicada (wwwroot junto al ejecutable): la carpeta del ejecutable es la raíz, aunque se lance desde otro lado.
-// En desarrollo (dotnet run) la raíz es la carpeta del proyecto.
-var publicada = File.Exists(Path.Combine(AppContext.BaseDirectory, "wwwroot", "index.html"));
+// La raíz de la aplicación es la carpeta que contiene wwwroot/index.html: junto al ejecutable si está
+// publicada, o la carpeta del proyecto (subiendo desde bin/Debug/net8.0) en desarrollo. Así funciona
+// igual con dotnet run, F5 de VS Code / Visual Studio o doble clic, sin importar la carpeta de inicio.
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = args,
-    ContentRootPath = publicada ? AppContext.BaseDirectory : null
+    ContentRootPath = BuscarRaiz()
 });
 
 // Base de datos SQLite en un solo archivo (por defecto ./datos/pallet.db).
@@ -74,6 +74,15 @@ app.Lifetime.ApplicationStarted.Register(() =>
 });
 
 app.Run();
+
+static string? BuscarRaiz()
+{
+    var dir = new DirectoryInfo(AppContext.BaseDirectory);
+    for (var i = 0; dir is not null && i < 6; i++, dir = dir.Parent)
+        if (File.Exists(Path.Combine(dir.FullName, "wwwroot", "index.html")))
+            return dir.FullName;
+    return null; // se usa la carpeta actual
+}
 
 static IEnumerable<IPAddress> IpsLocales() =>
     NetworkInterface.GetAllNetworkInterfaces()
