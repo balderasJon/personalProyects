@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using PalletControl.Data;
 using PalletControl.Endpoints;
 using PalletControl.Models;
+using PalletControl.Servicios;
 
 // La raíz de la aplicación es la carpeta que contiene wwwroot/index.html: junto al ejecutable si está
 // publicada, o la carpeta del proyecto (subiendo desde bin/Debug/net8.0) en desarrollo. Así funciona
@@ -27,6 +28,12 @@ Directory.CreateDirectory(dbDir);
 csb.DataSource = dbPath;
 var cs = csb.ToString();
 builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(cs));
+builder.Services.AddHttpClient<BuscadorCodigoBarras>(h =>
+{
+    h.Timeout = TimeSpan.FromSeconds(12);
+    h.DefaultRequestHeaders.UserAgent.ParseAdd("PalletControl/1.0");
+    h.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+});
 
 var app = builder.Build();
 
@@ -34,6 +41,7 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
+    Esquema.Actualizar(db);
     db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
     if (db.Configuracion.Find(1) is null) db.Configuracion.Add(new Configuracion());
     if (db.Version.Find(1) is null) db.Version.Add(new VersionDatos());

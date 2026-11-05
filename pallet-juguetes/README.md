@@ -18,11 +18,11 @@ Es la versión instalable del artefacto **Control Pallet de Juguetes**. Usa la m
 | Sección | Funciones |
 |---|---|
 | **Resumen** | Cuánto falta por recuperar de la inversión, gráfica semanal acumulada, ventas cobradas, gastos, utilidad neta, reparto por socio, % vendido, precio promedio real, valor del inventario y utilidad por hora. Lista de pendientes (apartados sin cobrar, piezas dañadas, ventas debajo del costo, semana sin registrar). |
-| **Inventario** | Alta, edición y baja de juguetes con código, clase A/B/C, estado, cantidad y precios de lista, objetivo y mínimo. Filtros y búsqueda. Importación pegando filas desde Excel. |
+| **Inventario** | Alta, edición y baja de juguetes con código, **código de barras**, clase A/B/C, estado, cantidad y precios de lista, objetivo y mínimo. Escaneo con lector USB/Bluetooth, filtros y búsqueda. Importación pegando filas desde Excel. |
 | **Ventas** | Tablero Apartado → Pagado → Entregado (y Cancelado), vista de lista, filtros por canal y responsable, rendimiento por canal. |
 | **Gastos** | Empaque, traslados, publicidad, comisiones e impuestos; totales por tipo. |
 | **Semana** | Publicaciones, mensajes y horas de cada socio; ventas y dinero de la semana se calculan solos. |
-| **Ajustes** | Inversión, nombres de los socios, reparto de utilidad, aviso de pocas piezas, meta mensual. Exportación a CSV por hoja y respaldo completo en JSON. |
+| **Ajustes** | Inversión, nombres de los socios, reparto de utilidad, aviso de pocas piezas, meta mensual, tipo de cambio (pesos por dólar). Exportación a CSV por hoja y respaldo completo en JSON. |
 
 ### Reglas que valida el servidor
 
@@ -30,11 +30,41 @@ Como los dos socios pueden registrar al mismo tiempo, estas reglas se revisan en
 
 - No se puede vender o apartar más piezas de las disponibles.
 - El código de juguete no se repite (sin distinguir mayúsculas).
+- Un código de barras pertenece a un solo juguete; si aparece otra caja igual, se aumenta la cantidad.
 - La cantidad de un juguete no puede quedar debajo de lo ya vendido o apartado.
 - No se puede eliminar un juguete que tiene ventas registradas.
 - La fecha de pago se asigna sola al pasar una venta a Pagado o Entregado.
 
 Cuando un socio guarda algo, la pantalla del otro se actualiza sola en unos 4 segundos.
+
+### Código de barras
+
+**Cómo se usa con el lector** (USB o Bluetooth en modo teclado):
+
+1. Inventario → **Escanear código** → escaneen la caja.
+2. Si el código ya está en el inventario, se abre ese juguete para aumentar la cantidad.
+3. Si no está, se consulta **UPCitemdb** y se abre el alta con nombre, categoría y precios sugeridos. Revisen y guarden.
+
+También se puede escanear o escribir el código en el campo *Código de barras* del formulario (Enter busca, no guarda), y buscarlo en el filtro del inventario.
+
+**De dónde salen los datos:** primero del propio inventario; si no está, de [UPCitemdb](https://www.upcitemdb.com/) (servicio público, plan gratuito sin registro). Solo se consultan códigos EAN/UPC numéricos de 8 a 14 dígitos.
+
+**Cómo se sugieren los precios** (son sugerencias, se pueden cambiar antes de guardar; el formulario muestra el cálculo):
+
+| Campo | Regla |
+|---|---|
+| Precio de lista | Precio más alto registrado en UPCitemdb (USD) × tipo de cambio de Ajustes |
+| Precio objetivo | Precio más bajo registrado en UPCitemdb (USD) × tipo de cambio de Ajustes |
+| Precio mínimo | Costo promedio por pieza del pallet (inversión ÷ piezas del inventario). Si el objetivo queda debajo de ese costo, el mínimo es igual al objetivo |
+
+Solo se llenan los campos vacíos; el botón *Reemplazar todos los campos* sobrescribe todo.
+
+**Limitaciones que hay que conocer:**
+
+- El plan gratuito de UPCitemdb permite **100 consultas por día**. Cada código se guarda 30 días en la base local, así que volver a buscarlo no gasta consulta (`appsettings.json` → `CodigoBarras:DiasCache`).
+- El catálogo y los precios de UPCitemdb son de tiendas de EE. UU.: algunos juguetes vendidos solo en México no aparecen y los precios no reflejan el mercado local. Compárenlos con Marketplace antes de publicar.
+- Sin **tipo de cambio** capturado en Ajustes no se sugieren precio de lista ni objetivo. El tipo de cambio no se obtiene automáticamente.
+- La computadora principal necesita internet para consultar códigos nuevos; el resto de la aplicación funciona sin internet.
 
 ---
 
@@ -107,7 +137,7 @@ Recomendación: copien periódicamente la carpeta `datos/respaldos` a una USB o 
 ### Pasar los datos que ya capturaron en el artefacto
 
 1. En el artefacto: Ajustes → Exportar **Inventario** (CSV).
-2. Abran el CSV en Excel y copien las columnas en este orden: Código, Juguete, Categoría, Cantidad, Estado, Precio de lista, Precio objetivo, Clase.
+2. Abran el CSV en Excel y copien las columnas en este orden: Código, Juguete, Categoría, Cantidad, Estado, Precio de lista, Precio objetivo, Clase y, opcional, Código de barras. (El CSV que exporta esta aplicación ya trae ese orden en sus primeras 9 columnas.)
 3. En esta aplicación: Inventario → *Importar desde Excel* → pegar.
 
 Ventas, gastos y semanas no tienen importación automática; se recapturan.
@@ -128,8 +158,10 @@ pallet-juguetes/
 ├── src/PalletControl/
 │   ├── Program.cs              Arranque, base de datos, respaldo diario
 │   ├── appsettings.json        Puerto, ruta de la base, respaldos
-│   ├── Models/Entidades.cs     Producto, Venta, Gasto, Semana, Configuración
+│   ├── Models/Entidades.cs     Producto, Venta, Gasto, Semana, Configuración, caché de códigos
 │   ├── Data/AppDbContext.cs    Mapeo EF Core → SQLite
+│   ├── Data/Esquema.cs         Agrega columnas/tablas nuevas a bases existentes
+│   ├── Servicios/BuscadorCodigoBarras.cs  Consulta UPCitemdb y calcula sugerencias
 │   ├── Endpoints/Api.cs        API REST y reglas de negocio
 │   ├── Endpoints/Dtos.cs       Contratos de entrada
 │   └── wwwroot/                Interfaz (index.html, css/app.css, js/app.js)
@@ -147,6 +179,7 @@ pallet-juguetes/
 | GET | `/api/version` | Contador de cambios (sincronización entre navegadores) |
 | POST / PUT / DELETE | `/api/productos[/{id}]` | Juguetes |
 | POST | `/api/productos/importar` | Alta o actualización masiva por código |
+| GET | `/api/codigo-barras/{codigo}` | Busca en el inventario y, si no está, en UPCitemdb; regresa precios sugeridos |
 | POST / PUT / DELETE | `/api/ventas[/{id}]` | Ventas |
 | PATCH | `/api/ventas/{id}/estado` | Avanzar a pagado o entregado |
 | POST / PUT / DELETE | `/api/gastos[/{id}]` | Gastos |

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PalletControl.Data;
 using PalletControl.Models;
+using PalletControl.Servicios;
 
 namespace PalletControl.Endpoints;
 
@@ -48,6 +49,13 @@ public static class Api
             return Results.NoContent();
         }));
         api.MapPost("/productos/importar", (List<ProductoIn> filas, AppDbContext db) => Bloqueado(() => Importar(db, filas)));
+
+        // ---------- Código de barras: inventario propio y, si no está, UPCitemdb ----------
+        api.MapGet("/codigo-barras/{codigo}", async (string codigo, AppDbContext db, BuscadorCodigoBarras b, CancellationToken ct) =>
+        {
+            try { return Results.Ok(await b.BuscarAsync(db, codigo, ct)); }
+            catch (ErrorBusqueda e) { return Results.Json(new Error(e.Message), statusCode: e.Estado); }
+        });
 
         // ---------- Ventas ----------
         api.MapPost("/ventas", (VentaIn i, AppDbContext db) => Bloqueado(() => GuardarVenta(db, null, i)));
@@ -120,6 +128,7 @@ public static class Api
             c.RepartoA = Math.Clamp(i.RepartoA, 0, 100);
             c.StockBajo = Math.Max(0, i.StockBajo);
             c.MetaMensual = Math.Max(0, i.MetaMensual);
+            c.TipoCambioUsd = Math.Max(0, i.TipoCambioUsd);
             c.ActualizadoUtc = DateTime.UtcNow;
             await db.GuardarAsync();
             return Results.Ok(c);
@@ -156,6 +165,7 @@ public static class Api
     {
         if (string.IsNullOrWhiteSpace(i.Codigo)) return "El código es obligatorio.";
         if (string.IsNullOrWhiteSpace(i.Nombre)) return "El nombre del juguete es obligatorio.";
+        if (BuscadorCodigoBarras.Normalizar(i.CodigoBarras).Length > 20) return "El código de barras admite máximo 20 caracteres.";
         if (i.Cantidad < 0) return "La cantidad no puede ser negativa.";
         if (i.PrecioLista < 0 || i.PrecioObjetivo < 0 || i.PrecioMinimo < 0) return "Los precios no pueden ser negativos.";
         if (i.Clase is not null && !Catalogos.Clases.Contains(i.Clase)) return "La clase debe ser A, B o C.";
@@ -166,6 +176,7 @@ public static class Api
     private static void Aplicar(Producto p, ProductoIn i)
     {
         p.Codigo = T(i.Codigo, 20);
+        p.CodigoBarras = BuscadorCodigoBarras.Normalizar(i.CodigoBarras);
         p.Nombre = T(i.Nombre, 120);
         p.Categoria = T(i.Categoria, 60);
         p.Clase = i.Clase ?? "B";
@@ -184,6 +195,9 @@ public static class Api
         var codigo = T(i.Codigo, 20);
         if (await db.Productos.AnyAsync(x => x.Id != id && x.Codigo == codigo))
             return Choque($"Ya existe un juguete con el código {codigo}. Usen otro código.");
+        var barras = BuscadorCodigoBarras.Normalizar(i.CodigoBarras);
+        if (barras.Length > 0 && await db.Productos.FirstOrDefaultAsync(x => x.Id != id && x.CodigoBarras == barras) is { } otro)
+            return Choque($"El código de barras {barras} ya está registrado en el juguete {otro.Codigo} · {otro.Nombre}. Aumenten la cantidad de ese juguete.");
 
         Producto? p;
         if (id is null) { p = new Producto { Id = NuevoId() }; db.Productos.Add(p); }
@@ -212,18 +226,27 @@ public static class Api
         var siguiente = usados.Select(c => int.TryParse(c, out var n) ? n : 0).DefaultIfEmpty(0).Max() + 1;
         int nuevos = 0, actualizados = 0;
 
+        var barrasUsados = existentes.Where(p => p.CodigoBarras != "").ToDictionary(p => p.CodigoBarras, p => p.Codigo.ToLowerInvariant());
         foreach (var f0 in filas)
         {
             var f = string.IsNullOrWhiteSpace(f0.Codigo) ? f0 with { Codigo = (siguiente++).ToString("000") } : f0;
             if (ValidarProducto(f) is { } err) return Mal($"Fila \"{f.Nombre}\": {err}");
             var key = T(f.Codigo, 20).ToLowerInvariant();
+            var cb = BuscadorCodigoBarras.Normalizar(f.CodigoBarras);
+            if (cb.Length > 0)
+            {
+                if (barrasUsados.TryGetValue(cb, out var dueno) && dueno != key)
+                    return Choque($"Fila \"{f.Nombre}\": el código de barras {cb} ya pertenece al juguete {dueno.ToUpperInvariant()}.");
+                barrasUsados[cb] = key;
+            }
             if (porCodigo.TryGetValue(key, out var p))
             {
                 // Al actualizar se conservan notas y precio mínimo, y nunca se baja de lo ya vendido.
                 var vend = await Vendidas(db, p.Id, null);
-                var notas = p.Notas; var min = p.PrecioMinimo;
+                var notas = p.Notas; var min = p.PrecioMinimo; var barrasPrevio = p.CodigoBarras;
                 Aplicar(p, f with { Cantidad = Math.Max(f.Cantidad, vend) });
                 p.Notas = notas; p.PrecioMinimo = min;
+                if (p.CodigoBarras.Length == 0) p.CodigoBarras = barrasPrevio;
                 actualizados++;
             }
             else

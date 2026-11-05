@@ -3,7 +3,7 @@
 /* ================= datos ================= */
 var COLS=['productos','ventas','gastos','semanas','config'];
 var D={productos:{},ventas:{},gastos:{},semanas:{},config:{}};
-var CFG_DEF={inversion:49000,socioA:'Persona A',socioB:'Persona B',repartoA:50,stockBajo:1,metaMensual:0};
+var CFG_DEF={inversion:49000,socioA:'Persona A',socioB:'Persona B',repartoA:50,stockBajo:1,metaMensual:0,tipoCambioUsd:0};
 var CANALES=['Facebook Marketplace','WhatsApp Business','Grupos de Facebook','Conocidos','Bazar o escuela','Instagram','MercadoLibre','Otro'];
 var ESTADOS_V=['apartado','pagado','entregado','cancelado'];
 var EST_V_TXT={apartado:'Apartado',pagado:'Pagado',entregado:'Entregado',cancelado:'Cancelado'};
@@ -214,13 +214,13 @@ function renderInv(s){
   var bajo=+s.c.stockBajo||0;
   var P=s.P.filter(function(p){
     var d=(+p.cantidad||0)-(s.sold[p.id]||0);
-    if(q&&((p.codigo||'')+' '+(p.nombre||'')+' '+(p.categoria||'')).toLowerCase().indexOf(q)<0)return false;
+    if(q&&((p.codigo||'')+' '+(p.codigoBarras||'')+' '+(p.nombre||'')+' '+(p.categoria||'')).toLowerCase().indexOf(q)<0)return false;
     if(fc&&p.clase!==fc)return false;if(fe&&p.estado!==fe)return false;if(fs&&d<=0)return false;return true;
   }).sort(function(a,b){var ka=(a.clase||'Z'),kb=(b.clase||'Z');if(ka!==kb)return ka<kb?-1:1;return String(a.codigo||'').localeCompare(String(b.codigo||''),'es',{numeric:true})});
   var tq=0,tv=0,td=0;
   var rows=P.map(function(p){var qq=+p.cantidad||0,v=s.sold[p.id]||0,d=Math.max(0,qq-v);tq+=qq;tv+=v;td+=d;
     var dc=d===0?'zero':(d<=bajo?'low':'');
-    return '<tr><td class="mono">'+esc(p.codigo)+'</td><td class="wrap"><b>'+esc(p.nombre)+'</b>'+(p.notas?'<span class="sub">'+esc(p.notas)+'</span>':'')+'</td><td>'+esc(p.categoria)+'</td>'+
+    return '<tr><td class="mono">'+esc(p.codigo)+(p.codigoBarras?'<span class="sub">'+esc(p.codigoBarras)+'</span>':'')+'</td><td class="wrap"><b>'+esc(p.nombre)+'</b>'+(p.notas?'<span class="sub">'+esc(p.notas)+'</span>':'')+'</td><td>'+esc(p.categoria)+'</td>'+
       '<td>'+(p.clase?'<span class="pill '+p.clase+'">'+p.clase+'</span>':'')+'</td><td><span class="pill '+(p.estado||'nuevo')+'">'+(EST_P_TXT[p.estado]||'Nuevo')+'</span></td>'+
       '<td class="r">'+num(qq)+'</td><td class="r">'+num(v)+'</td><td class="r '+dc+'">'+num(d)+'</td><td class="r">'+money(+p.precioLista)+'</td><td class="r"><b>'+money(+p.precioObjetivo)+'</b></td>'+
       '<td class="r"><div class="row" style="justify-content:flex-end;flex-wrap:nowrap"><button class="btn sm" data-sell="'+p.id+'"'+(d<=0?' disabled':'')+'>Vender</button><button class="btn sm" data-editp="'+p.id+'">Editar</button></div></td></tr>'}).join('');
@@ -301,15 +301,15 @@ function renderSemana(s){
 
 /* ---- ajustes ---- */
 var cfgDirty=false;
-['cInv','cA','cB','cRep','cBajo','cMeta'].forEach(function(id){document.getElementById(id).addEventListener('input',function(){cfgDirty=true})});
+['cInv','cA','cB','cRep','cBajo','cMeta','cTc'].forEach(function(id){document.getElementById(id).addEventListener('input',function(){cfgDirty=true})});
 function renderAjustes(s){
   if(cfgDirty)return;var c=s.c;
   document.getElementById('cInv').value=c.inversion;document.getElementById('cA').value=c.socioA;document.getElementById('cB').value=c.socioB;
-  document.getElementById('cRep').value=c.repartoA;document.getElementById('cBajo').value=c.stockBajo;document.getElementById('cMeta').value=c.metaMensual||'';
+  document.getElementById('cRep').value=c.repartoA;document.getElementById('cBajo').value=c.stockBajo;document.getElementById('cMeta').value=c.metaMensual||'';document.getElementById('cTc').value=c.tipoCambioUsd||'';
 }
 document.getElementById('cfgForm').addEventListener('submit',function(e){e.preventDefault();
   var c={inversion:Math.max(0,+document.getElementById('cInv').value||0),socioA:document.getElementById('cA').value.trim()||'Persona A',socioB:document.getElementById('cB').value.trim()||'Persona B',
-    repartoA:Math.min(100,Math.max(0,+document.getElementById('cRep').value||0)),stockBajo:Math.max(0,+document.getElementById('cBajo').value||0),metaMensual:Math.max(0,+document.getElementById('cMeta').value||0)};
+    repartoA:Math.min(100,Math.max(0,+document.getElementById('cRep').value||0)),stockBajo:Math.max(0,+document.getElementById('cBajo').value||0),metaMensual:Math.max(0,+document.getElementById('cMeta').value||0),tipoCambioUsd:Math.max(0,+document.getElementById('cTc').value||0)};
   put('config','general',c).then(function(){cfgDirty=false;toast('Ajustes guardados')},function(){});
 });
 
@@ -333,12 +333,15 @@ function wireForm(p,onSave,onDelete){
 function val(f,n){return f.elements[n].value.trim()}
 
 function nextCode(){var mx=0;list('productos').forEach(function(p){var n=parseInt(p.codigo,10);if(n>mx)mx=n});return String(mx+1).padStart(3,'0')}
-function productoForm(id){
-  var p=id?D.productos[id]:{codigo:nextCode(),estado:'nuevo',clase:'B'};var cats={};list('productos').forEach(function(x){if(x.categoria)cats[x.categoria]=1});
+function productoForm(id,pre){
+  pre=pre||{};
+  var p=id?D.productos[id]:{codigo:nextCode(),estado:'nuevo',clase:'B',codigoBarras:pre.codigoBarras||''};var cats={};list('productos').forEach(function(x){if(x.categoria)cats[x.categoria]=1});
   var vend=id?vendidasDe(id):0;
   openModal(head(id?'Editar juguete':'Nuevo juguete')+'<form class="stack" style="display:flex;flex-direction:column;gap:14px"><div class="form">'+
     fld('pCod','Código','<input class="inp mono" id="pCod" name="codigo" required maxlength="20" value="'+esc(p.codigo)+'">')+
     fld('pCla','Clase','<select class="sel" id="pCla" name="clase">'+opt(['A','B','C'],p.clase,{A:'A · Muy buscado o caro',B:'B · Demanda normal',C:'C · Barato, para combos'})+'</select>')+
+    fld('pBar','Código de barras','<div class="bc"><input class="inp mono" id="pBar" name="codigoBarras" maxlength="20" inputmode="numeric" autocomplete="off" value="'+esc(p.codigoBarras)+'" placeholder="Escaneen o escriban el código"><button class="btn" type="button" id="pBarBtn">Buscar</button></div>','Con el lector: escaneen aquí y se busca solo. A mano: escriban el código y presionen Enter.',true)+
+    '<div class="full" id="pBarRes"></div>'+
     fld('pNom','Juguete','<input class="inp" id="pNom" name="nombre" required maxlength="120" value="'+esc(p.nombre)+'" placeholder="Marca y nombre del juguete">',null,true)+
     fld('pCat','Categoría','<input class="inp" id="pCat" name="categoria" list="catList" maxlength="60" value="'+esc(p.categoria)+'" placeholder="Muñecas, autos, didácticos…"><datalist id="catList">'+Object.keys(cats).map(function(c){return '<option value="'+esc(c)+'">'}).join('')+'</datalist>')+
     fld('pEst','Estado','<select class="sel" id="pEst" name="estado">'+opt(['nuevo','danado','incompleto'],p.estado,EST_P_TXT)+'</select>')+
@@ -351,8 +354,9 @@ function productoForm(id){
       var cost=stats().costoPz,w=el.querySelector('#pWarn');
       function chk(){var o=+el.querySelector('#pObj').value||0;w.innerHTML=(o>0&&isFinite(cost)&&o<cost)?'<p class="warnline">El precio objetivo queda debajo del costo promedio por pieza ('+money(cost)+'). Está bien para clase C en combos.</p>':''}
       el.querySelector('#pObj').addEventListener('input',chk);chk();
+      wireBarras(el,id,chk,pre.resultado);
       wireForm(el,function(f){
-        var o={codigo:val(f,'codigo'),nombre:val(f,'nombre'),categoria:val(f,'categoria'),clase:f.elements.clase.value,estado:f.elements.estado.value,
+        var o={codigo:val(f,'codigo'),codigoBarras:val(f,'codigoBarras'),nombre:val(f,'nombre'),categoria:val(f,'categoria'),clase:f.elements.clase.value,estado:f.elements.estado.value,
           cantidad:Math.max(0,Math.round(+f.elements.cantidad.value||0)),precioLista:+f.elements.precioLista.value||0,precioObjetivo:+f.elements.precioObjetivo.value||0,
           precioMinimo:+f.elements.precioMinimo.value||0,notas:val(f,'notas'),creado:(p.creado||Date.now())};
         var dup=list('productos').some(function(x){return x.id!==id&&String(x.codigo).toLowerCase()===o.codigo.toLowerCase()});
@@ -363,6 +367,68 @@ function productoForm(id){
         var nv=list('ventas').filter(function(v){return v.productoId===id}).length;
         if(nv){w.innerHTML='<p class="warnline bad">Este juguete tiene '+nv+' venta'+(nv>1?'s':'')+' registrada'+(nv>1?'s':'')+'. Elimínenlas primero o pongan la cantidad en lo vendido.</p>';return}
         del('productos',id).then(function(){closeModal();toast('Juguete eliminado')},function(){});
+      });
+    });
+}
+
+/* ---- código de barras ---- */
+function buscarBarras(code){return api('GET','codigo-barras/'+encodeURIComponent(code))}
+function fdt(iso){try{return new Date(iso).toLocaleString('es-MX',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch(e){return ''}}
+function wireBarras(el,id,chk,inicial){
+  var inp=el.querySelector('#pBar'),btn=el.querySelector('#pBarBtn'),res=el.querySelector('#pBarRes'),ultimo=null;
+  function campo(n){return el.querySelector('[name="'+n+'"]')}
+  function aplicar(datos,forzar){
+    var llenos=[];
+    Object.keys(datos).forEach(function(k){var v=datos[k];if(v==null||v===''||v===0)return;var c=campo(k);if(!c)return;
+      if(forzar||!String(c.value).trim()||(+c.value===0&&c.type==='number')){c.value=v;llenos.push(c.closest('.f').querySelector('label').textContent)}});
+    chk();return llenos;
+  }
+  function pinta(r){
+    ultimo=r;
+    if(r.origen==='inventario'){
+      var p=r.producto;
+      res.innerHTML=p.id===id?'<p class="small muted">Este código de barras ya pertenece a este juguete.</p>'
+        :'<p class="warnline bad">Ya está registrado en el juguete <b>'+esc(p.codigo+' · '+p.nombre)+'</b>. No lo den de alta otra vez: aumenten la cantidad de ese juguete. <button class="lnk" type="button" data-editp="'+esc(p.id)+'">Abrir ese juguete</button></p>';
+      return;
+    }
+    if(r.origen==='ninguno'){res.innerHTML='<p class="warnline">'+esc(r.aviso)+'</p>';return}
+    var e=r.externo,sg=r.sugerencia||{};
+    var nombre=e.marca&&e.titulo.toLowerCase().indexOf(e.marca.toLowerCase())<0?e.marca+' '+e.titulo:e.titulo;
+    var datos={nombre:nombre,categoria:e.categoria,precioLista:sg.precioLista,precioObjetivo:sg.precioObjetivo,precioMinimo:sg.precioMinimo};
+    var llenos=aplicar(datos,false);
+    var rango=(e.precioBajo!=null||e.precioAlto!=null)?'Precios registrados en tiendas: '+(e.moneda==='USD'?'US$':e.moneda+' ')+[e.precioBajo,e.precioAlto].filter(function(x){return x!=null}).map(function(x){return (+x).toFixed(2)}).join(' – ')+(e.ofertas?' · '+e.ofertas+' oferta'+(e.ofertas>1?'s':''):''):'Sin precios registrados.';
+    res.innerHTML='<div class="bcres">'+(e.imagen?'<img class="bcimg" src="'+esc(e.imagen)+'" alt="" referrerpolicy="no-referrer" onerror="this.remove()">':'')+
+      '<div class="bcinfo"><p class="small"><span class="pill nuevo">UPCitemdb</span> <b>'+esc(e.titulo)+'</b></p>'+
+      '<p class="small muted">'+[e.marca,e.categoria].filter(Boolean).map(esc).join(' · ')+'</p>'+
+      '<p class="small muted">'+esc(rango)+'</p>'+
+      '<ul class="small sug">'+(sg.explicacion||[]).map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>'+
+      '<p class="small muted">'+(llenos.length?'Se llenaron: '+esc(llenos.join(', '))+'. ':'No se cambió ningún campo porque ya tenían datos. ')+
+      'Son sugerencias: revísenlas antes de guardar. Consultado '+esc(fdt(r.consultadoUtc))+(r.desdeCache?' (guardado, sin gastar consulta)':'')+'.</p>'+
+      '<div class="row"><button class="btn sm" type="button" id="pBarForzar">Reemplazar todos los campos con estos datos</button></div></div></div>';
+    res.querySelector('#pBarForzar').addEventListener('click',function(){var l=aplicar(datos,true);toast(l.length?'Campos reemplazados':'No hay datos para reemplazar')});
+  }
+  function buscar(){
+    var code=inp.value.trim();if(!code){inp.focus();return}
+    btn.disabled=true;res.innerHTML='<p class="small muted">Buscando '+esc(code)+'…</p>';
+    buscarBarras(code).then(pinta,function(e){res.innerHTML='<p class="warnline bad">'+esc((e&&e.mensaje)||'No se pudo buscar.')+'</p>'}).then(function(){btn.disabled=false});
+  }
+  btn.addEventListener('click',buscar);
+  inp.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();buscar()}});
+  if(inicial)pinta(inicial);
+}
+function escanearForm(){
+  openModal(head('Escanear código de barras')+'<form style="display:flex;flex-direction:column;gap:12px">'+
+    '<p class="small muted">Escaneen la caja con el lector. Si el juguete ya está en el inventario se abre para aumentar su cantidad; si no, se busca en UPCitemdb y se abre el alta con los datos encontrados.</p>'+
+    '<input class="inp mono" id="scCode" inputmode="numeric" autocomplete="off" maxlength="20" placeholder="Código de barras" style="font-size:1.2rem">'+
+    '<div id="scRes"></div><div class="pf"><span></span><div class="row"><button class="btn" type="button" data-close2>Cancelar</button><button class="btn primary" type="submit" id="scGo">Buscar</button></div></div></form>',function(el){
+      var inp=el.querySelector('#scCode'),r=el.querySelector('#scRes'),go=el.querySelector('#scGo');
+      wireForm(el,function(){
+        var code=inp.value.trim();if(!code)return;go.disabled=true;r.innerHTML='<p class="small muted">Buscando…</p>';
+        buscarBarras(code).then(function(res){
+          if(res.origen==='inventario'){productoForm(res.producto.id);toast('Ya está en el inventario: aumenten la cantidad si encontraron más piezas');}
+          else productoForm(null,{codigoBarras:res.codigo,resultado:res});
+        },function(e){go.disabled=false;r.innerHTML='<p class="warnline bad">'+esc((e&&e.mensaje)||'No se pudo buscar.')+'</p><p class="small"><button class="lnk" type="button" id="scManual">Dar de alta a mano con este código</button></p>';
+          r.querySelector('#scManual').addEventListener('click',function(){productoForm(null,{codigoBarras:code})});inp.select()});
       });
     });
 }
@@ -450,11 +516,11 @@ function parseRows(txt){
   function n(x){return +(String(x||'').replace(/[$\s]/g,'').replace(/,(?=\d{3}\b)/g,'').replace(',','.'))||0}
   function est(x){x=String(x||'').toLowerCase();return x.indexOf('da')===0?'danado':x.indexOf('inc')===0?'incompleto':'nuevo'}
   return rows.filter(function(r){return r[1]}).map(function(r){var cl=String(r[7]||'').trim().toUpperCase();
-    return {codigo:r[0]||'',nombre:r[1],categoria:r[2]||'',cantidad:Math.max(0,Math.round(n(r[3]))),estado:est(r[4]),precioLista:n(r[5]),precioObjetivo:n(r[6]),clase:['A','B','C'].indexOf(cl)>=0?cl:'B',precioMinimo:0,notas:''}});
+    return {codigo:r[0]||'',nombre:r[1],categoria:r[2]||'',cantidad:Math.max(0,Math.round(n(r[3]))),estado:est(r[4]),precioLista:n(r[5]),precioObjetivo:n(r[6]),clase:['A','B','C'].indexOf(cl)>=0?cl:'B',codigoBarras:String(r[8]||'').replace(/[^0-9A-Za-z]/g,''),precioMinimo:0,notas:''}});
 }
 function importForm(){
   openModal(head('Importar desde Excel')+'<form style="display:flex;flex-direction:column;gap:12px">'+
-    '<p class="small muted">Copien las filas de su hoja y péguenlas abajo. Columnas en este orden: <b>Código, Juguete, Categoría, Cantidad, Estado, Precio de lista, Precio objetivo, Clase</b>. La fila de títulos se ignora.</p>'+
+    '<p class="small muted">Copien las filas de su hoja y péguenlas abajo. Columnas en este orden: <b>Código, Juguete, Categoría, Cantidad, Estado, Precio de lista, Precio objetivo, Clase</b> y, opcional, <b>Código de barras</b>. La fila de títulos se ignora.</p>'+
     '<textarea class="inp mono" id="impTxt" style="min-height:180px;font-size:.82rem" placeholder="001&#9;Muñeca Bebé Llorón&#9;Muñecas&#9;12&#9;Nuevo&#9;899&#9;600&#9;A"></textarea>'+
     '<div id="impPrev"></div><div class="pf"><span></span><div class="row"><button class="btn" type="button" data-close2>Cancelar</button><button class="btn primary" type="submit" id="impGo" disabled>Importar</button></div></div></form>',function(el){
       var ta=el.querySelector('#impTxt'),pv=el.querySelector('#impPrev'),go=el.querySelector('#impGo'),rows=[];
@@ -475,7 +541,7 @@ function importForm(){
 function csv(rows){return '﻿'+rows.map(function(r){return r.map(function(c){c=c==null?'':String(c);return /[",\n;]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c}).join(',')}).join('\r\n')}
 function exportar(k){
   var s=stats(),rows;
-  if(k==='inventario')rows=[['Código','Juguete','Categoría','Cantidad','Estado','Precio de lista','Precio objetivo','Precio mínimo','Clase','Vendidas','Disponibles','Notas']].concat(s.P.map(function(p){var v=s.sold[p.id]||0;return [p.codigo,p.nombre,p.categoria,p.cantidad,EST_P_TXT[p.estado]||'Nuevo',p.precioLista,p.precioObjetivo,p.precioMinimo,p.clase,v,Math.max(0,(+p.cantidad||0)-v),p.notas]}));
+  if(k==='inventario')rows=[['Código','Juguete','Categoría','Cantidad','Estado','Precio de lista','Precio objetivo','Clase','Código de barras','Precio mínimo','Vendidas','Disponibles','Notas']].concat(s.P.map(function(p){var v=s.sold[p.id]||0;return [p.codigo,p.nombre,p.categoria,p.cantidad,EST_P_TXT[p.estado]||'Nuevo',p.precioLista,p.precioObjetivo,p.clase,p.codigoBarras?'\u2060'+p.codigoBarras:'',p.precioMinimo,v,Math.max(0,(+p.cantidad||0)-v),p.notas]}));
   else if(k==='ventas')rows=[['Fecha','Fecha de pago','Código','Juguete','Cantidad','Precio','Total','Estado','Canal','Responsable','Cliente','Notas']].concat(s.V.map(function(v){var p=D.productos[v.productoId]||{};return [v.fecha,v.fechaPago,p.codigo,p.nombre,v.cantidad,v.precio,totalVenta(v),EST_V_TXT[v.estado],v.canal,v.responsable,v.cliente,v.notas]}));
   else if(k==='gastos')rows=[['Fecha','Tipo','Concepto','Pagó','Monto']].concat(s.G.map(function(g){return [g.fecha,g.tipo,g.concepto,g.persona,g.monto]}));
   else rows=[['Semana','Publicadas','Mensajes','Horas '+s.c.socioA,'Horas '+s.c.socioB,'Notas']].concat(list('semanas').map(function(w){return [w.semana,w.publicadas,w.mensajes,w.horasA,w.horasB,w.notas]}));
@@ -492,6 +558,7 @@ document.addEventListener('click',function(e){
   else if(act==='nuevoGasto')gastoForm();
   else if(act==='nuevaSemana')semanaForm(D.semanas[monday(today())]?monday(today()):null);
   else if(act==='importar')importForm();
+  else if(act==='escanear')escanearForm();
   else if(t.dataset.go)go(t.dataset.go);
   else if(t.dataset.editp)productoForm(t.dataset.editp);
   else if(t.dataset.sell)ventaForm(null,t.dataset.sell);

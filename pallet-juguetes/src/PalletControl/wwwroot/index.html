@@ -53,9 +53,9 @@
 <!-- INVENTARIO -->
 <section class="view" data-view="inventario" hidden>
   <div class="head"><div><p class="eyebrow">Hoja de inventario</p><h2>Juguetes del pallet</h2><p class="muted small" id="invSub"></p></div>
-    <div class="row"><button class="btn" data-act="importar">Importar desde Excel</button><button class="btn primary" data-act="nuevoProducto">+ Juguete</button></div></div>
+    <div class="row"><button class="btn" data-act="importar">Importar desde Excel</button><button class="btn" data-act="escanear">Escanear código</button><button class="btn primary" data-act="nuevoProducto">+ Juguete</button></div></div>
   <div class="filters">
-    <input class="inp" id="fBuscar" type="search" placeholder="Buscar por código, nombre o categoría" aria-label="Buscar">
+    <input class="inp" id="fBuscar" type="search" placeholder="Buscar por código, código de barras, nombre o categoría" aria-label="Buscar">
     <select class="sel" id="fClase" aria-label="Clase"><option value="">Todas las clases</option><option>A</option><option>B</option><option>C</option></select>
     <select class="sel" id="fEstado" aria-label="Estado"><option value="">Todo estado</option><option value="nuevo">Nuevo</option><option value="danado">Dañado</option><option value="incompleto">Incompleto</option></select>
     <label class="chk"><input type="checkbox" id="fStock"> Solo con piezas disponibles</label>
@@ -106,6 +106,7 @@
         <div class="f"><label for="cRep">Reparto para socio A (%)</label><input class="inp num" id="cRep" type="number" min="0" max="100" step="1"><span class="hint">El resto es del socio B.</span></div>
         <div class="f"><label for="cBajo">Aviso de pocas piezas</label><input class="inp num" id="cBajo" type="number" min="0" step="1"><span class="hint">Avisa cuando quedan esta cantidad o menos.</span></div>
         <div class="f full"><label for="cMeta">Meta de venta mensual (MXN)</label><input class="inp num" id="cMeta" type="number" min="0" step="500"><span class="hint">Opcional. Defínanla tras dos semanas de datos.</span></div>
+        <div class="f full"><label for="cTc">Tipo de cambio (pesos por dólar)</label><input class="inp num" id="cTc" type="number" min="0" step="0.01" placeholder="Sin capturar"><span class="hint">Captúrenlo de su banco o del DOF. Se usa para convertir a pesos los precios en dólares que da UPCitemdb al buscar por código de barras. Sin este dato no se sugieren precio de lista ni objetivo.</span></div>
       </div>
       <div class="row"><button class="btn primary" type="submit">Guardar ajustes</button></div>
     </form>

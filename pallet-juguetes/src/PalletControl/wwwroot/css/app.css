@@ -174,3 +174,12 @@ textarea.inp{min-height:70px;resize:vertical}
 .toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;max-width:calc(100% - 32px);box-shadow:0 6px 24px rgba(0,0,0,.2)}
 @media(prefers-reduced-motion:reduce){.meter i{transition:none}}
 #venBody{display:flex;flex-direction:column;gap:14px}
+
+/* código de barras */
+.bc{display:flex;gap:6px}
+.bc .inp{flex:1;min-width:0}
+.bcres{display:flex;gap:12px;align-items:flex-start;background:var(--surface-2);border-radius:10px;padding:12px}
+.bcimg{width:72px;height:72px;object-fit:contain;border-radius:8px;background:#fff;flex:none}
+.bcinfo{display:flex;flex-direction:column;gap:6px;min-width:0}
+.bcinfo p{overflow-wrap:anywhere}
+ul.sug{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:2px}

@@ -5,6 +5,8 @@ public class Producto
 {
     public string Id { get; set; } = "";
     public string Codigo { get; set; } = "";
+    /// <summary>EAN/UPC impreso en la caja (opcional, único cuando se captura).</summary>
+    public string CodigoBarras { get; set; } = "";
     public string Nombre { get; set; } = "";
     public string Categoria { get; set; } = "";
     /// <summary>A, B o C.</summary>
@@ -74,7 +76,19 @@ public class Configuracion
     public int RepartoA { get; set; } = 50;
     public int StockBajo { get; set; } = 1;
     public decimal MetaMensual { get; set; }
+    /// <summary>Pesos por dólar, capturado por los socios. 0 = sin capturar (no se convierten precios).</summary>
+    public decimal TipoCambioUsd { get; set; }
     public DateTime ActualizadoUtc { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>Respuesta guardada de una consulta externa por código de barras (ahorra el límite diario).</summary>
+public class ConsultaCodigoBarras
+{
+    public string Codigo { get; set; } = "";
+    public string Fuente { get; set; } = "";
+    public bool Encontrado { get; set; }
+    public string Respuesta { get; set; } = "";
+    public DateTime ConsultadoUtc { get; set; } = DateTime.UtcNow;
 }
 
 /// <summary>Contador global de cambios; los navegadores lo consultan para refrescarse.</summary>

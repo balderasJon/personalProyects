@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Semana> Semanas => Set<Semana>();
     public DbSet<Configuracion> Configuracion => Set<Configuracion>();
     public DbSet<VersionDatos> Version => Set<VersionDatos>();
+    public DbSet<ConsultaCodigoBarras> ConsultasCodigoBarras => Set<ConsultaCodigoBarras>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder c)
     {
@@ -29,6 +30,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.Property(x => x.Codigo).HasMaxLength(20).IsRequired().UseCollation("NOCASE");
             e.HasIndex(x => x.Codigo).IsUnique();
+            e.Property(x => x.CodigoBarras).HasMaxLength(20).HasDefaultValue("");
+            e.HasIndex(x => x.CodigoBarras).IsUnique().HasFilter("\"CodigoBarras\" <> ''").HasDatabaseName("IX_productos_CodigoBarras");
             e.Property(x => x.Nombre).HasMaxLength(120).IsRequired();
             e.Property(x => x.Categoria).HasMaxLength(60);
             e.Property(x => x.Clase).HasMaxLength(1);
@@ -67,6 +70,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.Property(x => x.SocioA).HasMaxLength(40);
             e.Property(x => x.SocioB).HasMaxLength(40);
+        });
+        b.Entity<ConsultaCodigoBarras>(e =>
+        {
+            e.ToTable("consultas_codigo_barras");
+            e.HasKey(x => x.Codigo);
+            e.Property(x => x.Codigo).HasMaxLength(20);
+            e.Property(x => x.Fuente).HasMaxLength(30);
         });
         b.Entity<VersionDatos>(e => { e.ToTable("version_datos"); e.HasKey(x => x.Id); });
     }
