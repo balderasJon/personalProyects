@@ -46,7 +46,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.ProductoId);
             e.Property(x => x.Estado).HasMaxLength(12);
             e.Property(x => x.Canal).HasMaxLength(40);
-            e.Property(x => x.Responsable).HasMaxLength(40);
             e.Property(x => x.Cliente).HasMaxLength(80);
             e.Property(x => x.Notas).HasMaxLength(400);
         });
@@ -55,7 +54,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.ToTable("gastos");
             e.HasKey(x => x.Id);
             e.Property(x => x.Tipo).HasMaxLength(40);
-            e.Property(x => x.Persona).HasMaxLength(40);
             e.Property(x => x.Concepto).HasMaxLength(120);
         });
         b.Entity<Semana>(e =>
@@ -68,8 +66,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.ToTable("configuracion");
             e.HasKey(x => x.Id);
-            e.Property(x => x.SocioA).HasMaxLength(40);
-            e.Property(x => x.SocioB).HasMaxLength(40);
         });
         b.Entity<ConsultaCodigoBarras>(e =>
         {

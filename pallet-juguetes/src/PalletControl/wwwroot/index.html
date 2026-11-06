@@ -72,7 +72,6 @@
   <div class="filters">
     <input class="inp" id="vBuscar" type="search" placeholder="Buscar cliente o juguete" aria-label="Buscar venta">
     <select class="sel" id="vCanal" aria-label="Canal"><option value="">Todos los canales</option></select>
-    <select class="sel" id="vResp" aria-label="Responsable"><option value="">Ambos socios</option></select>
   </div>
   <div id="venBody"></div>
 </section>
@@ -95,16 +94,13 @@
 
 <!-- AJUSTES -->
 <section class="view" data-view="ajustes" hidden>
-  <div class="head"><div><p class="eyebrow">Configuración compartida</p><h2>Ajustes</h2></div></div>
+  <div class="head"><div><p class="eyebrow">Configuración</p><h2>Ajustes</h2></div></div>
   <div class="grid g2">
     <form class="card" id="cfgForm">
       <h3>Datos del negocio</h3>
       <div class="form">
         <div class="f full"><label for="cInv">Inversión inicial (MXN)</label><input class="inp num" id="cInv" type="number" min="0" step="100"><span class="hint">Incluye flete e impuestos de compra.</span></div>
-        <div class="f"><label for="cA">Socio A · Producto</label><input class="inp" id="cA" type="text" maxlength="40"></div>
-        <div class="f"><label for="cB">Socio B · Clientes</label><input class="inp" id="cB" type="text" maxlength="40"></div>
-        <div class="f"><label for="cRep">Reparto para socio A (%)</label><input class="inp num" id="cRep" type="number" min="0" max="100" step="1"><span class="hint">El resto es del socio B.</span></div>
-        <div class="f"><label for="cBajo">Aviso de pocas piezas</label><input class="inp num" id="cBajo" type="number" min="0" step="1"><span class="hint">Avisa cuando quedan esta cantidad o menos.</span></div>
+        <div class="f full"><label for="cBajo">Aviso de pocas piezas</label><input class="inp num" id="cBajo" type="number" min="0" step="1"><span class="hint">Avisa cuando quedan esta cantidad o menos.</span></div>
         <div class="f full"><label for="cMeta">Meta de venta mensual (MXN)</label><input class="inp num" id="cMeta" type="number" min="0" step="500"><span class="hint">Opcional. Defínanla tras dos semanas de datos.</span></div>
         <div class="f full"><label for="cTc">Tipo de cambio (pesos por dólar)</label><input class="inp num" id="cTc" type="number" min="0" step="0.01" placeholder="Sin capturar"><span class="hint">Captúrenlo de su banco o del DOF. Se usa para convertir a pesos los precios en dólares que da UPCitemdb al buscar por código de barras. Sin este dato no se sugieren precio de lista ni objetivo.</span></div>
       </div>

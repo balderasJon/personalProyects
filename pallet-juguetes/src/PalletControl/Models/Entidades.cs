@@ -34,7 +34,6 @@ public class Venta
     public DateOnly Fecha { get; set; }
     public DateOnly? FechaPago { get; set; }
     public string Canal { get; set; } = "";
-    public string Responsable { get; set; } = "";
     public string Cliente { get; set; } = "";
     public string Notas { get; set; } = "";
     public DateTime CreadoUtc { get; set; } = DateTime.UtcNow;
@@ -48,7 +47,6 @@ public class Gasto
     public string Tipo { get; set; } = "Otro";
     public decimal Monto { get; set; }
     public DateOnly Fecha { get; set; }
-    public string Persona { get; set; } = "";
     public string Concepto { get; set; } = "";
     public DateTime CreadoUtc { get; set; } = DateTime.UtcNow;
     public DateTime ActualizadoUtc { get; set; } = DateTime.UtcNow;
@@ -60,8 +58,7 @@ public class Semana
     public DateOnly Inicio { get; set; }
     public int Publicadas { get; set; }
     public int Mensajes { get; set; }
-    public decimal HorasA { get; set; }
-    public decimal HorasB { get; set; }
+    public decimal Horas { get; set; }
     public string Notas { get; set; } = "";
     public DateTime ActualizadoUtc { get; set; } = DateTime.UtcNow;
 }
@@ -71,12 +68,9 @@ public class Configuracion
 {
     public int Id { get; set; } = 1;
     public decimal Inversion { get; set; } = 49000m;
-    public string SocioA { get; set; } = "Persona A";
-    public string SocioB { get; set; } = "Persona B";
-    public int RepartoA { get; set; } = 50;
     public int StockBajo { get; set; } = 1;
     public decimal MetaMensual { get; set; }
-    /// <summary>Pesos por dólar, capturado por los socios. 0 = sin capturar (no se convierten precios).</summary>
+    /// <summary>Pesos por dólar, capturado a mano. 0 = sin capturar (no se convierten precios).</summary>
     public decimal TipoCambioUsd { get; set; }
     public DateTime ActualizadoUtc { get; set; } = DateTime.UtcNow;
 }

@@ -2,7 +2,7 @@
 
 Aplicación local para administrar el negocio del pallet de juguetes: inventario, ventas, gastos, indicadores semanales y recuperación de la inversión.
 
-Es la versión instalable del artefacto **Control Pallet de Juguetes**. Usa la misma interfaz y los mismos cálculos, pero guarda los datos en una base SQLite en una computadora de la casa. Los dos socios la usan desde el navegador en la misma red Wi‑Fi.
+Es la versión instalable del artefacto **Control Pallet de Juguetes**. Usa la misma interfaz y los mismos cálculos, pero guarda los datos en una base SQLite en tu computadora. Está pensada para una sola persona; también puedes abrirla desde el celular en la misma red Wi‑Fi.
 
 | | |
 |---|---|
@@ -17,16 +17,16 @@ Es la versión instalable del artefacto **Control Pallet de Juguetes**. Usa la m
 
 | Sección | Funciones |
 |---|---|
-| **Resumen** | Cuánto falta por recuperar de la inversión, gráfica semanal acumulada, ventas cobradas, gastos, utilidad neta, reparto por socio, % vendido, precio promedio real, valor del inventario y utilidad por hora. Lista de pendientes (apartados sin cobrar, piezas dañadas, ventas debajo del costo, semana sin registrar). |
+| **Resumen** | Cuánto falta por recuperar de la inversión, gráfica semanal acumulada, ventas cobradas, gastos, utilidad neta, % vendido, precio promedio real, valor del inventario y utilidad por hora. Lista de pendientes (apartados sin cobrar, piezas dañadas, ventas debajo del costo, semana sin registrar). |
 | **Inventario** | Alta, edición y baja de juguetes con código, **código de barras**, clase A/B/C, estado, cantidad y precios de lista, objetivo y mínimo. Escaneo con lector USB/Bluetooth, filtros y búsqueda. Importación pegando filas desde Excel. |
-| **Ventas** | Tablero Apartado → Pagado → Entregado (y Cancelado), vista de lista, filtros por canal y responsable, rendimiento por canal. |
+| **Ventas** | Tablero Apartado → Pagado → Entregado (y Cancelado), vista de lista, filtro por canal, rendimiento por canal. |
 | **Gastos** | Empaque, traslados, publicidad, comisiones e impuestos; totales por tipo. |
-| **Semana** | Publicaciones, mensajes y horas de cada socio; ventas y dinero de la semana se calculan solos. |
-| **Ajustes** | Inversión, nombres de los socios, reparto de utilidad, aviso de pocas piezas, meta mensual, tipo de cambio (pesos por dólar). Exportación a CSV por hoja y respaldo completo en JSON. |
+| **Semana** | Publicaciones, mensajes y horas dedicadas; ventas y dinero de la semana se calculan solos. |
+| **Ajustes** | Inversión, aviso de pocas piezas, meta mensual, tipo de cambio (pesos por dólar). Exportación a CSV por hoja y respaldo completo en JSON. |
 
 ### Reglas que valida el servidor
 
-Como los dos socios pueden registrar al mismo tiempo, estas reglas se revisan en el servidor (no solo en la pantalla):
+Estas reglas se revisan en el servidor (no solo en la pantalla), así se respetan aunque tengas la aplicación abierta en varias pestañas o en el celular:
 
 - No se puede vender o apartar más piezas de las disponibles.
 - El código de juguete no se repite (sin distinguir mayúsculas).
@@ -35,7 +35,7 @@ Como los dos socios pueden registrar al mismo tiempo, estas reglas se revisan en
 - No se puede eliminar un juguete que tiene ventas registradas.
 - La fecha de pago se asigna sola al pasar una venta a Pagado o Entregado.
 
-Cuando un socio guarda algo, la pantalla del otro se actualiza sola en unos 4 segundos.
+Si la tienes abierta en varias pestañas o dispositivos, los demás se actualizan solos en unos 4 segundos.
 
 ### Código de barras
 
@@ -70,7 +70,7 @@ Solo se llenan los campos vacíos; el botón *Reemplazar todos los campos* sobre
 
 ## 2. Cómo ejecutarla
 
-Elijan **una** computadora como principal (la que guardará los datos). Las demás solo necesitan un navegador.
+La aplicación corre en tu computadora y ahí se guardan los datos. Para abrirla desde el celular solo necesitas un navegador.
 
 ### Opción A — Ejecutable para Windows (no requiere instalar .NET en la PC principal)
 
@@ -110,11 +110,11 @@ La consola muestra las direcciones:
   Desde la red local:   http://192.168.x.x:5080
 ```
 
-El otro socio abre la dirección **"Desde la red local"** en su navegador o celular.
+Para usarla desde el celular, abre la dirección **"Desde la red local"** estando en la misma red Wi‑Fi.
 
 ### Permitir el acceso en Windows
 
-Si el otro socio no puede entrar, Windows Firewall está bloqueando el puerto. En una consola **como administrador**:
+Si el celular no puede entrar, Windows Firewall está bloqueando el puerto. En una consola **como administrador**:
 
 ```bat
 netsh advfirewall firewall add rule name="Control Pallet 5080" dir=in action=allow protocol=TCP localport=5080 profile=private
@@ -128,6 +128,7 @@ La regla se limita al perfil de red **privada**; la red de la casa debe estar ma
 
 - Base de datos: `datos/pallet.db` (SQLite, un solo archivo).
 - **Respaldo automático:** cada vez que la aplicación arranca se crea, si aún no existe, una copia del día en `datos/respaldos/pallet-AAAA-MM-DD.db`. Se conservan las últimas 14 (configurable en `appsettings.json` → `Respaldos:Conservar`).
+- **Migración a un solo socio:** al abrir por primera vez esta versión con una base anterior, se guarda una copia `datos/respaldos/pallet-antes-de-un-socio-AAAA-MM-DD-HHMMSS.db`, se suman las horas de los dos socios en un solo campo y se eliminan nombres de socios, reparto, responsable de venta y quién pagó cada gasto.
 - **Respaldo manual:** Ajustes → *Descargar respaldo* genera un JSON con toda la información.
 - **Exportar a Excel:** Ajustes → botones CSV por hoja.
 - Para restaurar un respaldo `.db`: detengan la aplicación, reemplacen `datos/pallet.db` por la copia (renombrada a `pallet.db`) y borren `pallet.db-wal` y `pallet.db-shm` si existen.

@@ -41,7 +41,7 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
-    Esquema.Actualizar(db);
+    Esquema.Actualizar(db, Path.Combine(dbDir, "respaldos"));
     db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
     if (db.Configuracion.Find(1) is null) db.Configuracion.Add(new Configuracion());
     if (db.Version.Find(1) is null) db.Version.Add(new VersionDatos());

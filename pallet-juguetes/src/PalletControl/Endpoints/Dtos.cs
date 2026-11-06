@@ -4,14 +4,14 @@ public record ProductoIn(string? Codigo, string? CodigoBarras, string? Nombre, s
     int Cantidad, decimal PrecioLista, decimal PrecioObjetivo, decimal PrecioMinimo, string? Notas);
 
 public record VentaIn(string? ProductoId, int Cantidad, decimal Precio, string? Estado, DateOnly? Fecha,
-    string? Canal, string? Responsable, string? Cliente, string? Notas);
+    string? Canal, string? Cliente, string? Notas);
 
 public record CambioEstadoIn(string? Estado);
 
-public record GastoIn(string? Tipo, decimal Monto, DateOnly? Fecha, string? Persona, string? Concepto);
+public record GastoIn(string? Tipo, decimal Monto, DateOnly? Fecha, string? Concepto);
 
-public record SemanaIn(int Publicadas, int Mensajes, decimal HorasA, decimal HorasB, string? Notas);
+public record SemanaIn(int Publicadas, int Mensajes, decimal Horas, string? Notas);
 
-public record ConfiguracionIn(decimal Inversion, string? SocioA, string? SocioB, int RepartoA, int StockBajo, decimal MetaMensual, decimal TipoCambioUsd);
+public record ConfiguracionIn(decimal Inversion, int StockBajo, decimal MetaMensual, decimal TipoCambioUsd);
 
 public record Error(string Mensaje);

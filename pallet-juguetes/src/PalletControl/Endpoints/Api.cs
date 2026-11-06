@@ -8,7 +8,7 @@ namespace PalletControl.Endpoints;
 public static class Api
 {
     // Las validaciones de inventario leen y escriben en dos pasos; este candado evita que
-    // dos socios aparten la última pieza al mismo tiempo.
+    // dos pestañas o dispositivos aparten la última pieza al mismo tiempo.
     private static readonly SemaphoreSlim Escritura = new(1, 1);
 
     private static DateOnly Hoy => DateOnly.FromDateTime(DateTime.Now);
@@ -100,8 +100,7 @@ public static class Api
             if (s is null) { s = new Semana { Inicio = k }; db.Semanas.Add(s); }
             s.Publicadas = Math.Max(0, i.Publicadas);
             s.Mensajes = Math.Max(0, i.Mensajes);
-            s.HorasA = Math.Max(0, i.HorasA);
-            s.HorasB = Math.Max(0, i.HorasB);
+            s.Horas = Math.Max(0, i.Horas);
             s.Notas = T(i.Notas, 600);
             s.ActualizadoUtc = DateTime.UtcNow;
             await db.GuardarAsync();
@@ -122,10 +121,6 @@ public static class Api
             var c = await db.Configuracion.FindAsync(1);
             if (c is null) { c = new Configuracion(); db.Configuracion.Add(c); }
             c.Inversion = Math.Max(0, i.Inversion);
-            c.SocioA = string.IsNullOrWhiteSpace(i.SocioA) ? "Persona A" : T(i.SocioA, 40);
-            c.SocioB = string.IsNullOrWhiteSpace(i.SocioB) ? "Persona B" : T(i.SocioB, 40);
-            if (string.Equals(c.SocioA, c.SocioB, StringComparison.OrdinalIgnoreCase)) return Mal("Los dos socios necesitan nombres distintos.");
-            c.RepartoA = Math.Clamp(i.RepartoA, 0, 100);
             c.StockBajo = Math.Max(0, i.StockBajo);
             c.MetaMensual = Math.Max(0, i.MetaMensual);
             c.TipoCambioUsd = Math.Max(0, i.TipoCambioUsd);
@@ -298,7 +293,6 @@ public static class Api
         v.Fecha = fecha;
         v.FechaPago = fechaPago;
         v.Canal = T(i.Canal, 40);
-        v.Responsable = T(i.Responsable, 40);
         v.Cliente = T(i.Cliente, 80);
         v.Notas = T(i.Notas, 400);
         v.ActualizadoUtc = DateTime.UtcNow;
@@ -319,7 +313,6 @@ public static class Api
         g.Tipo = string.IsNullOrWhiteSpace(i.Tipo) ? "Otro" : T(i.Tipo, 40);
         g.Monto = i.Monto;
         g.Fecha = i.Fecha ?? Hoy;
-        g.Persona = T(i.Persona, 40);
         g.Concepto = T(i.Concepto, 120);
         g.ActualizadoUtc = DateTime.UtcNow;
         await db.GuardarAsync();
