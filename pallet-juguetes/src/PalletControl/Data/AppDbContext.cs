@@ -12,6 +12,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Configuracion> Configuracion => Set<Configuracion>();
     public DbSet<VersionDatos> Version => Set<VersionDatos>();
     public DbSet<ConsultaCodigoBarras> ConsultasCodigoBarras => Set<ConsultaCodigoBarras>();
+    public DbSet<ProductoImagen> Imagenes => Set<ProductoImagen>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder c)
     {
@@ -37,6 +38,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Clase).HasMaxLength(1);
             e.Property(x => x.Estado).HasMaxLength(12);
             e.Property(x => x.Notas).HasMaxLength(500);
+            e.Property(x => x.Caracteristicas).HasMaxLength(2000);
+        });
+        b.Entity<ProductoImagen>(e =>
+        {
+            e.ToTable("producto_imagenes");
+            e.HasKey(x => x.Id);
+            e.HasOne<Producto>().WithMany().HasForeignKey(x => x.ProductoId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.ProductoId);
+            e.Property(x => x.Archivo).HasMaxLength(80);
+            e.Property(x => x.Origen).HasMaxLength(20);
         });
         b.Entity<Venta>(e =>
         {
@@ -66,6 +77,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.ToTable("configuracion");
             e.HasKey(x => x.Id);
+            e.Property(x => x.TipoCambioFuente).HasMaxLength(20);
         });
         b.Entity<ConsultaCodigoBarras>(e =>
         {

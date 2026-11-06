@@ -35,6 +35,23 @@ builder.Services.AddHttpClient<BuscadorCodigoBarras>(h =>
     h.DefaultRequestHeaders.Accept.ParseAdd("application/json");
 });
 
+builder.Services.AddHttpClient<TipoCambioDof>(h =>
+{
+    h.Timeout = TimeSpan.FromSeconds(10);
+    h.DefaultRequestHeaders.UserAgent.ParseAdd("PalletControl/1.0");
+    h.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+});
+builder.Services.AddHttpClient("imagenes", h =>
+{
+    h.Timeout = TimeSpan.FromSeconds(15);
+    h.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; PalletControl/1.0)");
+    h.DefaultRequestHeaders.Accept.ParseAdd("image/*");
+});
+var imgDir = Path.Combine(dbDir, "imagenes");
+Directory.CreateDirectory(imgDir);
+builder.Services.AddSingleton(new AlmacenImagenes(imgDir));
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o => o.MultipartBodyLengthLimit = 30 * 1024 * 1024);
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -65,6 +82,11 @@ app.UseDefaultFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
     OnPrepareResponse = c => c.Context.Response.Headers.CacheControl = "no-cache"
+});
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(imgDir),
+    RequestPath = "/imagenes"
 });
 app.MapApi();
 

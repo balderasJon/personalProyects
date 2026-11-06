@@ -17,9 +17,26 @@ public class Producto
     public decimal PrecioLista { get; set; }
     public decimal PrecioObjetivo { get; set; }
     public decimal PrecioMinimo { get; set; }
+    /// <summary>Precio del mismo juguete en tiendas de México (capturado a mano). 0 = sin capturar.</summary>
+    public decimal PrecioMexico { get; set; }
+    /// <summary>Descripción y datos técnicos (marca, modelo, color, medidas, peso...).</summary>
+    public string Caracteristicas { get; set; } = "";
     public string Notas { get; set; } = "";
     public DateTime CreadoUtc { get; set; } = DateTime.UtcNow;
     public DateTime ActualizadoUtc { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>Imagen de un juguete, guardada como archivo en datos/imagenes.</summary>
+public class ProductoImagen
+{
+    public string Id { get; set; } = "";
+    public string ProductoId { get; set; } = "";
+    /// <summary>Nombre del archivo dentro de datos/imagenes.</summary>
+    public string Archivo { get; set; } = "";
+    /// <summary>subida o upcitemdb.</summary>
+    public string Origen { get; set; } = "subida";
+    public bool Principal { get; set; }
+    public DateTime CreadoUtc { get; set; } = DateTime.UtcNow;
 }
 
 /// <summary>Venta de una o varias piezas de un juguete.</summary>
@@ -70,8 +87,16 @@ public class Configuracion
     public decimal Inversion { get; set; } = 49000m;
     public int StockBajo { get; set; } = 1;
     public decimal MetaMensual { get; set; }
-    /// <summary>Pesos por dólar, capturado a mano. 0 = sin capturar (no se convierten precios).</summary>
+    /// <summary>Pesos por dólar. 0 = sin definir (no se convierten precios).</summary>
     public decimal TipoCambioUsd { get; set; }
+    /// <summary>Día para el que se definió el tipo de cambio.</summary>
+    public DateOnly? TipoCambioFecha { get; set; }
+    /// <summary>DOF (consultado en dolardof.com) o Manual.</summary>
+    public string TipoCambioFuente { get; set; } = "";
+    /// <summary>Fecha de publicación en el DOF del valor consultado.</summary>
+    public DateOnly? TipoCambioPublicado { get; set; }
+    /// <summary>% que se descuenta al precio en México para sugerir el precio objetivo.</summary>
+    public int DescuentoSugerido { get; set; } = 35;
     public DateTime ActualizadoUtc { get; set; } = DateTime.UtcNow;
 }
 

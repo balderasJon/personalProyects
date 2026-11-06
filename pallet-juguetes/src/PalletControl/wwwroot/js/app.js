@@ -3,7 +3,8 @@
 /* ================= datos ================= */
 var COLS=['productos','ventas','gastos','semanas','config'];
 var D={productos:{},ventas:{},gastos:{},semanas:{},config:{}};
-var CFG_DEF={inversion:49000,stockBajo:1,metaMensual:0,tipoCambioUsd:0};
+var CFG_DEF={inversion:49000,stockBajo:1,metaMensual:0,tipoCambioUsd:0,descuentoSugerido:35};
+var IMG={}, TC={hoy:'',error:null};
 var CANALES=['Facebook Marketplace','WhatsApp Business','Grupos de Facebook','Conocidos','Bazar o escuela','Instagram','MercadoLibre','Otro'];
 var ESTADOS_V=['apartado','pagado','entregado','cancelado'];
 var EST_V_TXT={apartado:'Apartado',pagado:'Pagado',entregado:'Entregado',cancelado:'Cancelado'};
@@ -36,6 +37,8 @@ function cargar(){
     (e.semanas||[]).forEach(function(w){w.id=w.inicio;w.semana=w.inicio});
     D.productos=porId(e.productos);D.ventas=porId(e.ventas);D.gastos=porId(e.gastos);D.semanas=porId(e.semanas,'inicio');
     D.config={general:e.configuracion||{}};
+    IMG={};(e.imagenes||[]).forEach(function(i){(IMG[i.productoId]=IMG[i.productoId]||[]).push(i)});
+    TC=e.tipoCambio||{hoy:today(),error:null};renderTc();
     if(e.catalogos){if(e.catalogos.canales)CANALES=e.catalogos.canales;if(e.catalogos.tiposGasto)TIPOS_G=e.catalogos.tiposGasto}
     mode='ok';setStatus();renderAll();
   },function(err){mode='error';setStatus();throw err});
@@ -61,6 +64,45 @@ function vigilar(){
     },function(){if(mode!=='error'){mode='error';setStatus()}});
   },4000);
 }
+/* ---- tipo de cambio: leyenda fija en la barra superior ---- */
+var tcFmt=new Intl.NumberFormat('es-MX',{minimumFractionDigits:2,maximumFractionDigits:4});
+function renderTc(){
+  var c=cfg(),b=document.getElementById('tcBtn'),v=+c.tipoCambioUsd||0,hoy=TC.hoy||today();
+  if(!b)return;
+  var fuente=c.tipoCambioFuente==='DOF'?'DOF'+(c.tipoCambioPublicado?' publicado '+fdate(c.tipoCambioPublicado):''):(c.tipoCambioFuente==='Manual'?'capturado a mano':'');
+  if(v>0&&c.tipoCambioFecha===hoy){
+    b.className='tcbtn';
+    b.innerHTML='Tipo de cambio definido para el día de hoy a: <b>$'+tcFmt.format(v)+'</b><small> · '+esc(fuente)+' · Editar</small>';
+  }else if(v>0){
+    b.className='tcbtn warn';
+    b.innerHTML='Tipo de cambio: <b>$'+tcFmt.format(v)+'</b><small> · definido el '+esc(fdate(c.tipoCambioFecha||''))+'; no se pudo actualizar hoy · Editar</small>';
+  }else{
+    b.className='tcbtn warn';
+    b.innerHTML='Tipo de cambio sin definir<small> · '+(TC.error?'no se pudo consultar el DOF · ':'')+'Definir</small>';
+  }
+}
+function tcForm(){
+  var c=cfg();
+  openModal(head('Tipo de cambio del día')+'<form style="display:flex;flex-direction:column;gap:12px">'+
+    '<p class="small muted">Se consulta automáticamente en <b>dolardof.com</b> (valor oficial publicado en el Diario Oficial de la Federación) cuando aún no hay valor para hoy. Si lo capturas a mano, se usa tu valor durante el día de hoy; mañana se vuelve a consultar el DOF.</p>'+
+    (TC.error?'<p class="warnline">'+esc(TC.error)+'</p>':'')+
+    fld('tcVal','Pesos por dólar','<input class="inp num" id="tcVal" type="number" min="0.0001" max="1000" step="0.0001" required value="'+esc(c.tipoCambioUsd||'')+'">',
+      c.tipoCambioFuente?('Valor actual: '+(c.tipoCambioFuente==='DOF'?'DOF publicado '+fdate(c.tipoCambioPublicado||''):'capturado a mano')+', definido para '+fdate(c.tipoCambioFecha||'')+'.'):null)+
+    '<div id="tcMsg"></div><div class="pf"><button class="btn" type="button" id="tcDof">Consultar el DOF ahora</button><div class="row"><button class="btn" type="button" data-close2>Cancelar</button><button class="btn primary" type="submit">Guardar valor</button></div></div></form>',function(el){
+      var msg=el.querySelector('#tcMsg');
+      wireForm(el,function(){
+        var v=+el.querySelector('#tcVal').value;
+        if(!(v>0)){msg.innerHTML='<p class="warnline bad">Captura un valor mayor a cero.</p>';return}
+        api('PUT','tipo-cambio',{valor:v}).then(cargar).then(function(){closeModal();toast('Tipo de cambio guardado para hoy')},function(e){msg.innerHTML='<p class="warnline bad">'+esc(e.mensaje)+'</p>'});
+      });
+      el.querySelector('#tcDof').addEventListener('click',function(){
+        var b=this;b.disabled=true;b.textContent='Consultando…';
+        api('POST','tipo-cambio/consultar').then(cargar).then(function(){closeModal();toast('Tipo de cambio del DOF: $'+tcFmt.format(cfg().tipoCambioUsd))},
+          function(e){b.disabled=false;b.textContent='Consultar el DOF ahora';msg.innerHTML='<p class="warnline bad">'+esc(e.mensaje)+'</p>'});
+      });
+    });
+}
+
 function setStatus(){
   var el=document.getElementById('status'),t,cl='status';
   if(mode==='cargando'){t='Conectando…'}
@@ -205,7 +247,31 @@ function compact(v){var a=Math.abs(v);var s=a>=1000?(Math.round(a/100)/10)+'k':M
 
 /* ---- inventario ---- */
 ['fBuscar','fClase','fEstado','fStock'].forEach(function(id){document.getElementById(id).addEventListener('input',function(){renderInv(stats())})});
+function valorPallet(P,sold){
+  var r={piezas:0,disp:0,mxTot:0,mxDisp:0,objTot:0,objDisp:0,sinMx:0,sinMxPz:0,sinObj:0,sinObjPz:0};
+  P.forEach(function(p){var q=+p.cantidad||0,d=Math.max(0,q-(sold[p.id]||0)),mxp=+p.precioMexico||0,ob=+p.precioObjetivo||0;
+    r.piezas+=q;r.disp+=d;
+    if(mxp>0){r.mxTot+=q*mxp;r.mxDisp+=d*mxp}else{r.sinMx++;r.sinMxPz+=q}
+    if(ob>0){r.objTot+=q*ob;r.objDisp+=d*ob}else{r.sinObj++;r.sinObjPz+=q}});
+  return r;
+}
+function renderValor(s){
+  var el=document.getElementById('invValor');
+  if(!s.P.length){el.innerHTML='';return}
+  var v=valorPallet(s.P,s.sold),inv=+s.c.inversion||0;
+  var veces=inv>0&&v.mxTot>0?(v.mxTot/inv):NaN;
+  var faltan=[];
+  if(v.sinMx)faltan.push(num(v.sinMx)+' juguete'+(v.sinMx>1?'s':'')+' ('+num(v.sinMxPz)+' piezas) sin precio en México');
+  if(v.sinObj)faltan.push(num(v.sinObj)+' juguete'+(v.sinObj>1?'s':'')+' ('+num(v.sinObjPz)+' piezas) sin precio objetivo');
+  el.innerHTML='<div class="card"><h3>Valor del pallet</h3><div class="grid g4">'+
+    kpi('Piezas',num(v.piezas),num(v.disp)+' disponibles · '+num(v.piezas-v.disp)+' vendidas o apartadas')+
+    kpi('Valor en México',money(v.mxTot),'Cantidad × precio en México · disponible: '+money(v.mxDisp))+
+    kpi('Valor a precio objetivo',money(v.objTot),'Cantidad × precio objetivo · disponible: '+money(v.objDisp))+
+    kpi('Inversión',money(inv),isFinite(veces)?'El valor en México es '+nf.format(Math.round(veces*10)/10)+' veces la inversión':'Captura precios en México para compararlo')+
+    '</div>'+(faltan.length?'<p class="small muted">No se incluyen en los valores: '+esc(faltan.join(' y '))+'.</p>':'<p class="small muted">Todos los juguetes tienen precio en México y precio objetivo.</p>')+'</div>';
+}
 function renderInv(s){
+  renderValor(s);
   document.getElementById('invSub').textContent=s.P.length?num(s.P.length)+' tipos · '+num(s.piezas)+' piezas · '+num(s.disp)+' disponibles · costo promedio '+money(s.costoPz)+' por pieza':'';
   var body=document.getElementById('invBody');
   if(!s.P.length){body.innerHTML='<div class="empty"><h3>Abran el pallet y cuenten</h3><p class="muted">Registren cada juguete con su cantidad, estado y precios. Si ya tienen la hoja en Excel, cópienla y péguenla aquí.</p><div class="row" style="justify-content:center"><button class="btn" data-act="importar">Importar desde Excel</button><button class="btn primary" data-act="nuevoProducto">+ Agregar juguete</button></div></div>';return}
@@ -213,18 +279,20 @@ function renderInv(s){
   var bajo=+s.c.stockBajo||0;
   var P=s.P.filter(function(p){
     var d=(+p.cantidad||0)-(s.sold[p.id]||0);
-    if(q&&((p.codigo||'')+' '+(p.codigoBarras||'')+' '+(p.nombre||'')+' '+(p.categoria||'')).toLowerCase().indexOf(q)<0)return false;
+    if(q&&((p.codigo||'')+' '+(p.codigoBarras||'')+' '+(p.nombre||'')+' '+(p.categoria||'')+' '+(p.caracteristicas||'')).toLowerCase().indexOf(q)<0)return false;
     if(fc&&p.clase!==fc)return false;if(fe&&p.estado!==fe)return false;if(fs&&d<=0)return false;return true;
   }).sort(function(a,b){var ka=(a.clase||'Z'),kb=(b.clase||'Z');if(ka!==kb)return ka<kb?-1:1;return String(a.codigo||'').localeCompare(String(b.codigo||''),'es',{numeric:true})});
-  var tq=0,tv=0,td=0;
-  var rows=P.map(function(p){var qq=+p.cantidad||0,v=s.sold[p.id]||0,d=Math.max(0,qq-v);tq+=qq;tv+=v;td+=d;
+  var tq=0,tv=0,td=0,tmx=0,tob=0;
+  var rows=P.map(function(p){var qq=+p.cantidad||0,v=s.sold[p.id]||0,d=Math.max(0,qq-v);tq+=qq;tv+=v;td+=d;tmx+=qq*(+p.precioMexico||0);tob+=qq*(+p.precioObjetivo||0);
+    var im=imgPrincipal(p.id);
     var dc=d===0?'zero':(d<=bajo?'low':'');
-    return '<tr><td class="mono">'+esc(p.codigo)+(p.codigoBarras?'<span class="sub">'+esc(p.codigoBarras)+'</span>':'')+'</td><td class="wrap"><b>'+esc(p.nombre)+'</b>'+(p.notas?'<span class="sub">'+esc(p.notas)+'</span>':'')+'</td><td>'+esc(p.categoria)+'</td>'+
+    return '<tr><td class="tdimg">'+(im?'<img class="mini" src="'+esc(im.url)+'" alt="" loading="lazy">':'<span class="mini vacio" aria-hidden="true"></span>')+'</td><td class="mono">'+esc(p.codigo)+(p.codigoBarras?'<span class="sub">'+esc(p.codigoBarras)+'</span>':'')+'</td><td class="wrap"><b>'+esc(p.nombre)+'</b>'+(p.notas?'<span class="sub">'+esc(p.notas)+'</span>':'')+'</td><td>'+esc(p.categoria)+'</td>'+
       '<td>'+(p.clase?'<span class="pill '+p.clase+'">'+p.clase+'</span>':'')+'</td><td><span class="pill '+(p.estado||'nuevo')+'">'+(EST_P_TXT[p.estado]||'Nuevo')+'</span></td>'+
-      '<td class="r">'+num(qq)+'</td><td class="r">'+num(v)+'</td><td class="r '+dc+'">'+num(d)+'</td><td class="r">'+money(+p.precioLista)+'</td><td class="r"><b>'+money(+p.precioObjetivo)+'</b></td>'+
+      '<td class="r">'+num(qq)+'</td><td class="r">'+num(v)+'</td><td class="r '+dc+'">'+num(d)+'</td><td class="r">'+(+p.precioMexico>0?money(+p.precioMexico):'<span class="zero">—</span>')+'</td><td class="r"><b>'+money(+p.precioObjetivo)+'</b></td>'+
       '<td class="r"><div class="row" style="justify-content:flex-end;flex-wrap:nowrap"><button class="btn sm" data-sell="'+p.id+'"'+(d<=0?' disabled':'')+'>Vender</button><button class="btn sm" data-editp="'+p.id+'">Editar</button></div></td></tr>'}).join('');
-  body.innerHTML=P.length?'<div class="scroll"><table><thead><tr><th>Código</th><th>Juguete</th><th>Categoría</th><th>Clase</th><th>Estado</th><th class="r">Cant.</th><th class="r">Vendidas</th><th class="r">Disp.</th><th class="r">P. lista</th><th class="r">P. objetivo</th><th></th></tr></thead><tbody>'+rows+
-    '</tbody><tfoot><tr><td colspan="5">'+P.length+' juguete'+(P.length>1?'s':'')+' en la vista</td><td class="r">'+num(tq)+'</td><td class="r">'+num(tv)+'</td><td class="r">'+num(td)+'</td><td colspan="3"></td></tr></tfoot></table></div>'
+  body.innerHTML=P.length?'<div class="scroll"><table><thead><tr><th><span class="sr">Imagen</span></th><th>Código</th><th>Juguete</th><th>Categoría</th><th>Clase</th><th>Estado</th><th class="r">Cant.</th><th class="r">Vendidas</th><th class="r">Disp.</th><th class="r">P. México</th><th class="r">P. objetivo</th><th></th></tr></thead><tbody>'+rows+
+    '</tbody><tfoot><tr><td colspan="6">'+P.length+' juguete'+(P.length>1?'s':'')+' en la vista</td><td class="r">'+num(tq)+'</td><td class="r">'+num(tv)+'</td><td class="r">'+num(td)+'</td><td colspan="3"></td></tr>'+
+    '<tr class="tot"><td colspan="9">Valor de la vista (cantidad × precio)</td><td class="r">'+money(tmx)+'</td><td class="r">'+money(tob)+'</td><td></td></tr></tfoot></table></div>'
     :'<div class="empty"><p class="muted">Ningún juguete coincide con los filtros.</p></div>';
 }
 
@@ -300,15 +368,15 @@ function renderSemana(s){
 
 /* ---- ajustes ---- */
 var cfgDirty=false;
-['cInv','cBajo','cMeta','cTc'].forEach(function(id){document.getElementById(id).addEventListener('input',function(){cfgDirty=true})});
+['cInv','cBajo','cMeta','cDesc'].forEach(function(id){document.getElementById(id).addEventListener('input',function(){cfgDirty=true})});
 function renderAjustes(s){
   if(cfgDirty)return;var c=s.c;
   document.getElementById('cInv').value=c.inversion;
-  document.getElementById('cBajo').value=c.stockBajo;document.getElementById('cMeta').value=c.metaMensual||'';document.getElementById('cTc').value=c.tipoCambioUsd||'';
+  document.getElementById('cBajo').value=c.stockBajo;document.getElementById('cMeta').value=c.metaMensual||'';document.getElementById('cDesc').value=c.descuentoSugerido!=null?c.descuentoSugerido:35;
 }
 document.getElementById('cfgForm').addEventListener('submit',function(e){e.preventDefault();
   var c={inversion:Math.max(0,+document.getElementById('cInv').value||0),
-    stockBajo:Math.max(0,+document.getElementById('cBajo').value||0),metaMensual:Math.max(0,+document.getElementById('cMeta').value||0),tipoCambioUsd:Math.max(0,+document.getElementById('cTc').value||0)};
+    stockBajo:Math.max(0,+document.getElementById('cBajo').value||0),metaMensual:Math.max(0,+document.getElementById('cMeta').value||0),descuentoSugerido:Math.min(90,Math.max(0,Math.round(+document.getElementById('cDesc').value||0)))};
   put('config','general',c).then(function(){cfgDirty=false;toast('Ajustes guardados')},function(){});
 });
 
@@ -336,73 +404,168 @@ function productoForm(id,pre){
   pre=pre||{};
   var p=id?D.productos[id]:{codigo:nextCode(),estado:'nuevo',clase:'B',codigoBarras:pre.codigoBarras||''};var cats={};list('productos').forEach(function(x){if(x.categoria)cats[x.categoria]=1});
   var vend=id?vendidasDe(id):0;
+  var G={pend:[],upc:[],usarUpc:true};   // fotos por subir e imágenes de UPCitemdb por descargar al guardar
   openModal(head(id?'Editar juguete':'Nuevo juguete')+'<form class="stack" style="display:flex;flex-direction:column;gap:14px"><div class="form">'+
     fld('pCod','Código','<input class="inp mono" id="pCod" name="codigo" required maxlength="20" value="'+esc(p.codigo)+'">')+
     fld('pCla','Clase','<select class="sel" id="pCla" name="clase">'+opt(['A','B','C'],p.clase,{A:'A · Muy buscado o caro',B:'B · Demanda normal',C:'C · Barato, para combos'})+'</select>')+
-    fld('pBar','Código de barras','<div class="bc"><input class="inp mono" id="pBar" name="codigoBarras" maxlength="20" inputmode="numeric" autocomplete="off" value="'+esc(p.codigoBarras)+'" placeholder="Escaneen o escriban el código"><button class="btn" type="button" id="pBarBtn">Buscar</button></div>','Con el lector: escaneen aquí y se busca solo. A mano: escriban el código y presionen Enter.',true)+
+    fld('pBar','Código de barras','<div class="bc"><input class="inp mono" id="pBar" name="codigoBarras" maxlength="20" inputmode="numeric" autocomplete="off" value="'+esc(p.codigoBarras)+'" placeholder="Escanea o escribe el código"><button class="btn" type="button" id="pBarBtn">Buscar</button></div>','Con el lector: escanea aquí y se busca solo. A mano: escribe el código y presiona Enter.',true)+
     '<div class="full" id="pBarRes"></div>'+
     fld('pNom','Juguete','<input class="inp" id="pNom" name="nombre" required maxlength="120" value="'+esc(p.nombre)+'" placeholder="Marca y nombre del juguete">',null,true)+
     fld('pCat','Categoría','<input class="inp" id="pCat" name="categoria" list="catList" maxlength="60" value="'+esc(p.categoria)+'" placeholder="Muñecas, autos, didácticos…"><datalist id="catList">'+Object.keys(cats).map(function(c){return '<option value="'+esc(c)+'">'}).join('')+'</datalist>')+
     fld('pEst','Estado','<select class="sel" id="pEst" name="estado">'+opt(['nuevo','danado','incompleto'],p.estado,EST_P_TXT)+'</select>')+
     fld('pCan','Cantidad','<input class="inp num" id="pCan" name="cantidad" type="number" min="'+vend+'" step="1" required value="'+esc(p.cantidad!=null?p.cantidad:1)+'">',vend?'Ya hay '+vend+' vendidas o apartadas.':'Piezas de este juguete en el pallet.')+
-    fld('pLis','Precio de lista','<input class="inp num" id="pLis" name="precioLista" type="number" min="0" step="1" value="'+esc(p.precioLista||'')+'">','Precio en tienda. Es su techo.')+
-    fld('pObj','Precio objetivo','<input class="inp num" id="pObj" name="precioObjetivo" type="number" min="0" step="1" value="'+esc(p.precioObjetivo||'')+'">','Lo que esperan cobrar. Publiquen un poco arriba para negociar.')+
-    fld('pMin','Precio mínimo','<input class="inp num" id="pMin" name="precioMinimo" type="number" min="0" step="1" value="'+esc(p.precioMinimo||'')+'">','Opcional. No bajar de aquí al regatear.')+
+    fld('pMx','Precio en México','<input class="inp num" id="pMx" name="precioMexico" type="number" min="0" step="1" value="'+esc(p.precioMexico||'')+'" placeholder="Liverpool, Walmart, Amazon MX…">','Precio del mismo juguete en tiendas de México. Es la base de la sugerencia.')+
+    '<div class="full" id="pMxSug"></div>'+
+    fld('pObj','Precio objetivo','<input class="inp num" id="pObj" name="precioObjetivo" type="number" min="0" step="1" value="'+esc(p.precioObjetivo||'')+'">','Lo que esperas cobrar. Publica un poco arriba para negociar.')+
+    fld('pMin','Precio mínimo','<input class="inp num" id="pMin" name="precioMinimo" type="number" min="0" step="1" value="'+esc(p.precioMinimo||'')+'">','No bajar de aquí al regatear.')+
+    fld('pLis','Precio de lista (referencia)','<input class="inp num" id="pLis" name="precioLista" type="number" min="0" step="1" value="'+esc(p.precioLista||'')+'">','Otra referencia, p. ej. el precio en EE. UU. convertido a pesos.',true)+
+    fld('pCar','Características','<textarea class="inp" id="pCar" name="caracteristicas" maxlength="2000" rows="4" placeholder="Descripción, marca, modelo, color, medidas, peso, edad recomendada…">'+esc(p.caracteristicas)+'</textarea>',null,true)+
+    '<div class="f full"><span class="lbl2">Imágenes</span><div class="gal" id="pGal"></div>'+
+      '<div class="row"><label class="btn sm" for="pFiles" tabindex="0">Subir fotos</label><input type="file" id="pFiles" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden></div>'+
+      '<span class="hint">JPG, PNG, WEBP o GIF de hasta 5 MB, hasta 12 por juguete. La marcada con ★ es la principal y se muestra en el inventario.</span></div>'+
     fld('pNot','Notas','<textarea class="inp" id="pNot" name="notas" maxlength="500" placeholder="Daños, piezas faltantes, dónde está guardado…">'+esc(p.notas)+'</textarea>',null,true)+
     '</div><div id="pWarn"></div>'+footer(!!id)+'</form>',function(el){
       var cost=stats().costoPz,w=el.querySelector('#pWarn');
       function chk(){var o=+el.querySelector('#pObj').value||0;w.innerHTML=(o>0&&isFinite(cost)&&o<cost)?'<p class="warnline">El precio objetivo queda debajo del costo promedio por pieza ('+money(cost)+'). Está bien para clase C en combos.</p>':''}
       el.querySelector('#pObj').addEventListener('input',chk);chk();
-      wireBarras(el,id,chk,pre.resultado);
+      // un campo llenado por una sugerencia se marca "auto" hasta que lo edites tú
+      ['pObj','pMin','pLis'].forEach(function(k){el.querySelector('#'+k).addEventListener('input',function(e){if(e.isTrusted)delete this.dataset.auto})});
+      wireMx(el,chk);
+      wireGaleria(el,id,G);
+      wireBarras(el,id,chk,pre.resultado,G);
       wireForm(el,function(f){
         var o={codigo:val(f,'codigo'),codigoBarras:val(f,'codigoBarras'),nombre:val(f,'nombre'),categoria:val(f,'categoria'),clase:f.elements.clase.value,estado:f.elements.estado.value,
           cantidad:Math.max(0,Math.round(+f.elements.cantidad.value||0)),precioLista:+f.elements.precioLista.value||0,precioObjetivo:+f.elements.precioObjetivo.value||0,
-          precioMinimo:+f.elements.precioMinimo.value||0,notas:val(f,'notas'),creado:(p.creado||Date.now())};
+          precioMinimo:+f.elements.precioMinimo.value||0,precioMexico:+f.elements.precioMexico.value||0,caracteristicas:val(f,'caracteristicas'),notas:val(f,'notas')};
         var dup=list('productos').some(function(x){return x.id!==id&&String(x.codigo).toLowerCase()===o.codigo.toLowerCase()});
-        if(dup){w.innerHTML='<p class="warnline bad">Ya existe un juguete con el código '+esc(o.codigo)+'. Usen otro código.</p>';return}
+        if(dup){w.innerHTML='<p class="warnline bad">Ya existe un juguete con el código '+esc(o.codigo)+'. Usa otro código.</p>';return}
         if(o.cantidad<vend){w.innerHTML='<p class="warnline bad">La cantidad no puede ser menor que las '+vend+' piezas ya vendidas o apartadas.</p>';return}
-        put('productos',id||uid(),o).then(function(){closeModal();toast(id?'Juguete actualizado':'Juguete agregado')},function(){});
+        var btn=el.querySelector('button[type=submit]');btn.disabled=true;btn.textContent='Guardando…';
+        (id?api('PUT','productos/'+id,o):api('POST','productos',o)).then(function(r){
+          return guardarImagenes(r.id,G).then(function(avisos){return cargar().then(function(){closeModal();
+            toast((id?'Juguete actualizado':'Juguete agregado')+(avisos.length?'. '+avisos.join(' '):''))})});
+        }).catch(function(e){btn.disabled=false;btn.textContent='Guardar';w.innerHTML='<p class="warnline bad">'+esc((e&&e.mensaje)||'No se guardó.')+'</p>'});
       },function(){
         var nv=list('ventas').filter(function(v){return v.productoId===id}).length;
-        if(nv){w.innerHTML='<p class="warnline bad">Este juguete tiene '+nv+' venta'+(nv>1?'s':'')+' registrada'+(nv>1?'s':'')+'. Elimínenlas primero o pongan la cantidad en lo vendido.</p>';return}
+        if(nv){w.innerHTML='<p class="warnline bad">Este juguete tiene '+nv+' venta'+(nv>1?'s':'')+' registrada'+(nv>1?'s':'')+'. Elimínalas primero o pon la cantidad en lo vendido.</p>';return}
         del('productos',id).then(function(){closeModal();toast('Juguete eliminado')},function(){});
       });
     });
 }
 
+/* ---- sugerencia con el precio en México ---- */
+function sugerirMx(precioMx){
+  if(!(precioMx>0))return null;
+  var d=+cfg().descuentoSugerido||0,cost=stats().costoPz,r={notas:[]};
+  r.objetivo=Math.round(precioMx*(1-d/100));
+  r.notas.push('Objetivo: precio en México '+money(precioMx)+' − '+d+'% = '+money(r.objetivo)+'.');
+  if(isFinite(cost)&&cost>0){var c=Math.round(cost);
+    if(r.objetivo<c){r.minimo=r.objetivo;r.notas.push('Mínimo: igual al objetivo, porque queda debajo del costo promedio por pieza ('+money(c)+'). Úsalo para combos.')}
+    else{r.minimo=c;r.notas.push('Mínimo: costo promedio por pieza del pallet = '+money(c)+'.')}}
+  else r.notas.push('Mínimo: se calcula con el costo promedio por pieza cuando haya piezas en el inventario.');
+  return r;
+}
+function wireMx(el,chk){
+  var mxI=el.querySelector('#pMx'),box=el.querySelector('#pMxSug'),ob=el.querySelector('#pObj'),mn=el.querySelector('#pMin');
+  function vacioOAuto(c){return !String(c.value).trim()||+c.value===0||c.dataset.auto}
+  function poner(c,v){if(v==null)return;c.value=v;c.dataset.auto='1'}
+  function pinta(auto){
+    var s=sugerirMx(+mxI.value||0);
+    if(!s){box.innerHTML='';return}
+    var aplicados=[];
+    if(auto){if(vacioOAuto(ob)){poner(ob,s.objetivo);aplicados.push('objetivo')}if(s.minimo!=null&&vacioOAuto(mn)){poner(mn,s.minimo);aplicados.push('mínimo')}chk()}
+    box.innerHTML='<div class="sugbox"><p class="small"><b>Sugerencia con el precio en México</b> (descuento de '+(+cfg().descuentoSugerido||0)+'%, se cambia en Ajustes)</p>'+
+      '<ul class="small sug">'+s.notas.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>'+
+      (aplicados.length?'<p class="small muted">Se llenó: precio '+aplicados.join(' y ')+'.</p>':'')+
+      '<div class="row"><button class="btn sm" type="button" id="pMxAplicar">Usar estos precios</button></div></div>';
+    box.querySelector('#pMxAplicar').addEventListener('click',function(){poner(ob,s.objetivo);poner(mn,s.minimo);chk();toast('Precios sugeridos aplicados')});
+  }
+  mxI.addEventListener('input',function(){pinta(true)});
+  pinta(false);
+}
+
+/* ---- galería de imágenes del juguete ---- */
+function imgsDe(pid){return (IMG[pid]||[]).slice().sort(function(a,b){return (b.principal?1:0)-(a.principal?1:0)})}
+function imgPrincipal(pid){var l=IMG[pid]||[];return l.filter(function(i){return i.principal})[0]||l[0]||null}
+function wireGaleria(el,id,G){
+  var gal=el.querySelector('#pGal'),files=el.querySelector('#pFiles');
+  G.render=function(){
+    var h='';
+    if(id)imgsDe(id).forEach(function(i){h+='<figure class="th'+(i.principal?' pri':'')+'"><img src="'+esc(i.url)+'" alt="" loading="lazy"><figcaption>'+
+      '<button type="button" class="ic" data-pri="'+esc(i.id)+'" title="Marcar como principal" aria-label="Marcar como principal">'+(i.principal?'★':'☆')+'</button>'+
+      '<button type="button" class="ic" data-del="'+esc(i.id)+'" title="Eliminar imagen" aria-label="Eliminar imagen">×</button></figcaption></figure>'});
+    if(G.usarUpc)G.upc.forEach(function(u){h+='<figure class="th pend"><img src="'+esc(u)+'" alt="" referrerpolicy="no-referrer" loading="lazy" onerror="this.style.visibility=\'hidden\'"><figcaption><span class="tag2">UPCitemdb</span></figcaption></figure>'});
+    G.pend.forEach(function(f,k){h+='<figure class="th pend"><img src="'+f._url+'" alt=""><figcaption><span class="tag2">Por subir</span><button type="button" class="ic" data-quitar="'+k+'" aria-label="Quitar">×</button></figcaption></figure>'});
+    gal.innerHTML=h||'<p class="small muted">Sin imágenes todavía.</p>';
+    if(G.upc.length)gal.insertAdjacentHTML('beforeend','<label class="chk small upcchk"><input type="checkbox" id="pUsarUpc"'+(G.usarUpc?' checked':'')+'> Guardar '+(G.upc.length>3?'las primeras 3 ':'')+'imágenes de UPCitemdb al guardar el juguete</label>');
+    var cb=gal.querySelector('#pUsarUpc');if(cb)cb.addEventListener('change',function(){G.usarUpc=cb.checked;G.render()});
+  };
+  gal.addEventListener('click',function(e){
+    var b=e.target.closest('button');if(!b)return;
+    if(b.dataset.quitar!=null){URL.revokeObjectURL(G.pend[+b.dataset.quitar]._url);G.pend.splice(+b.dataset.quitar,1);G.render();return}
+    if(b.dataset.pri){api('PUT','imagenes/'+b.dataset.pri+'/principal').then(cargar).then(G.render).catch(function(er){toast(er.mensaje)});return}
+    if(b.dataset.del){if(!confirm('¿Eliminar esta imagen?'))return;api('DELETE','imagenes/'+b.dataset.del).then(cargar).then(G.render).catch(function(er){toast(er.mensaje)})}
+  });
+  files.addEventListener('change',function(){
+    var malos=[];
+    Array.prototype.forEach.call(files.files,function(f){
+      if(!/^image\/(jpeg|png|webp|gif)$/.test(f.type)){malos.push(f.name+' no es JPG, PNG, WEBP o GIF');return}
+      if(f.size>5*1024*1024){malos.push(f.name+' pesa más de 5 MB');return}
+      f._url=URL.createObjectURL(f);G.pend.push(f)});
+    files.value='';G.render();
+    if(malos.length)toast(malos.join('. '));
+  });
+  G.render();
+}
+function guardarImagenes(pid,G){
+  var avisos=[],cadena=Promise.resolve();
+  if(G.usarUpc&&G.upc.length)cadena=cadena.then(function(){return api('POST','productos/'+pid+'/imagenes/upcitemdb').then(function(r){if(r&&r.fallidas)avisos.push('No se pudo descargar '+r.fallidas+' imagen'+(r.fallidas>1?'es':'')+' de UPCitemdb.')},function(e){avisos.push(e.mensaje)})});
+  if(G.pend.length)cadena=cadena.then(function(){
+    var fd=new FormData();G.pend.forEach(function(f){fd.append('fotos',f,f.name)});
+    return fetch('/api/productos/'+pid+'/imagenes',{method:'POST',body:fd}).then(function(r){return r.json().then(function(j){
+      if(!r.ok)avisos.push(j&&j.mensaje||'No se subieron las fotos.');else if(j.rechazadas&&j.rechazadas.length)avisos.push('No se subieron: '+j.rechazadas.join('; ')+'.')})})
+      .catch(function(){avisos.push('No se subieron las fotos.')});
+  });
+  return cadena.then(function(){G.pend.forEach(function(f){URL.revokeObjectURL(f._url)});return avisos});
+}
+
 /* ---- código de barras ---- */
 function buscarBarras(code){return api('GET','codigo-barras/'+encodeURIComponent(code))}
 function fdt(iso){try{return new Date(iso).toLocaleString('es-MX',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch(e){return ''}}
-function wireBarras(el,id,chk,inicial){
-  var inp=el.querySelector('#pBar'),btn=el.querySelector('#pBarBtn'),res=el.querySelector('#pBarRes'),ultimo=null;
+function wireBarras(el,id,chk,inicial,G){
+  var inp=el.querySelector('#pBar'),btn=el.querySelector('#pBarBtn'),res=el.querySelector('#pBarRes');
   function campo(n){return el.querySelector('[name="'+n+'"]')}
   function aplicar(datos,forzar){
     var llenos=[];
     Object.keys(datos).forEach(function(k){var v=datos[k];if(v==null||v===''||v===0)return;var c=campo(k);if(!c)return;
-      if(forzar||!String(c.value).trim()||(+c.value===0&&c.type==='number')){c.value=v;llenos.push(c.closest('.f').querySelector('label').textContent)}});
+      if(forzar||!String(c.value).trim()||(+c.value===0&&c.type==='number')||c.dataset.auto){c.value=v;if(c.type==='number')c.dataset.auto='1';llenos.push(c.closest('.f').querySelector('label').textContent)}});
     chk();return llenos;
   }
   function pinta(r){
-    ultimo=r;
     if(r.origen==='inventario'){
       var p=r.producto;
       res.innerHTML=p.id===id?'<p class="small muted">Este código de barras ya pertenece a este juguete.</p>'
-        :'<p class="warnline bad">Ya está registrado en el juguete <b>'+esc(p.codigo+' · '+p.nombre)+'</b>. No lo den de alta otra vez: aumenten la cantidad de ese juguete. <button class="lnk" type="button" data-editp="'+esc(p.id)+'">Abrir ese juguete</button></p>';
+        :'<p class="warnline bad">Ya está registrado en el juguete <b>'+esc(p.codigo+' · '+p.nombre)+'</b>. No lo des de alta otra vez: aumenta la cantidad de ese juguete. <button class="lnk" type="button" data-editp="'+esc(p.id)+'">Abrir ese juguete</button></p>';
       return;
     }
     if(r.origen==='ninguno'){res.innerHTML='<p class="warnline">'+esc(r.aviso)+'</p>';return}
-    var e=r.externo,sg=r.sugerencia||{};
+    var e=r.externo,sg=r.sugerencia||{},tieneMx=+campo('precioMexico').value>0;
     var nombre=e.marca&&e.titulo.toLowerCase().indexOf(e.marca.toLowerCase())<0?e.marca+' '+e.titulo:e.titulo;
-    var datos={nombre:nombre,categoria:e.categoria,precioLista:sg.precioLista,precioObjetivo:sg.precioObjetivo,precioMinimo:sg.precioMinimo};
+    var datos={nombre:nombre,categoria:e.categoria,caracteristicas:e.caracteristicas,precioLista:sg.precioLista};
+    // Con precio en México capturado, la sugerencia en dólares no reemplaza objetivo ni mínimo.
+    if(!tieneMx){datos.precioObjetivo=sg.precioObjetivo;datos.precioMinimo=sg.precioMinimo}
     var llenos=aplicar(datos,false);
-    var rango=(e.precioBajo!=null||e.precioAlto!=null)?'Precios registrados en tiendas: '+(e.moneda==='USD'?'US$':e.moneda+' ')+[e.precioBajo,e.precioAlto].filter(function(x){return x!=null}).map(function(x){return (+x).toFixed(2)}).join(' – ')+(e.ofertas?' · '+e.ofertas+' oferta'+(e.ofertas>1?'s':''):''):'Sin precios registrados.';
+    G.upc=(e.imagenes&&e.imagenes.length?e.imagenes:(e.imagen?[e.imagen]:[])).slice(0,6);G.render();
+    var rango=(e.precioBajo!=null||e.precioAlto!=null)?'Precios registrados en tiendas de EE. UU.: '+(e.moneda==='USD'?'US$':e.moneda+' ')+[e.precioBajo,e.precioAlto].filter(function(x){return x!=null}).map(function(x){return (+x).toFixed(2)}).join(' – ')+(e.ofertas?' · '+e.ofertas+' oferta'+(e.ofertas>1?'s':''):''):'Sin precios registrados.';
     res.innerHTML='<div class="bcres">'+(e.imagen?'<img class="bcimg" src="'+esc(e.imagen)+'" alt="" referrerpolicy="no-referrer" onerror="this.remove()">':'')+
       '<div class="bcinfo"><p class="small"><span class="pill nuevo">UPCitemdb</span> <b>'+esc(e.titulo)+'</b></p>'+
-      '<p class="small muted">'+[e.marca,e.categoria].filter(Boolean).map(esc).join(' · ')+'</p>'+
+      '<p class="small muted">'+[e.marca,e.modelo,e.categoria].filter(Boolean).map(esc).join(' · ')+'</p>'+
       '<p class="small muted">'+esc(rango)+'</p>'+
       '<ul class="small sug">'+(sg.explicacion||[]).map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>'+
+      '<p class="small"><b>Captura el precio en México</b> para que el objetivo y el mínimo se sugieran con él en lugar del precio en dólares.</p>'+
       '<p class="small muted">'+(llenos.length?'Se llenaron: '+esc(llenos.join(', '))+'. ':'No se cambió ningún campo porque ya tenían datos. ')+
-      'Son sugerencias: revísenlas antes de guardar. Consultado '+esc(fdt(r.consultadoUtc))+(r.desdeCache?' (guardado, sin gastar consulta)':'')+'.</p>'+
+      (G.upc.length?'Las imágenes se guardarán en tu computadora al guardar el juguete. ':'UPCitemdb no tiene imágenes de este juguete. ')+
+      'Son sugerencias: revísalas antes de guardar. Consultado '+esc(fdt(r.consultadoUtc))+(r.desdeCache?' (guardado, sin gastar consulta)':'')+'.</p>'+
       '<div class="row"><button class="btn sm" type="button" id="pBarForzar">Reemplazar todos los campos con estos datos</button></div></div></div>';
     res.querySelector('#pBarForzar').addEventListener('click',function(){var l=aplicar(datos,true);toast(l.length?'Campos reemplazados':'No hay datos para reemplazar')});
   }
@@ -512,11 +675,11 @@ function parseRows(txt){
   function n(x){return +(String(x||'').replace(/[$\s]/g,'').replace(/,(?=\d{3}\b)/g,'').replace(',','.'))||0}
   function est(x){x=String(x||'').toLowerCase();return x.indexOf('da')===0?'danado':x.indexOf('inc')===0?'incompleto':'nuevo'}
   return rows.filter(function(r){return r[1]}).map(function(r){var cl=String(r[7]||'').trim().toUpperCase();
-    return {codigo:r[0]||'',nombre:r[1],categoria:r[2]||'',cantidad:Math.max(0,Math.round(n(r[3]))),estado:est(r[4]),precioLista:n(r[5]),precioObjetivo:n(r[6]),clase:['A','B','C'].indexOf(cl)>=0?cl:'B',codigoBarras:String(r[8]||'').replace(/[^0-9A-Za-z]/g,''),precioMinimo:0,notas:''}});
+    return {codigo:r[0]||'',nombre:r[1],categoria:r[2]||'',cantidad:Math.max(0,Math.round(n(r[3]))),estado:est(r[4]),precioLista:n(r[5]),precioObjetivo:n(r[6]),clase:['A','B','C'].indexOf(cl)>=0?cl:'B',codigoBarras:String(r[8]||'').replace(/[^0-9A-Za-z]/g,''),precioMexico:n(r[9]),precioMinimo:0,notas:''}});
 }
 function importForm(){
   openModal(head('Importar desde Excel')+'<form style="display:flex;flex-direction:column;gap:12px">'+
-    '<p class="small muted">Copien las filas de su hoja y péguenlas abajo. Columnas en este orden: <b>Código, Juguete, Categoría, Cantidad, Estado, Precio de lista, Precio objetivo, Clase</b> y, opcional, <b>Código de barras</b>. La fila de títulos se ignora.</p>'+
+    '<p class="small muted">Copien las filas de su hoja y péguenlas abajo. Columnas en este orden: <b>Código, Juguete, Categoría, Cantidad, Estado, Precio de lista, Precio objetivo, Clase</b> y, opcionales, <b>Código de barras</b> y <b>Precio en México</b>. La fila de títulos se ignora.</p>'+
     '<textarea class="inp mono" id="impTxt" style="min-height:180px;font-size:.82rem" placeholder="001&#9;Muñeca Bebé Llorón&#9;Muñecas&#9;12&#9;Nuevo&#9;899&#9;600&#9;A"></textarea>'+
     '<div id="impPrev"></div><div class="pf"><span></span><div class="row"><button class="btn" type="button" data-close2>Cancelar</button><button class="btn primary" type="submit" id="impGo" disabled>Importar</button></div></div></form>',function(el){
       var ta=el.querySelector('#impTxt'),pv=el.querySelector('#impPrev'),go=el.querySelector('#impGo'),rows=[];
@@ -537,7 +700,7 @@ function importForm(){
 function csv(rows){return '﻿'+rows.map(function(r){return r.map(function(c){c=c==null?'':String(c);return /[",\n;]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c}).join(',')}).join('\r\n')}
 function exportar(k){
   var s=stats(),rows;
-  if(k==='inventario')rows=[['Código','Juguete','Categoría','Cantidad','Estado','Precio de lista','Precio objetivo','Clase','Código de barras','Precio mínimo','Vendidas','Disponibles','Notas']].concat(s.P.map(function(p){var v=s.sold[p.id]||0;return [p.codigo,p.nombre,p.categoria,p.cantidad,EST_P_TXT[p.estado]||'Nuevo',p.precioLista,p.precioObjetivo,p.clase,p.codigoBarras?'\u2060'+p.codigoBarras:'',p.precioMinimo,v,Math.max(0,(+p.cantidad||0)-v),p.notas]}));
+  if(k==='inventario')rows=[['Código','Juguete','Categoría','Cantidad','Estado','Precio de lista','Precio objetivo','Clase','Código de barras','Precio en México','Precio mínimo','Vendidas','Disponibles','Características','Notas']].concat(s.P.map(function(p){var v=s.sold[p.id]||0;return [p.codigo,p.nombre,p.categoria,p.cantidad,EST_P_TXT[p.estado]||'Nuevo',p.precioLista,p.precioObjetivo,p.clase,p.codigoBarras?'\u2060'+p.codigoBarras:'',p.precioMexico||'',p.precioMinimo,v,Math.max(0,(+p.cantidad||0)-v),p.caracteristicas,p.notas]}));
   else if(k==='ventas')rows=[['Fecha','Fecha de pago','Código','Juguete','Cantidad','Precio','Total','Estado','Canal','Cliente','Notas']].concat(s.V.map(function(v){var p=D.productos[v.productoId]||{};return [v.fecha,v.fechaPago,p.codigo,p.nombre,v.cantidad,v.precio,totalVenta(v),EST_V_TXT[v.estado],v.canal,v.cliente,v.notas]}));
   else if(k==='gastos')rows=[['Fecha','Tipo','Concepto','Monto']].concat(s.G.map(function(g){return [g.fecha,g.tipo,g.concepto,g.monto]}));
   else rows=[['Semana','Publicadas','Mensajes','Horas','Notas']].concat(list('semanas').map(function(w){return [w.semana,w.publicadas,w.mensajes,w.horas,w.notas]}));
@@ -555,6 +718,7 @@ document.addEventListener('click',function(e){
   else if(act==='nuevaSemana')semanaForm(D.semanas[monday(today())]?monday(today()):null);
   else if(act==='importar')importForm();
   else if(act==='escanear')escanearForm();
+  else if(t.id==='tcBtn')tcForm();
   else if(t.dataset.go)go(t.dataset.go);
   else if(t.dataset.editp)productoForm(t.dataset.editp);
   else if(t.dataset.sell)ventaForm(null,t.dataset.sell);

@@ -21,31 +21,144 @@ public static class Api
     {
         var api = app.MapGroup("/api");
 
-        api.MapGet("/version", async (AppDbContext db) =>
-            Results.Ok(new { version = (await db.Version.FindAsync(1))?.Valor ?? 0 }));
+        api.MapGet("/version", async (AppDbContext db, TipoCambioDof tc) =>
+        {
+            await tc.AsegurarHoyAsync(db);   // al cambiar el día se define el tipo de cambio nuevo
+            return Results.Ok(new { version = (await db.Version.FindAsync(1))?.Valor ?? 0 });
+        });
 
-        api.MapGet("/estado", async (AppDbContext db) => Results.Ok(new
+        api.MapGet("/estado", async (AppDbContext db, TipoCambioDof tc) =>
+        {
+            await tc.AsegurarHoyAsync(db);
+            return Results.Ok(new
         {
             version = (await db.Version.FindAsync(1))?.Valor ?? 0,
             configuracion = await db.Configuracion.FindAsync(1),
+            tipoCambio = new { hoy = Hoy, error = TipoCambioDof.UltimoError },
             productos = await db.Productos.AsNoTracking().ToListAsync(),
+            imagenes = (await db.Imagenes.AsNoTracking().OrderBy(i => i.CreadoUtc).ToListAsync())
+                .Select(i => new { i.Id, i.ProductoId, i.Origen, i.Principal, url = "/imagenes/" + i.Archivo }),
             ventas = await db.Ventas.AsNoTracking().ToListAsync(),
             gastos = await db.Gastos.AsNoTracking().ToListAsync(),
             semanas = await db.Semanas.AsNoTracking().ToListAsync(),
             catalogos = new { Catalogos.Canales, Catalogos.TiposGasto }
+        });
+        });
+
+        // ---------- Tipo de cambio (dolardof.com o manual) ----------
+        api.MapPut("/tipo-cambio", (TipoCambioIn i, AppDbContext db) => Bloqueado(async () =>
+        {
+            if (i.Valor <= 0 || i.Valor > 1000) return Mal("Captura un tipo de cambio válido (pesos por dólar).");
+            var c = await db.Configuracion.FirstAsync();
+            c.TipoCambioUsd = Math.Round(i.Valor, 4);
+            c.TipoCambioFecha = Hoy;
+            c.TipoCambioFuente = "Manual";
+            c.TipoCambioPublicado = null;
+            c.ActualizadoUtc = DateTime.UtcNow;
+            await db.GuardarAsync();
+            TipoCambioDof.MarcarManual();
+            return Results.Ok(c);
+        }));
+        api.MapPost("/tipo-cambio/consultar", async (AppDbContext db, TipoCambioDof tc) =>
+            await tc.ForzarAsync(db) ? Results.Ok(await db.Configuracion.AsNoTracking().FirstAsync())
+                                     : Results.Json(new Error(TipoCambioDof.UltimoError ?? "No se pudo consultar."), statusCode: 503));
+
+        // ---------- Imágenes de juguetes ----------
+        api.MapPost("/productos/{id}/imagenes", async (string id, HttpRequest req, AppDbContext db, AlmacenImagenes alm, CancellationToken ct) =>
+        {
+            if (await db.Productos.FindAsync([id], ct) is null) return Results.NotFound(new Error("El juguete ya no existe."));
+            if (!req.HasFormContentType) return Mal("Envía las imágenes como formulario.");
+            var form = await req.ReadFormAsync(ct);
+            if (form.Files.Count == 0) return Mal("No llegó ninguna imagen.");
+            var guardadas = 0; var rechazadas = new List<string>();
+            foreach (var f in form.Files)
+            {
+                if (await db.Imagenes.CountAsync(x => x.ProductoId == id, ct) >= AlmacenImagenes.MaximoPorJuguete)
+                { rechazadas.Add($"{f.FileName}: máximo {AlmacenImagenes.MaximoPorJuguete} imágenes por juguete"); continue; }
+                if (f.Length > AlmacenImagenes.TamanoMaximo) { rechazadas.Add($"{f.FileName}: pesa más de 5 MB"); continue; }
+                await using var st = f.OpenReadStream();
+                var datos = await AlmacenImagenes.LeerLimitadoAsync(st, ct);
+                var ext = datos is null ? null : AlmacenImagenes.Extension(datos);
+                if (datos is null || ext is null) { rechazadas.Add($"{f.FileName}: no es JPG, PNG, WEBP o GIF"); continue; }
+                await AgregarImagenAsync(db, alm, id, datos, ext, "subida", ct);
+                guardadas++;
+            }
+            if (guardadas > 0) await db.GuardarAsync();
+            return Results.Ok(new { guardadas, rechazadas });
+        }).DisableAntiforgery();
+
+        // Descarga a la PC las imágenes que UPCitemdb dio para el código de barras del juguete.
+        api.MapPost("/productos/{id}/imagenes/upcitemdb", async (string id, AppDbContext db, AlmacenImagenes alm,
+            IHttpClientFactory hf, ILoggerFactory lf, CancellationToken ct) =>
+        {
+            var p = await db.Productos.FindAsync([id], ct);
+            if (p is null) return Results.NotFound(new Error("El juguete ya no existe."));
+            var urls = await BuscadorCodigoBarras.ImagenesEnCacheAsync(db, p.CodigoBarras, ct);
+            if (urls.Count == 0) return Mal("UPCitemdb no tiene imágenes para este código de barras.");
+            var http = hf.CreateClient("imagenes");
+            var guardadas = 0; var fallidas = 0;
+            foreach (var url in urls.Take(3))
+            {
+                if (await db.Imagenes.CountAsync(x => x.ProductoId == id, ct) >= AlmacenImagenes.MaximoPorJuguete) break;
+                try
+                {
+                    using var r = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+                    if (!r.IsSuccessStatusCode) { fallidas++; continue; }
+                    await using var st = await r.Content.ReadAsStreamAsync(ct);
+                    var datos = await AlmacenImagenes.LeerLimitadoAsync(st, ct);
+                    var ext = datos is null ? null : AlmacenImagenes.Extension(datos);
+                    if (datos is null || ext is null) { fallidas++; continue; }
+                    await AgregarImagenAsync(db, alm, id, datos, ext, "upcitemdb", ct);
+                    guardadas++;
+                }
+                catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
+                {
+                    lf.CreateLogger("Imagenes").LogWarning(e, "No se pudo descargar {Url}", url);
+                    fallidas++;
+                }
+            }
+            if (guardadas > 0) await db.GuardarAsync();
+            return guardadas == 0
+                ? Results.Json(new Error("No se pudo descargar ninguna imagen de UPCitemdb (la tienda de origen la bloqueó o ya no existe). Puedes subir una foto."), statusCode: 502)
+                : Results.Ok(new { guardadas, fallidas });
+        });
+
+        api.MapPut("/imagenes/{imgId}/principal", (string imgId, AppDbContext db) => Bloqueado(async () =>
+        {
+            var img = await db.Imagenes.FindAsync(imgId);
+            if (img is null) return Results.NotFound(new Error("La imagen ya no existe."));
+            foreach (var x in await db.Imagenes.Where(x => x.ProductoId == img.ProductoId).ToListAsync())
+                x.Principal = x.Id == imgId;
+            await db.GuardarAsync();
+            return Results.NoContent();
+        }));
+        api.MapDelete("/imagenes/{imgId}", (string imgId, AppDbContext db, AlmacenImagenes alm) => Bloqueado(async () =>
+        {
+            var img = await db.Imagenes.FindAsync(imgId);
+            if (img is null) return Results.NotFound(new Error("La imagen ya no existe."));
+            db.Imagenes.Remove(img);
+            if (img.Principal && await db.Imagenes.Where(x => x.ProductoId == img.ProductoId && x.Id != imgId)
+                                                  .OrderBy(x => x.CreadoUtc).FirstOrDefaultAsync() is { } otra)
+                otra.Principal = true;
+            await db.GuardarAsync();
+            alm.Borrar(img.Archivo);
+            return Results.NoContent();
         }));
 
         // ---------- Productos ----------
         api.MapPost("/productos", (ProductoIn i, AppDbContext db) => Bloqueado(() => GuardarProducto(db, null, i)));
         api.MapPut("/productos/{id}", (string id, ProductoIn i, AppDbContext db) => Bloqueado(() => GuardarProducto(db, id, i)));
-        api.MapDelete("/productos/{id}", (string id, AppDbContext db) => Bloqueado(async () =>
+        api.MapDelete("/productos/{id}", (string id, AppDbContext db, AlmacenImagenes alm) => Bloqueado(async () =>
         {
             var p = await db.Productos.FindAsync(id);
             if (p is null) return Results.NotFound(new Error("El juguete ya no existe."));
             var n = await db.Ventas.CountAsync(v => v.ProductoId == id);
             if (n > 0) return Choque($"Este juguete tiene {n} venta(s) registrada(s). Elimínenlas primero o ajusten la cantidad a lo vendido.");
+            var imgs = await db.Imagenes.Where(x => x.ProductoId == id).ToListAsync();
+            db.Imagenes.RemoveRange(imgs);
             db.Productos.Remove(p);
             await db.GuardarAsync();
+            foreach (var img in imgs) alm.Borrar(img.Archivo);
             return Results.NoContent();
         }));
         api.MapPost("/productos/importar", (List<ProductoIn> filas, AppDbContext db) => Bloqueado(() => Importar(db, filas)));
@@ -123,7 +236,7 @@ public static class Api
             c.Inversion = Math.Max(0, i.Inversion);
             c.StockBajo = Math.Max(0, i.StockBajo);
             c.MetaMensual = Math.Max(0, i.MetaMensual);
-            c.TipoCambioUsd = Math.Max(0, i.TipoCambioUsd);
+            c.DescuentoSugerido = Math.Clamp(i.DescuentoSugerido, 0, 90);
             c.ActualizadoUtc = DateTime.UtcNow;
             await db.GuardarAsync();
             return Results.Ok(c);
@@ -140,9 +253,20 @@ public static class Api
                 productos = await db.Productos.AsNoTracking().ToListAsync(),
                 ventas = await db.Ventas.AsNoTracking().ToListAsync(),
                 gastos = await db.Gastos.AsNoTracking().ToListAsync(),
-                semanas = await db.Semanas.AsNoTracking().ToListAsync()
+                semanas = await db.Semanas.AsNoTracking().ToListAsync(),
+                imagenes = await db.Imagenes.AsNoTracking().ToListAsync()
             });
         });
+    }
+
+    private static async Task AgregarImagenAsync(AppDbContext db, AlmacenImagenes alm, string productoId,
+        byte[] datos, string ext, string origen, CancellationToken ct)
+    {
+        var id = NuevoId();
+        var archivo = await alm.GuardarAsync(id, datos, ext, ct);
+        var tienePrincipal = await db.Imagenes.AnyAsync(x => x.ProductoId == productoId && x.Principal, ct)
+                             || db.Imagenes.Local.Any(x => x.ProductoId == productoId && x.Principal);
+        db.Imagenes.Add(new ProductoImagen { Id = id, ProductoId = productoId, Archivo = archivo, Origen = origen, Principal = !tienePrincipal });
     }
 
     private static async Task<IResult> Bloqueado(Func<Task<IResult>> f)
@@ -162,7 +286,7 @@ public static class Api
         if (string.IsNullOrWhiteSpace(i.Nombre)) return "El nombre del juguete es obligatorio.";
         if (BuscadorCodigoBarras.Normalizar(i.CodigoBarras).Length > 20) return "El código de barras admite máximo 20 caracteres.";
         if (i.Cantidad < 0) return "La cantidad no puede ser negativa.";
-        if (i.PrecioLista < 0 || i.PrecioObjetivo < 0 || i.PrecioMinimo < 0) return "Los precios no pueden ser negativos.";
+        if (i.PrecioLista < 0 || i.PrecioObjetivo < 0 || i.PrecioMinimo < 0 || i.PrecioMexico < 0) return "Los precios no pueden ser negativos.";
         if (i.Clase is not null && !Catalogos.Clases.Contains(i.Clase)) return "La clase debe ser A, B o C.";
         if (i.Estado is not null && !Catalogos.EstadosProducto.Contains(i.Estado)) return "Estado de juguete no válido.";
         return null;
@@ -180,6 +304,8 @@ public static class Api
         p.PrecioLista = i.PrecioLista;
         p.PrecioObjetivo = i.PrecioObjetivo;
         p.PrecioMinimo = i.PrecioMinimo;
+        p.PrecioMexico = i.PrecioMexico;
+        p.Caracteristicas = T(i.Caracteristicas, 2000);
         p.Notas = T(i.Notas, 500);
         p.ActualizadoUtc = DateTime.UtcNow;
     }
@@ -239,8 +365,10 @@ public static class Api
                 // Al actualizar se conservan notas y precio mínimo, y nunca se baja de lo ya vendido.
                 var vend = await Vendidas(db, p.Id, null);
                 var notas = p.Notas; var min = p.PrecioMinimo; var barrasPrevio = p.CodigoBarras;
+                var caract = p.Caracteristicas; var mx = p.PrecioMexico;
                 Aplicar(p, f with { Cantidad = Math.Max(f.Cantidad, vend) });
-                p.Notas = notas; p.PrecioMinimo = min;
+                p.Notas = notas; p.PrecioMinimo = min; p.Caracteristicas = caract;
+                if (p.PrecioMexico == 0) p.PrecioMexico = mx;
                 if (p.CodigoBarras.Length == 0) p.CodigoBarras = barrasPrevio;
                 actualizados++;
             }

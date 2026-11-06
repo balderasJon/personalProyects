@@ -14,7 +14,7 @@
 <header class="top"><div class="wrap">
   <div class="brandrow">
     <div class="brand"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>Control Pallet de Juguetes</b></div>
-    <span class="status" id="status">Conectando…</span>
+    <div class="toprt"><button class="tcbtn" id="tcBtn" type="button" aria-label="Tipo de cambio del día. Editar">Tipo de cambio…</button><span class="status" id="status">Conectando…</span></div>
   </div>
   <nav class="tabs" role="tablist" aria-label="Secciones">
     <button class="tab" role="tab" data-tab="resumen" aria-selected="true">Resumen</button>
@@ -54,6 +54,7 @@
 <section class="view" data-view="inventario" hidden>
   <div class="head"><div><p class="eyebrow">Hoja de inventario</p><h2>Juguetes del pallet</h2><p class="muted small" id="invSub"></p></div>
     <div class="row"><button class="btn" data-act="importar">Importar desde Excel</button><button class="btn" data-act="escanear">Escanear código</button><button class="btn primary" data-act="nuevoProducto">+ Juguete</button></div></div>
+  <div id="invValor"></div>
   <div class="filters">
     <input class="inp" id="fBuscar" type="search" placeholder="Buscar por código, código de barras, nombre o categoría" aria-label="Buscar">
     <select class="sel" id="fClase" aria-label="Clase"><option value="">Todas las clases</option><option>A</option><option>B</option><option>C</option></select>
@@ -102,7 +103,7 @@
         <div class="f full"><label for="cInv">Inversión inicial (MXN)</label><input class="inp num" id="cInv" type="number" min="0" step="100"><span class="hint">Incluye flete e impuestos de compra.</span></div>
         <div class="f full"><label for="cBajo">Aviso de pocas piezas</label><input class="inp num" id="cBajo" type="number" min="0" step="1"><span class="hint">Avisa cuando quedan esta cantidad o menos.</span></div>
         <div class="f full"><label for="cMeta">Meta de venta mensual (MXN)</label><input class="inp num" id="cMeta" type="number" min="0" step="500"><span class="hint">Opcional. Defínanla tras dos semanas de datos.</span></div>
-        <div class="f full"><label for="cTc">Tipo de cambio (pesos por dólar)</label><input class="inp num" id="cTc" type="number" min="0" step="0.01" placeholder="Sin capturar"><span class="hint">Captúrenlo de su banco o del DOF. Se usa para convertir a pesos los precios en dólares que da UPCitemdb al buscar por código de barras. Sin este dato no se sugieren precio de lista ni objetivo.</span></div>
+        <div class="f full"><label for="cDesc">Descuento sobre el precio en México (%)</label><input class="inp num" id="cDesc" type="number" min="0" max="90" step="1"><span class="hint">Para sugerir el precio objetivo: precio en México menos este porcentaje. El plan usó 35% como ejemplo; ajústalo con tu experiencia. El tipo de cambio se edita en la leyenda de la barra superior.</span></div>
       </div>
       <div class="row"><button class="btn primary" type="submit">Guardar ajustes</button></div>
     </form>

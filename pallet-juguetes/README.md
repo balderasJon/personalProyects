@@ -18,11 +18,33 @@ Es la versión instalable del artefacto **Control Pallet de Juguetes**. Usa la m
 | Sección | Funciones |
 |---|---|
 | **Resumen** | Cuánto falta por recuperar de la inversión, gráfica semanal acumulada, ventas cobradas, gastos, utilidad neta, % vendido, precio promedio real, valor del inventario y utilidad por hora. Lista de pendientes (apartados sin cobrar, piezas dañadas, ventas debajo del costo, semana sin registrar). |
-| **Inventario** | Alta, edición y baja de juguetes con código, **código de barras**, clase A/B/C, estado, cantidad y precios de lista, objetivo y mínimo. Escaneo con lector USB/Bluetooth, filtros y búsqueda. Importación pegando filas desde Excel. |
+| **Inventario** | Resumen **Valor del pallet** (piezas, valor en México, valor a precio objetivo e inversión). Alta, edición y baja de juguetes con código, **código de barras**, clase A/B/C, estado, cantidad, **precio en México**, precios objetivo, mínimo y de lista, **características** e **imágenes**. Escaneo con lector USB/Bluetooth, filtros y búsqueda. Importación pegando filas desde Excel. |
 | **Ventas** | Tablero Apartado → Pagado → Entregado (y Cancelado), vista de lista, filtro por canal, rendimiento por canal. |
 | **Gastos** | Empaque, traslados, publicidad, comisiones e impuestos; totales por tipo. |
 | **Semana** | Publicaciones, mensajes y horas dedicadas; ventas y dinero de la semana se calculan solos. |
-| **Ajustes** | Inversión, aviso de pocas piezas, meta mensual, tipo de cambio (pesos por dólar). Exportación a CSV por hoja y respaldo completo en JSON. |
+| **Ajustes** | Inversión, aviso de pocas piezas, meta mensual, % de descuento sobre el precio en México para sugerir el objetivo. Exportación a CSV por hoja y respaldo completo en JSON. |
+
+### Tipo de cambio del día
+
+La barra superior muestra siempre la leyenda **"Tipo de cambio definido para el día de hoy a: $XX.XXXX"** con su origen.
+
+- Si aún no hay valor para hoy, la aplicación lo consulta en la API pública de [dolardof.com](https://dolardof.com/api-docs) (`/api/v1/dof/today`), que da el tipo de cambio oficial publicado en el Diario Oficial de la Federación. En fin de semana o día inhábil es la última publicación del DOF; la leyenda muestra su fecha.
+- Al hacer clic en la leyenda puedes **capturarlo a mano** (se usa ese valor durante el día) o **volver a consultar el DOF**.
+- Si no hay internet o dolardof.com no responde, se conserva el último valor y la leyenda dice de qué día es; no se presenta como el de hoy.
+- Se usa para convertir a pesos los precios en dólares de UPCitemdb.
+
+### Valor del pallet
+
+En Inventario, el recuadro **Valor del pallet** muestra:
+
+| Dato | Cálculo |
+|---|---|
+| Piezas | Total del pallet y disponibles (sin vendidas ni apartadas) |
+| Valor en México | Σ cantidad × precio en México (y lo mismo solo con las piezas disponibles) |
+| Valor a precio objetivo | Σ cantidad × precio objetivo (y solo con las disponibles) |
+| Inversión | La de Ajustes, y cuántas veces la cubre el valor en México |
+
+Los juguetes sin precio en México o sin precio objetivo no suman y se indica cuántos son. Al pie de la tabla aparece además el valor de lo que se ve con los filtros aplicados.
 
 ### Reglas que valida el servidor
 
@@ -43,7 +65,9 @@ Si la tienes abierta en varias pestañas o dispositivos, los demás se actualiza
 
 1. Inventario → **Escanear código** → escaneen la caja.
 2. Si el código ya está en el inventario, se abre ese juguete para aumentar la cantidad.
-3. Si no está, se consulta **UPCitemdb** y se abre el alta con nombre, categoría y precios sugeridos. Revisen y guarden.
+3. Si no está, se consulta **UPCitemdb** y se abre el alta con nombre, categoría, **características** (descripción, marca, modelo, color, tamaño, dimensiones y peso, las que traiga), **imágenes** y precios sugeridos. Revisa, captura el **precio en México** y guarda.
+
+Al guardar, las imágenes de UPCitemdb (hasta 3) se descargan y quedan en `datos/imagenes`, así se ven aunque la tienda de origen las quite. Algunas tiendas bloquean la descarga; en ese caso se avisa y puedes subir tu propia foto. En el formulario también puedes **subir fotos** (JPG, PNG, WEBP o GIF de hasta 5 MB, hasta 12 por juguete), marcar la principal (★) y borrar.
 
 También se puede escanear o escribir el código en el campo *Código de barras* del formulario (Enter busca, no guarda), y buscarlo en el filtro del inventario.
 
@@ -51,20 +75,20 @@ También se puede escanear o escribir el código en el campo *Código de barras*
 
 **Cómo se sugieren los precios** (son sugerencias, se pueden cambiar antes de guardar; el formulario muestra el cálculo):
 
-| Campo | Regla |
-|---|---|
-| Precio de lista | Precio más alto registrado en UPCitemdb (USD) × tipo de cambio de Ajustes |
-| Precio objetivo | Precio más bajo registrado en UPCitemdb (USD) × tipo de cambio de Ajustes |
-| Precio mínimo | Costo promedio por pieza del pallet (inversión ÷ piezas del inventario). Si el objetivo queda debajo de ese costo, el mínimo es igual al objetivo |
+| Campo | Con precio en México capturado | Sin precio en México |
+|---|---|---|
+| Precio objetivo | Precio en México − % de descuento de Ajustes (35% de inicio, el ejemplo del plan) | Precio más bajo registrado en UPCitemdb (USD) × tipo de cambio del día |
+| Precio mínimo | Costo promedio por pieza del pallet (inversión ÷ piezas). Si el objetivo queda debajo de ese costo, el mínimo es igual al objetivo | Igual |
+| Precio de lista (referencia) | — | Precio más alto registrado en UPCitemdb (USD) × tipo de cambio del día |
 
-Solo se llenan los campos vacíos; el botón *Reemplazar todos los campos* sobrescribe todo.
+El **precio en México** se captura a mano (Liverpool, Walmart, Amazon MX, etc.): ninguna fuente gratuita lo da de forma confiable. Solo se llenan los campos vacíos o los que llenó una sugerencia y no has editado; *Reemplazar todos los campos* o *Usar estos precios* sobrescriben.
 
 **Limitaciones que hay que conocer:**
 
 - El plan gratuito de UPCitemdb permite **100 consultas por día**. Cada código se guarda 30 días en la base local, así que volver a buscarlo no gasta consulta (`appsettings.json` → `CodigoBarras:DiasCache`).
 - El catálogo y los precios de UPCitemdb son de tiendas de EE. UU.: algunos juguetes vendidos solo en México no aparecen y los precios no reflejan el mercado local. Compárenlos con Marketplace antes de publicar.
-- Sin **tipo de cambio** capturado en Ajustes no se sugieren precio de lista ni objetivo. El tipo de cambio no se obtiene automáticamente.
-- La computadora principal necesita internet para consultar códigos nuevos; el resto de la aplicación funciona sin internet.
+- Sin **tipo de cambio** (por ejemplo, sin internet el primer día) no se convierten los precios en dólares; el precio en México sigue funcionando.
+- La computadora necesita internet para consultar códigos nuevos, descargar imágenes y el tipo de cambio; el resto de la aplicación funciona sin internet.
 
 ---
 
@@ -129,7 +153,8 @@ La regla se limita al perfil de red **privada**; la red de la casa debe estar ma
 - Base de datos: `datos/pallet.db` (SQLite, un solo archivo).
 - **Respaldo automático:** cada vez que la aplicación arranca se crea, si aún no existe, una copia del día en `datos/respaldos/pallet-AAAA-MM-DD.db`. Se conservan las últimas 14 (configurable en `appsettings.json` → `Respaldos:Conservar`).
 - **Migración a un solo socio:** al abrir por primera vez esta versión con una base anterior, se guarda una copia `datos/respaldos/pallet-antes-de-un-socio-AAAA-MM-DD-HHMMSS.db`, se suman las horas de los dos socios en un solo campo y se eliminan nombres de socios, reparto, responsable de venta y quién pagó cada gasto.
-- **Respaldo manual:** Ajustes → *Descargar respaldo* genera un JSON con toda la información.
+- **Imágenes:** se guardan como archivos en `datos/imagenes`. Los respaldos `.db` y el JSON **no incluyen las fotos**; respalda la carpeta `datos` completa para conservarlas.
+- **Respaldo manual:** Ajustes → *Descargar respaldo* genera un JSON con todos los registros.
 - **Exportar a Excel:** Ajustes → botones CSV por hoja.
 - Para restaurar un respaldo `.db`: detengan la aplicación, reemplacen `datos/pallet.db` por la copia (renombrada a `pallet.db`) y borren `pallet.db-wal` y `pallet.db-shm` si existen.
 
@@ -138,7 +163,7 @@ Recomendación: copien periódicamente la carpeta `datos/respaldos` a una USB o 
 ### Pasar los datos que ya capturaron en el artefacto
 
 1. En el artefacto: Ajustes → Exportar **Inventario** (CSV).
-2. Abran el CSV en Excel y copien las columnas en este orden: Código, Juguete, Categoría, Cantidad, Estado, Precio de lista, Precio objetivo, Clase y, opcional, Código de barras. (El CSV que exporta esta aplicación ya trae ese orden en sus primeras 9 columnas.)
+2. Abran el CSV en Excel y copien las columnas en este orden: Código, Juguete, Categoría, Cantidad, Estado, Precio de lista, Precio objetivo, Clase y, opcionales, Código de barras y Precio en México. (El CSV que exporta esta aplicación ya trae ese orden en sus primeras 10 columnas.)
 3. En esta aplicación: Inventario → *Importar desde Excel* → pegar.
 
 Ventas, gastos y semanas no tienen importación automática; se recapturan.
@@ -163,6 +188,8 @@ pallet-juguetes/
 │   ├── Data/AppDbContext.cs    Mapeo EF Core → SQLite
 │   ├── Data/Esquema.cs         Agrega columnas/tablas nuevas a bases existentes
 │   ├── Servicios/BuscadorCodigoBarras.cs  Consulta UPCitemdb y calcula sugerencias
+│   ├── Servicios/TipoCambioDof.cs         Tipo de cambio del día desde dolardof.com
+│   ├── Servicios/AlmacenImagenes.cs       Guarda y valida las imágenes en datos/imagenes
 │   ├── Endpoints/Api.cs        API REST y reglas de negocio
 │   ├── Endpoints/Dtos.cs       Contratos de entrada
 │   └── wwwroot/                Interfaz (index.html, css/app.css, js/app.js)
@@ -180,7 +207,12 @@ pallet-juguetes/
 | GET | `/api/version` | Contador de cambios (sincronización entre navegadores) |
 | POST / PUT / DELETE | `/api/productos[/{id}]` | Juguetes |
 | POST | `/api/productos/importar` | Alta o actualización masiva por código |
-| GET | `/api/codigo-barras/{codigo}` | Busca en el inventario y, si no está, en UPCitemdb; regresa precios sugeridos |
+| GET | `/api/codigo-barras/{codigo}` | Busca en el inventario y, si no está, en UPCitemdb; regresa características, imágenes y precios sugeridos |
+| PUT | `/api/tipo-cambio` | Captura manual del tipo de cambio de hoy `{ "valor": 18.71 }` |
+| POST | `/api/tipo-cambio/consultar` | Vuelve a consultar el DOF en dolardof.com |
+| POST | `/api/productos/{id}/imagenes` | Sube fotos (multipart) |
+| POST | `/api/productos/{id}/imagenes/upcitemdb` | Descarga las imágenes de UPCitemdb del código de barras del juguete |
+| PUT / DELETE | `/api/imagenes/{id}[/principal]` | Marca como principal o borra una imagen |
 | POST / PUT / DELETE | `/api/ventas[/{id}]` | Ventas |
 | PATCH | `/api/ventas/{id}/estado` | Avanzar a pagado o entregado |
 | POST / PUT / DELETE | `/api/gastos[/{id}]` | Gastos |

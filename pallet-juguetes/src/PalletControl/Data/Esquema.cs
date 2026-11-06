@@ -41,6 +41,23 @@ public static class Esquema
 
         AgregarColumna(db, "productos", "CodigoBarras", "TEXT NOT NULL DEFAULT ''");
         AgregarColumna(db, "configuracion", "TipoCambioUsd", "TEXT NOT NULL DEFAULT '0.0'");
+        AgregarColumna(db, "configuracion", "TipoCambioFecha", "TEXT NULL");
+        AgregarColumna(db, "configuracion", "TipoCambioFuente", "TEXT NOT NULL DEFAULT ''");
+        AgregarColumna(db, "configuracion", "TipoCambioPublicado", "TEXT NULL");
+        AgregarColumna(db, "configuracion", "DescuentoSugerido", "INTEGER NOT NULL DEFAULT 35");
+        AgregarColumna(db, "productos", "PrecioMexico", "TEXT NOT NULL DEFAULT '0.0'");
+        AgregarColumna(db, "productos", "Caracteristicas", "TEXT NOT NULL DEFAULT ''");
+        db.Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS "producto_imagenes" (
+                "Id" TEXT NOT NULL CONSTRAINT "PK_producto_imagenes" PRIMARY KEY,
+                "ProductoId" TEXT NOT NULL,
+                "Archivo" TEXT NOT NULL,
+                "Origen" TEXT NOT NULL,
+                "Principal" INTEGER NOT NULL,
+                "CreadoUtc" TEXT NOT NULL,
+                CONSTRAINT "FK_producto_imagenes_productos_ProductoId" FOREIGN KEY ("ProductoId") REFERENCES "productos" ("Id") ON DELETE CASCADE);
+            """);
+        db.Database.ExecuteSqlRaw("""CREATE INDEX IF NOT EXISTS "IX_producto_imagenes_ProductoId" ON "producto_imagenes" ("ProductoId");""");
         db.Database.ExecuteSqlRaw("""
             CREATE UNIQUE INDEX IF NOT EXISTS "IX_productos_CodigoBarras"
             ON "productos" ("CodigoBarras") WHERE "CodigoBarras" <> '';
