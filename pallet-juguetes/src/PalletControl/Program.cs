@@ -47,6 +47,11 @@ builder.Services.AddHttpClient("imagenes", h =>
     h.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; PalletControl/1.0)");
     h.DefaultRequestHeaders.Accept.ParseAdd("image/*");
 });
+builder.Services.AddHttpClient<Traductor>(h =>
+{
+    h.Timeout = TimeSpan.FromSeconds(15);
+    h.DefaultRequestHeaders.UserAgent.ParseAdd("PalletControl/1.0");
+});
 var imgDir = Path.Combine(dbDir, "imagenes");
 Directory.CreateDirectory(imgDir);
 builder.Services.AddSingleton(new AlmacenImagenes(imgDir));

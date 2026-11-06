@@ -18,7 +18,7 @@ Es la versión instalable del artefacto **Control Pallet de Juguetes**. Usa la m
 | Sección | Funciones |
 |---|---|
 | **Resumen** | Cuánto falta por recuperar de la inversión, gráfica semanal acumulada, ventas cobradas, gastos, utilidad neta, % vendido, precio promedio real, valor del inventario y utilidad por hora. Lista de pendientes (apartados sin cobrar, piezas dañadas, ventas debajo del costo, semana sin registrar). |
-| **Inventario** | Resumen **Valor del pallet** (piezas, valor en México, valor a precio objetivo e inversión). Alta, edición y baja de juguetes con código, **código de barras**, clase A/B/C, estado, cantidad, **precio en México**, precios objetivo, mínimo y de lista, **características** e **imágenes**. Escaneo con lector USB/Bluetooth, filtros y búsqueda. Importación pegando filas desde Excel. |
+| **Inventario** | Resumen **Valor del pallet** (piezas, valor en México, valor a precio objetivo, inversión y factor del mínimo proporcional). Clic en el nombre o la foto de un juguete abre su **detalle con carrusel de fotos**. Alta, edición y baja de juguetes con código, **código de barras**, clase A/B/C, estado, cantidad, **precio en México**, precios objetivo, mínimo y de lista, **características** e **imágenes**. Escaneo con lector USB/Bluetooth, filtros y búsqueda. Importación pegando filas desde Excel. |
 | **Ventas** | Tablero Apartado → Pagado → Entregado (y Cancelado), vista de lista, filtro por canal, rendimiento por canal. |
 | **Gastos** | Empaque, traslados, publicidad, comisiones e impuestos; totales por tipo. |
 | **Semana** | Publicaciones, mensajes y horas dedicadas; ventas y dinero de la semana se calculan solos. |
@@ -43,6 +43,7 @@ En Inventario, el recuadro **Valor del pallet** muestra:
 | Valor en México | Σ cantidad × precio en México (y lo mismo solo con las piezas disponibles) |
 | Valor a precio objetivo | Σ cantidad × precio objetivo (y solo con las disponibles) |
 | Inversión | La de Ajustes, y cuántas veces la cubre el valor en México |
+| Factor proporcional | Inversión ÷ valor en México; con el botón *Recalcular precios mínimos* |
 
 Los juguetes sin precio en México o sin precio objetivo no suman y se indica cuántos son. Al pie de la tabla aparece además el valor de lo que se ve con los filtros aplicados.
 
@@ -75,20 +76,39 @@ También se puede escanear o escribir el código en el campo *Código de barras*
 
 **Cómo se sugieren los precios** (son sugerencias, se pueden cambiar antes de guardar; el formulario muestra el cálculo):
 
-| Campo | Con precio en México capturado | Sin precio en México |
-|---|---|---|
-| Precio objetivo | Precio en México − % de descuento de Ajustes (35% de inicio, el ejemplo del plan) | Precio más bajo registrado en UPCitemdb (USD) × tipo de cambio del día |
-| Precio mínimo | Costo promedio por pieza del pallet (inversión ÷ piezas). Si el objetivo queda debajo de ese costo, el mínimo es igual al objetivo | Igual |
-| Precio de lista (referencia) | — | Precio más alto registrado en UPCitemdb (USD) × tipo de cambio del día |
+| Campo | Regla |
+|---|---|
+| Precio en México | Promedio de los precios capturados en **Liverpool, Mercado Libre y Walmart** (los que tengan valor). Sin precios por tienda, se puede capturar a mano |
+| Precio objetivo | Precio en México − % de descuento de Ajustes (35% de inicio, el ejemplo del plan). Sin precio en México: precio más bajo de UPCitemdb (USD) × tipo de cambio |
+| Precio mínimo | **Método proporcional** (ver abajo). Requiere el precio en México |
+| Precio de lista (referencia) | Precio más alto registrado en UPCitemdb (USD) × tipo de cambio del día |
 
-El **precio en México** se captura a mano (Liverpool, Walmart, Amazon MX, etc.): ninguna fuente gratuita lo da de forma confiable. Solo se llenan los campos vacíos o los que llenó una sugerencia y no has editado; *Reemplazar todos los campos* o *Usar estos precios* sobrescriben.
+**Precios por tienda.** Cada tienda tiene un botón *Buscar ↗* que abre su búsqueda con el nombre del juguete en otra pestaña; capturas el precio que ves. La aplicación no consulta esas tiendas por su cuenta: Liverpool y Walmart no ofrecen una API pública de precios, y la búsqueda de Mercado Libre por API exige registrar una aplicación con token (sin él responde 403).
+
+**Precio mínimo proporcional.** La inversión se reparte entre los juguetes según su valor en México:
+
+```
+factor = inversión ÷ Σ (cantidad × precio en México)
+precio mínimo de un juguete = su precio en México × factor   (redondeado a pesos)
+```
+
+Así cada juguete carga la parte de la inversión que le corresponde por su valor: uno de $1,000 en México carga 10 veces más que uno de $100. Si el factor es mayor que 1, el valor del pallet en tiendas mexicanas no alcanza a cubrir la inversión (la pantalla lo indica).
+
+- Los juguetes sin precio en México no entran al cálculo ni reciben mínimo; mientras falten, el factor sale más alto de lo real.
+- El factor cambia cada vez que capturas precios o cantidades. En Inventario → *Valor del pallet* → **Recalcular precios mínimos** se actualizan todos los mínimos (reemplaza los capturados a mano en juguetes con precio en México; pide confirmación).
+- Si el precio objetivo queda por debajo del mínimo, el formulario lo advierte.
+- Las alertas de venta "por debajo de su parte de la inversión" usan este mismo cálculo.
+
+Solo se llenan los campos vacíos o los que llenó una sugerencia y no has editado; *Reemplazar todos los campos* o *Usar estos precios* sobrescriben.
+
+**Características en español.** Al escanear, las características de UPCitemdb se traducen con la API gratuita de [MyMemory](https://mymemory.translated.net/) y se convierten unidades (libras → kg, onzas → g, pulgadas → cm). La traducción se guarda para no repetirla. También hay un botón *Traducir al español* en el formulario. Es traducción automática: revísala (por ejemplo, puede dejar palabras pegadas). Límite aproximado sin cuenta: 5,000 caracteres por día.
 
 **Limitaciones que hay que conocer:**
 
 - El plan gratuito de UPCitemdb permite **100 consultas por día**. Cada código se guarda 30 días en la base local, así que volver a buscarlo no gasta consulta (`appsettings.json` → `CodigoBarras:DiasCache`).
 - El catálogo y los precios de UPCitemdb son de tiendas de EE. UU.: algunos juguetes vendidos solo en México no aparecen y los precios no reflejan el mercado local. Compárenlos con Marketplace antes de publicar.
 - Sin **tipo de cambio** (por ejemplo, sin internet el primer día) no se convierten los precios en dólares; el precio en México sigue funcionando.
-- La computadora necesita internet para consultar códigos nuevos, descargar imágenes y el tipo de cambio; el resto de la aplicación funciona sin internet.
+- La computadora necesita internet para consultar códigos nuevos, descargar imágenes, traducir y el tipo de cambio; el resto de la aplicación funciona sin internet.
 
 ---
 
@@ -190,6 +210,8 @@ pallet-juguetes/
 │   ├── Servicios/BuscadorCodigoBarras.cs  Consulta UPCitemdb y calcula sugerencias
 │   ├── Servicios/TipoCambioDof.cs         Tipo de cambio del día desde dolardof.com
 │   ├── Servicios/AlmacenImagenes.cs       Guarda y valida las imágenes en datos/imagenes
+│   ├── Servicios/Precios.cs               Promedio por tienda y precio mínimo proporcional
+│   ├── Servicios/Traductor.cs             Traducción al español (MyMemory) y conversión de unidades
 │   ├── Endpoints/Api.cs        API REST y reglas de negocio
 │   ├── Endpoints/Dtos.cs       Contratos de entrada
 │   └── wwwroot/                Interfaz (index.html, css/app.css, js/app.js)
@@ -210,6 +232,8 @@ pallet-juguetes/
 | GET | `/api/codigo-barras/{codigo}` | Busca en el inventario y, si no está, en UPCitemdb; regresa características, imágenes y precios sugeridos |
 | PUT | `/api/tipo-cambio` | Captura manual del tipo de cambio de hoy `{ "valor": 18.71 }` |
 | POST | `/api/tipo-cambio/consultar` | Vuelve a consultar el DOF en dolardof.com |
+| POST | `/api/productos/recalcular-minimos` | Aplica el método proporcional a todos los juguetes con precio en México |
+| POST | `/api/traducir` | Traduce texto del inglés al español `{ "texto": "..." }` |
 | POST | `/api/productos/{id}/imagenes` | Sube fotos (multipart) |
 | POST | `/api/productos/{id}/imagenes/upcitemdb` | Descarga las imágenes de UPCitemdb del código de barras del juguete |
 | PUT / DELETE | `/api/imagenes/{id}[/principal]` | Marca como principal o borra una imagen |

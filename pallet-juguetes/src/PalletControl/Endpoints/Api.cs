@@ -45,6 +45,33 @@ public static class Api
         });
         });
 
+        // ---------- Precio mínimo: método proporcional ----------
+        // Recalcula y guarda el mínimo de todos los juguetes con precio en México.
+        api.MapPost("/productos/recalcular-minimos", (AppDbContext db) => Bloqueado(async () =>
+        {
+            var c = await db.Configuracion.FirstAsync();
+            var ps = await db.Productos.ToListAsync();
+            if (Precios.Factor(c.Inversion, ps) is not { } f)
+                return Mal("Captura el precio en México de al menos un juguete para calcular los mínimos.");
+            var n = 0;
+            foreach (var p in ps.Where(p => p.PrecioMexico > 0))
+            {
+                var m = Precios.Minimo(p.PrecioMexico, f);
+                if (m != p.PrecioMinimo) { p.PrecioMinimo = m; p.ActualizadoUtc = DateTime.UtcNow; n++; }
+            }
+            await db.GuardarAsync();
+            return Results.Ok(new { actualizados = n, factor = Math.Round(f, 4), sinPrecioMexico = ps.Count(p => p.PrecioMexico <= 0) });
+        }));
+
+        // ---------- Traducción al español (MyMemory) ----------
+        api.MapPost("/traducir", async (TraducirIn i, Traductor t, CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(i.Texto)) return Mal("No hay texto para traducir.");
+            if (i.Texto.Length > 2000) return Mal("Máximo 2,000 caracteres.");
+            try { return Results.Ok(new { texto = await t.TraducirAsync(i.Texto, ct) }); }
+            catch (Traductor.ErrorTraduccion e) { return Results.Json(new Error(e.Message), statusCode: 503); }
+        });
+
         // ---------- Tipo de cambio (dolardof.com o manual) ----------
         api.MapPut("/tipo-cambio", (TipoCambioIn i, AppDbContext db) => Bloqueado(async () =>
         {
@@ -286,7 +313,8 @@ public static class Api
         if (string.IsNullOrWhiteSpace(i.Nombre)) return "El nombre del juguete es obligatorio.";
         if (BuscadorCodigoBarras.Normalizar(i.CodigoBarras).Length > 20) return "El código de barras admite máximo 20 caracteres.";
         if (i.Cantidad < 0) return "La cantidad no puede ser negativa.";
-        if (i.PrecioLista < 0 || i.PrecioObjetivo < 0 || i.PrecioMinimo < 0 || i.PrecioMexico < 0) return "Los precios no pueden ser negativos.";
+        if (i.PrecioLista < 0 || i.PrecioObjetivo < 0 || i.PrecioMinimo < 0 || i.PrecioMexico < 0
+            || i.PrecioLiverpool < 0 || i.PrecioMercadoLibre < 0 || i.PrecioWalmart < 0) return "Los precios no pueden ser negativos.";
         if (i.Clase is not null && !Catalogos.Clases.Contains(i.Clase)) return "La clase debe ser A, B o C.";
         if (i.Estado is not null && !Catalogos.EstadosProducto.Contains(i.Estado)) return "Estado de juguete no válido.";
         return null;
@@ -304,7 +332,11 @@ public static class Api
         p.PrecioLista = i.PrecioLista;
         p.PrecioObjetivo = i.PrecioObjetivo;
         p.PrecioMinimo = i.PrecioMinimo;
-        p.PrecioMexico = i.PrecioMexico;
+        p.PrecioLiverpool = Math.Max(0, i.PrecioLiverpool);
+        p.PrecioMercadoLibre = Math.Max(0, i.PrecioMercadoLibre);
+        p.PrecioWalmart = Math.Max(0, i.PrecioWalmart);
+        // Con precios por tienda, el precio en México es su promedio; sin ellos, el capturado a mano.
+        p.PrecioMexico = Precios.PromedioTiendas(p.PrecioLiverpool, p.PrecioMercadoLibre, p.PrecioWalmart) ?? i.PrecioMexico;
         p.Caracteristicas = T(i.Caracteristicas, 2000);
         p.Notas = T(i.Notas, 500);
         p.ActualizadoUtc = DateTime.UtcNow;
@@ -366,9 +398,12 @@ public static class Api
                 var vend = await Vendidas(db, p.Id, null);
                 var notas = p.Notas; var min = p.PrecioMinimo; var barrasPrevio = p.CodigoBarras;
                 var caract = p.Caracteristicas; var mx = p.PrecioMexico;
+                var (lv, ml, wm) = (p.PrecioLiverpool, p.PrecioMercadoLibre, p.PrecioWalmart);
                 Aplicar(p, f with { Cantidad = Math.Max(f.Cantidad, vend) });
                 p.Notas = notas; p.PrecioMinimo = min; p.Caracteristicas = caract;
                 if (p.PrecioMexico == 0) p.PrecioMexico = mx;
+                (p.PrecioLiverpool, p.PrecioMercadoLibre, p.PrecioWalmart) = (lv, ml, wm);
+                p.PrecioMexico = Precios.PromedioTiendas(lv, ml, wm) ?? p.PrecioMexico;
                 if (p.CodigoBarras.Length == 0) p.CodigoBarras = barrasPrevio;
                 actualizados++;
             }

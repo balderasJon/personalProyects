@@ -17,8 +17,14 @@ public class Producto
     public decimal PrecioLista { get; set; }
     public decimal PrecioObjetivo { get; set; }
     public decimal PrecioMinimo { get; set; }
-    /// <summary>Precio del mismo juguete en tiendas de México (capturado a mano). 0 = sin capturar.</summary>
+    /// <summary>
+    /// Precio del juguete en México. Si hay precios por tienda, es su promedio; si no, el capturado a mano. 0 = sin dato.
+    /// </summary>
     public decimal PrecioMexico { get; set; }
+    /// <summary>Precios vistos en cada tienda (capturados a mano). 0 = sin dato.</summary>
+    public decimal PrecioLiverpool { get; set; }
+    public decimal PrecioMercadoLibre { get; set; }
+    public decimal PrecioWalmart { get; set; }
     /// <summary>Descripción y datos técnicos (marca, modelo, color, medidas, peso...).</summary>
     public string Caracteristicas { get; set; } = "";
     public string Notas { get; set; } = "";

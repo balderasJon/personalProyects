@@ -47,6 +47,9 @@ public static class Esquema
         AgregarColumna(db, "configuracion", "DescuentoSugerido", "INTEGER NOT NULL DEFAULT 35");
         AgregarColumna(db, "productos", "PrecioMexico", "TEXT NOT NULL DEFAULT '0.0'");
         AgregarColumna(db, "productos", "Caracteristicas", "TEXT NOT NULL DEFAULT ''");
+        AgregarColumna(db, "productos", "PrecioLiverpool", "TEXT NOT NULL DEFAULT '0.0'");
+        AgregarColumna(db, "productos", "PrecioMercadoLibre", "TEXT NOT NULL DEFAULT '0.0'");
+        AgregarColumna(db, "productos", "PrecioWalmart", "TEXT NOT NULL DEFAULT '0.0'");
         db.Database.ExecuteSqlRaw("""
             CREATE TABLE IF NOT EXISTS "producto_imagenes" (
                 "Id" TEXT NOT NULL CONSTRAINT "PK_producto_imagenes" PRIMARY KEY,

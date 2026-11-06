@@ -12,7 +12,7 @@ public record ProductoExterno(
     string Titulo, string Marca, string Categoria, string Descripcion, string Imagen,
     decimal? PrecioBajo, decimal? PrecioAlto, string Moneda, int Ofertas,
     string? Modelo = null, string? Color = null, string? Tamano = null, string? Dimensiones = null, string? Peso = null,
-    List<string>? Imagenes = null)
+    List<string>? Imagenes = null, string? CaracteristicasEs = null)
 {
     /// <summary>Texto para el campo Características del juguete.</summary>
     public string Caracteristicas
@@ -41,14 +41,15 @@ public record ResultadoBusqueda(
     Sugerencia? Sugerencia,
     bool DesdeCache,
     DateTime? ConsultadoUtc,
-    string? Aviso);
+    string? Aviso,
+    string? AvisoTraduccion = null);
 
 public class ErrorBusqueda(string mensaje, int estado) : Exception(mensaje)
 {
     public int Estado { get; } = estado;
 }
 
-public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogger<BuscadorCodigoBarras> log, TipoCambioDof tipoCambio)
+public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogger<BuscadorCodigoBarras> log, TipoCambioDof tipoCambio, Traductor traductor)
 {
     private const string Fuente = "upcitemdb";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -98,9 +99,22 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
             return new ResultadoBusqueda("ninguno", codigo, null, null, null, desdeCache, cache.ConsultadoUtc,
                 "El código no está en el inventario ni en UPCitemdb. Capturen los datos a mano.");
 
+        // Características en español: se traducen una vez y se guardan en la caché.
+        string? avisoTrad = null;
+        if (ext.CaracteristicasEs is null && ext.Caracteristicas.Length > 0)
+        {
+            try
+            {
+                ext = ext with { CaracteristicasEs = await traductor.TraducirAsync(ext.Caracteristicas, ct) };
+                cache.Respuesta = JsonSerializer.Serialize(ext, Json);
+                await db.SaveChangesAsync(ct);
+            }
+            catch (Traductor.ErrorTraduccion e) { avisoTrad = e.Message + " Las características se muestran en inglés."; }
+        }
+
         await tipoCambio.AsegurarHoyAsync(db, ct);
         var sug = await SugerirAsync(db, ext, ct);
-        return new ResultadoBusqueda(Fuente, codigo, null, ext, sug, desdeCache, cache.ConsultadoUtc, null);
+        return new ResultadoBusqueda(Fuente, codigo, null, ext, sug, desdeCache, cache.ConsultadoUtc, null, avisoTrad);
     }
 
     /// <summary>URLs de imagen que UPCitemdb dio para este código (desde la caché local).</summary>
@@ -165,8 +179,8 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
     }
 
     /// <summary>
-    /// Lista = precio más alto registrado × tipo de cambio; Objetivo = precio más bajo registrado × tipo de cambio;
-    /// Mínimo = costo promedio por pieza del pallet, sin pasar del objetivo.
+    /// Lista = precio más alto registrado × tipo de cambio; Objetivo = precio más bajo registrado × tipo de cambio.
+    /// El mínimo usa el método proporcional, que requiere el precio en México (se calcula en el formulario).
     /// </summary>
     private static async Task<Sugerencia> SugerirAsync(AppDbContext db, ProductoExterno e, CancellationToken ct)
     {
@@ -195,23 +209,7 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
             }
         }
 
-        var piezas = await db.Productos.SumAsync(p => (int?)p.Cantidad, ct) ?? 0;
-        if (piezas > 0 && cfg.Inversion > 0)
-        {
-            var costo = Math.Round(cfg.Inversion / piezas, 0, MidpointRounding.AwayFromZero);
-            if (objetivo is { } o && o < costo)
-            {
-                minimo = o;
-                notas.Add($"Mínimo: igual al objetivo, porque el objetivo queda debajo del costo promedio por pieza (${costo:N0}). Úsenlo para combos.");
-            }
-            else
-            {
-                minimo = costo;
-                notas.Add($"Mínimo: costo promedio por pieza del pallet, inversión ${cfg.Inversion:N0} ÷ {piezas:N0} piezas = ${costo:N0}.");
-            }
-        }
-        else
-            notas.Add("Mínimo: se calcula con el costo promedio por pieza cuando haya piezas en el inventario.");
+        notas.Add("Mínimo: se calcula con el método proporcional en cuanto captures el precio en México del juguete.");
 
         return new Sugerencia(lista, objetivo, minimo, notas);
     }
