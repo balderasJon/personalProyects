@@ -265,3 +265,11 @@ details.com[open]>summary{margin-bottom:10px}
 .tag-w{display:inline-block;font-size:.66rem;font-weight:700;border-radius:999px;padding:1px 6px;background:var(--sun-soft);color:var(--sun);vertical-align:middle}
 .card .pf h3{margin:0}
 #plTcF{gap:6px}
+
+/* ---- Fase 2: precios y rentabilidad ---- */
+tr.mejor td{background:color-mix(in srgb,var(--good-soft) 55%,transparent)}
+.row.pag{justify-content:center;gap:12px}
+table.dtab td{padding:7px 4px;border-bottom:1px solid var(--line)}
+table.dtab tr:last-child td{border-bottom:0}
+.subnav{margin-bottom:2px}
+.panel:has(.rentdet){max-width:1180px}

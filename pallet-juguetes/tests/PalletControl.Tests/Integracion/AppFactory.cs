@@ -30,6 +30,17 @@ public class AppFactory : WebApplicationFactory<Program>
         try { Directory.Delete(Carpeta, true); } catch (IOException) { }
     }
 
+    private HttpClient? unico;
+    private readonly SemaphoreSlim candado = new(1, 1);
+
+    /// <summary>Cliente con sesión, compartido por las pruebas de la misma clase (el primer usuario solo se crea una vez).</summary>
+    public async Task<HttpClient> ClienteConSesionAsyncUnaVez()
+    {
+        await candado.WaitAsync();
+        try { return unico ??= await ClienteConSesionAsync(); }
+        finally { candado.Release(); }
+    }
+
     /// <summary>Cliente con sesión iniciada (crea el primer usuario).</summary>
     public async Task<HttpClient> ClienteConSesionAsync()
     {

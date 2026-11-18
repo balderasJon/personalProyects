@@ -2,7 +2,7 @@
 
 Aplicación local para administrar el negocio del pallet de juguetes: pallets y costo real de cada pieza, inventario por lotes, ventas, gastos, indicadores semanales y recuperación de la inversión.
 
-> **Documentación del módulo de costos, precios y rentabilidad:** [`docs/`](docs/README.md) — diagnóstico (Fase 0), Fase 1 (pallets y costeo) y bitácora de cambios.
+> **Documentación del módulo de costos, precios y rentabilidad:** [`docs/`](docs/README.md) — diagnóstico (Fase 0), Fase 1 (pallets y costeo), Fase 2 (plataformas y precios) y bitácora de cambios.
 
 Es la versión instalable del artefacto **Control Pallet de Juguetes**. Usa la misma interfaz y los mismos cálculos, pero guarda los datos en una base SQLite en tu computadora. Está pensada para una sola persona; también puedes abrirla desde el celular en la misma red Wi‑Fi.
 
@@ -26,6 +26,9 @@ Es la versión instalable del artefacto **Control Pallet de Juguetes**. Usa la m
 | **Ventas** | Tablero Apartado → Pagado → Entregado (y Cancelado), vista de lista, filtro por canal, rendimiento por canal. |
 | **Gastos** | Empaque, traslados, publicidad, comisiones e impuestos; totales por tipo. |
 | **Semana** | Publicaciones, mensajes y horas dedicadas; ventas y dinero de la semana se calculan solos. |
+| **Análisis comercial › Análisis de productos** | Mejor canal de cada juguete, precio sugerido, mínimo, utilidad y estado (rentable, margen bajo, pérdida), con filtros, orden y paginación. Detalle por canal y precios recomendados guardados. Detalle en [`docs/02-fase2-plataformas-y-precios.md`](docs/02-fase2-plataformas-y-precios.md). |
+| **Análisis comercial › Simulador de precios** | Prueba un precio en un canal: comisiones, gastos, utilidad, margen, ROI, retenciones y depósito estimado, con alertas. |
+| **Análisis comercial › Plataformas y tarifas** | Plataformas, tarifas con vigencias (sin valores precargados), objetivos de rentabilidad por ámbito y situación fiscal. |
 | **Análisis comercial › Pallets y costos** | Pallets (moneda, tipo de cambio, gastos adicionales, inversión total), juguetes por lote y condición, costeo **equitativo, proporcional o manual** con cuadre al centavo, simulación, historial de costeos y costo real por pieza. Detalle en [`docs/01-fase1-pallets-y-costeo.md`](docs/01-fase1-pallets-y-costeo.md). |
 | **Ajustes** | Inversión (con pallets, es la suma de sus inversiones), aviso de pocas piezas, meta mensual, % de descuento sobre el precio en México para sugerir el objetivo. Exportación a CSV por hoja y respaldo completo en JSON. |
 
@@ -232,8 +235,11 @@ pallet-juguetes/
 │   ├── Endpoints/Api.cs        API REST y reglas de negocio
 │   ├── Endpoints/AuthApi.cs    Inicio de sesión y usuarios
 │   ├── Endpoints/PalletsApi.cs Pallets, gastos, lotes y costeo
+│   ├── Endpoints/PreciosApi.cs Plataformas, tarifas, objetivos, fiscal y rentabilidad
+│   ├── Dominio/Calculo/MotorPrecios.cs    Motor de precios y selección de tarifa (puro)
+│   ├── Servicios/Rentabilidad.cs          Costo real + tarifa + objetivo → precios por canal
 │   ├── Endpoints/Dtos.cs       Contratos de entrada
-│   └── wwwroot/                Interfaz (index.html, css/app.css, js/app.js, js/analisis.js)
+│   └── wwwroot/                Interfaz (index.html, css/app.css, js/app.js, js/analisis.js, js/precios.js)
 ├── tests/PalletControl.Tests/  Pruebas unitarias (Unitarias/) y de integración (Integracion/)
 ├── docs/                       Documentación del módulo de costos y rentabilidad
 ├── PalletControl.sln
@@ -266,7 +272,7 @@ pallet-juguetes/
 | PUT | `/api/configuracion` | Ajustes del negocio |
 | GET | `/api/respaldo` | Descarga JSON completo |
 
-Las rutas de pallets, lotes, costeo, usuarios y sesión están en [`docs/01-fase1-pallets-y-costeo.md`](docs/01-fase1-pallets-y-costeo.md#61-api-nueva-todas-requieren-sesión-salvo-apiauth). Todas las rutas requieren sesión, salvo `/api/auth/*`.
+Las rutas de pallets, lotes, costeo, usuarios y sesión están en [`docs/01-fase1-pallets-y-costeo.md`](docs/01-fase1-pallets-y-costeo.md#61-api-nueva-todas-requieren-sesión-salvo-apiauth); las de plataformas, tarifas y rentabilidad, en [`docs/02-fase2-plataformas-y-precios.md`](docs/02-fase2-plataformas-y-precios.md#61-api-todas-requieren-sesión). Todas las rutas requieren sesión, salvo `/api/auth/*`.
 
 Los errores de validación regresan `400` o `409` con `{ "mensaje": "..." }` en español.
 

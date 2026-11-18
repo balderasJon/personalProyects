@@ -19,8 +19,18 @@ function pillCosteo(c){
 }
 function err(e){PC.toast((e&&e.mensaje)||'No se pudo completar la operación.')}
 
+/* ---------- subnavegación de Análisis comercial ---------- */
+var SUBS=['productos','simulador','pallets','plataformas'],vista='pallets';
+try{var v0=localStorage.getItem('pallet-analisis-vista');if(SUBS.indexOf(v0)>=0)vista=v0}catch(e){}
+function marcarSub(){document.querySelectorAll('[data-sub]').forEach(function(b){if(b.dataset.sub===vista)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')})}
+document.querySelectorAll('[data-sub]').forEach(function(b){b.addEventListener('click',function(){vista=b.dataset.sub;try{localStorage.setItem('pallet-analisis-vista',vista)}catch(e){}
+  if(window.PCP)window.PCP.reiniciar(vista);render()})});
+function irA(v,opciones){vista=v;try{localStorage.setItem('pallet-analisis-vista',v)}catch(e){}if(window.PCP)window.PCP.reiniciar(v,opciones);render()}
+
 /* ---------- render ---------- */
 function render(){
+  marcarSub();
+  if(vista!=='pallets'&&window.PCP){window.PCP.render(vista,body);return}
   var n=++st.pide;
   if(st.sel){
     PC.api('GET','pallets/'+st.sel).then(function(d){if(n!==st.pide)return;st.det=d;pintaDetalle()},function(e){if(e.status===404){st.sel=null;render()}else err(e)});
@@ -261,5 +271,5 @@ function movimientos(pid){
   },err);
 }
 
-window.PCA={render:render,loteAccion:loteAccion};
+window.PCA={render:render,loteAccion:loteAccion,irA:irA};
 })();

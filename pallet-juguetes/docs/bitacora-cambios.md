@@ -2,6 +2,21 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-18 · Fase 2 — Plataformas, tarifas y motor de precios
+
+**Agregado**
+- Catálogo de plataformas (6 del requerimiento + 4 canales que ya se usaban en ventas), sin tarifas precargadas.
+- Tarifas con vigencia e historial ("Nueva vigencia"), criterios por tipo de publicación, modalidad, categoría, medio de pago, rango de precio, peso y tamaño; cargos de la plataforma, gastos del vendedor y retenciones por separado.
+- Objetivos de rentabilidad (margen, markup, utilidad fija) por ámbito, con margen mínimo, descuento promocional y redondeo. Objetivo general inicial: margen 30 %, mínimo 10 %, terminación 9.
+- Situación fiscal (régimen pendiente, IVA) separada de los gastos.
+- Motor de precios: equilibrio, mínimo, objetivo, sugerido, promocional, utilidad, margen, ROI, depósito, retenciones y alertas; nunca sugiere menos del mínimo.
+- Pantallas Análisis de productos (filtros, orden, paginación), Simulador de precios y Plataformas y tarifas; rentabilidad por canal en la ficha del juguete; historial de precios recomendados.
+- 27 pruebas nuevas (19 unitarias, 8 de integración): 50 en total.
+
+**Datos (migración automática, no destructiva)**
+- Tablas nuevas: `plataformas`, `tarifas_plataforma`, `parametros_rentabilidad`, `configuracion_fiscal`, `precios_producto`.
+- Se siembran las plataformas, el objetivo general y la situación fiscal "pendiente" solo si no existen. No se modifica ningún dato anterior.
+
 ## 2026-11-18 · Fase 1 — Pallets, inventario por lotes y costeo
 
 **Agregado**

@@ -657,6 +657,7 @@ function detalleForm(id){
       fila('Valor en México',+p.precioMexico>0?money((+p.cantidad||0)*(+p.precioMexico))+' <span class="small muted">('+num(disp)+' disponibles: '+money(disp*(+p.precioMexico))+')</span>':'')+
     '</dl></div>'+
     tablaLotes+
+    '<div id="detRent"></div>'+
     (p.descripcionComercial?'<div><h3>Descripción comercial</h3><p class="pre small">'+esc(p.descripcionComercial)+'</p></div>':'')+
     (p.accesoriosIncluidos?'<div><h3>Accesorios incluidos</h3><p class="small">'+esc(p.accesoriosIncluidos)+'</p></div>':'')+
     (p.caracteristicas?'<div><h3>Características</h3><p class="pre small">'+esc(p.caracteristicas)+'</p></div>':'')+
@@ -674,6 +675,7 @@ function detalleForm(id){
     var x0=null;car.addEventListener('touchstart',function(e){x0=e.touches[0].clientX},{passive:true});
     car.addEventListener('touchend',function(e){if(x0==null)return;var dx=e.changedTouches[0].clientX-x0;if(Math.abs(dx)>40)ver(k+(dx<0?1:-1));x0=null});
     car.focus();
+    if(window.PCP)window.PCP.fichaRentabilidad(id,el.querySelector('#detRent'));
   });
 }
 
@@ -1001,7 +1003,7 @@ function menuUsuario(){
 }
 
 /* Funciones compartidas con js/analisis.js (módulo de Análisis comercial). */
-window.PC={api:api,cargar:function(){return cargar()},openModal:openModal,closeModal:closeModal,head:head,fld:fld,opt:opt,footer:footer,wireForm:wireForm,
+window.PC={api:api,go:go,cargar:function(){return cargar()},openModal:openModal,closeModal:closeModal,head:head,fld:fld,opt:opt,footer:footer,wireForm:wireForm,
   toast:toast,money:money,money2:money2,num:num,pct:pct,esc:esc,fdate:fdate,kpi:kpi,today:today,nf4:nf4,cfg:cfg,TC:function(){return TC},
   productoForm:productoForm,detalleForm:detalleForm,condNombre:condNombre,optConds:optConds,optPallets:optPallets,palletsLista:palletsLista,
   datos:function(){return {D:D,LOTES:LOTES,PALLETS:PALLETS,COSTOS:COSTOS,CORRIDAS:CORRIDAS,CONDS:CONDS}}};

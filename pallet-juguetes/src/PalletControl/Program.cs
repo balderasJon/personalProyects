@@ -128,6 +128,7 @@ app.UseStaticFiles(new StaticFileOptions
 app.MapAuth();
 app.MapApi();
 app.MapPallets();
+app.MapPrecios();
 
 app.Lifetime.ApplicationStarted.Register(() =>
 {

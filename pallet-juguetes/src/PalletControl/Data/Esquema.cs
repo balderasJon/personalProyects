@@ -93,6 +93,44 @@ public static class Esquema
         // ---- Fase 1: tablas nuevas, tal como las define el modelo de EF ----
         CrearTablasFaltantes(db);
         MigrarAPallets(db, dirRespaldos);
+        SembrarFase2(db);
+    }
+
+    /// <summary>
+    /// Fase 2: catálogo inicial de plataformas (sin tarifas: se capturan de las fuentes oficiales), objetivo global
+    /// de rentabilidad (decisión del usuario: margen 30 %, mínimo 10 %, terminación 9) y situación fiscal pendiente.
+    /// Solo agrega lo que falta; nunca modifica lo ya capturado.
+    /// </summary>
+    private static void SembrarFase2(AppDbContext db)
+    {
+        if (!db.Plataformas.Any())
+        {
+            var semilla = new (string Codigo, string Nombre, string Tipo)[]
+            {
+                ("facebook_marketplace", "Facebook Marketplace", "local"),
+                ("ml_clasica", "Mercado Libre Clásica", "marketplace"),
+                ("ml_premium", "Mercado Libre Premium", "marketplace"),
+                ("amazon_mx", "Amazon México", "marketplace"),
+                ("whatsapp", "WhatsApp Business", "local"),
+                ("venta_fisica", "Ventas físicas", "fisica"),
+                // Canales que ya existían en el registro de ventas (decisión 11.5: se conservan como plataformas adicionales)
+                ("grupos_facebook", "Grupos de Facebook", "local"),
+                ("conocidos", "Conocidos", "local"),
+                ("bazar_escuela", "Bazar o escuela", "fisica"),
+                ("instagram", "Instagram", "local"),
+            };
+            var i = 0;
+            foreach (var (codigo, nombre, tipo) in semilla)
+                db.Plataformas.Add(new Plataforma { Id = Guid.NewGuid().ToString("N")[..12], Codigo = codigo, Nombre = nombre, Tipo = tipo, Orden = ++i });
+        }
+        if (!db.Parametros.Any(p => p.Categoria == null && p.ProductoId == null && p.PlataformaId == null))
+            db.Parametros.Add(new ParametroRentabilidad
+            {
+                Id = Guid.NewGuid().ToString("N")[..12], Esquema = "margen", Valor = 30m, MargenMinimoPct = 10m,
+                DescuentoPromocionalPct = 0m, Redondeo = "terminacion9", Notas = "Objetivo general definido por el usuario al iniciar la Fase 2.",
+            });
+        if (db.Fiscal.Find(1) is null) db.Fiscal.Add(new ConfiguracionFiscal());
+        db.SaveChanges();
     }
 
     /// <summary>

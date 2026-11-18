@@ -24,6 +24,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IUsuarioActual
     public DbSet<CostoLote> CostosLote => Set<CostoLote>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Auditoria> Auditoria => Set<Auditoria>();
+    public DbSet<Plataforma> Plataformas => Set<Plataforma>();
+    public DbSet<TarifaPlataforma> Tarifas => Set<TarifaPlataforma>();
+    public DbSet<ParametroRentabilidad> Parametros => Set<ParametroRentabilidad>();
+    public DbSet<ConfiguracionFiscal> Fiscal => Set<ConfiguracionFiscal>();
+    public DbSet<PrecioProducto> PreciosProducto => Set<PrecioProducto>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder c)
     {
@@ -191,6 +196,59 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IUsuarioActual
             e.HasKey(x => x.Codigo);
             e.Property(x => x.Codigo).HasMaxLength(20);
             e.Property(x => x.Fuente).HasMaxLength(30);
+        });
+        // ---- Fase 2 ----
+        b.Entity<Plataforma>(e =>
+        {
+            e.ToTable("plataformas");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Codigo).HasMaxLength(40).IsRequired();
+            e.HasIndex(x => x.Codigo).IsUnique();
+            e.Property(x => x.Nombre).HasMaxLength(60).IsRequired().UseCollation("NOCASE");
+            e.HasIndex(x => x.Nombre).IsUnique();
+            e.Property(x => x.Tipo).HasMaxLength(12);
+            e.Property(x => x.Notas).HasMaxLength(300);
+        });
+        b.Entity<TarifaPlataforma>(e =>
+        {
+            e.ToTable("tarifas_plataforma");
+            e.HasKey(x => x.Id);
+            e.HasOne<Plataforma>().WithMany().HasForeignKey(x => x.PlataformaId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.PlataformaId, x.VigenteDesde });
+            e.Property(x => x.Nombre).HasMaxLength(80);
+            e.Property(x => x.TipoPublicacion).HasMaxLength(40);
+            e.Property(x => x.Modalidad).HasMaxLength(40);
+            e.Property(x => x.Categoria).HasMaxLength(60);
+            e.Property(x => x.MedioPago).HasMaxLength(40);
+            e.Property(x => x.Fuente).HasMaxLength(30);
+            e.Property(x => x.Notas).HasMaxLength(500);
+        });
+        b.Entity<ParametroRentabilidad>(e =>
+        {
+            e.ToTable("parametros_rentabilidad");
+            e.HasKey(x => x.Id);
+            e.HasOne<Producto>().WithMany().HasForeignKey(x => x.ProductoId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Plataforma>().WithMany().HasForeignKey(x => x.PlataformaId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.Categoria).HasMaxLength(60);
+            e.Property(x => x.Esquema).HasMaxLength(14);
+            e.Property(x => x.Redondeo).HasMaxLength(14);
+            e.Property(x => x.Notas).HasMaxLength(300);
+        });
+        b.Entity<ConfiguracionFiscal>(e =>
+        {
+            e.ToTable("configuracion_fiscal");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Regimen).HasMaxLength(30);
+            e.Property(x => x.Notas).HasMaxLength(500);
+        });
+        b.Entity<PrecioProducto>(e =>
+        {
+            e.ToTable("precios_producto");
+            e.HasKey(x => x.Id);
+            e.HasOne<Producto>().WithMany().HasForeignKey(x => x.ProductoId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Plataforma>().WithMany().HasForeignKey(x => x.PlataformaId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.ProductoId, x.PlataformaId, x.Vigente });
+            e.Property(x => x.Usuario).HasMaxLength(40);
         });
         b.Entity<VersionDatos>(e => { e.ToTable("version_datos"); e.HasKey(x => x.Id); });
     }

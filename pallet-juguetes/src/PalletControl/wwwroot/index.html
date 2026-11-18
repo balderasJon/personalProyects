@@ -97,7 +97,12 @@
 
 <!-- ANÁLISIS COMERCIAL -->
 <section class="view" data-view="analisis" hidden>
-  <nav class="subnav" aria-label="Análisis comercial"><button class="subtab" type="button" aria-current="page">Pallets y costos</button></nav>
+  <nav class="subnav" aria-label="Análisis comercial">
+    <button class="subtab" type="button" data-sub="productos">Análisis de productos</button>
+    <button class="subtab" type="button" data-sub="simulador">Simulador de precios</button>
+    <button class="subtab" type="button" data-sub="pallets">Pallets y costos</button>
+    <button class="subtab" type="button" data-sub="plataformas">Plataformas y tarifas</button>
+  </nav>
   <div id="anBody"></div>
 </section>
 
@@ -135,6 +140,7 @@
 <div class="toast" id="toast" hidden role="status"></div>
 
 <script src="js/app.js"></script>
+<script src="js/precios.js"></script>
 <script src="js/analisis.js"></script>
 </body>
 </html>
