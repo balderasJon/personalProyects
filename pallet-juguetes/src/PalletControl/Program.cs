@@ -146,6 +146,7 @@ app.MapPrecios();
 app.MapVentas();
 app.MapComercial();
 app.MapIntegraciones();
+app.MapSugerenciaPrecio();
 
 app.Lifetime.ApplicationStarted.Register(() =>
 {

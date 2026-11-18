@@ -361,6 +361,7 @@ public static class Api
         if (BuscadorCodigoBarras.Normalizar(i.CodigoBarras).Length > 20) return "El código de barras admite máximo 20 caracteres.";
         if (i.Cantidad < 0) return "La cantidad no puede ser negativa.";
         if (i.PrecioListaUsd < 0) return "El precio de lista en dólares no puede ser negativo.";
+        if (i.ValorReferencia < 0) return "El valor de referencia no puede ser negativo.";
         if (i.PrecioLista < 0 || i.PrecioObjetivo < 0 || i.PrecioMinimo < 0 || i.PrecioMexico < 0
             || i.PrecioLiverpool < 0 || i.PrecioMercadoLibre < 0 || i.PrecioWalmart < 0) return "Los precios no pueden ser negativos.";
         if (i.Clase is not null && !Catalogos.Clases.Contains(i.Clase)) return "La clase debe ser A, B o C.";
@@ -408,6 +409,11 @@ public static class Api
         p.PrecioWalmart = Math.Max(0, i.PrecioWalmart);
         // Con precios por tienda, el precio en México es su promedio; sin ellos, el capturado a mano.
         p.PrecioMexico = Precios.PromedioTiendas(p.PrecioLiverpool, p.PrecioMercadoLibre, p.PrecioWalmart) ?? i.PrecioMexico;
+        if (i.ValorReferencia is { } vr)
+        {
+            p.ValorReferencia = vr > 0 ? Dominio.Calculo.Dinero.Centavos(vr) : null;
+            p.ValorReferenciaOrigen = vr > 0 ? T(i.ValorReferenciaOrigen ?? "upcitemdb", 30) : "";
+        }
         p.Caracteristicas = T(i.Caracteristicas, 2000);
         p.Notas = T(i.Notas, 500);
         if (i.Marca is not null) p.Marca = T(i.Marca, 60);

@@ -500,7 +500,7 @@ function productoForm(id,pre){
     fld('pEcom','Estado comercial','<select class="sel" id="pEcom" name="estadoComercial">'+opt(Object.keys(EST_COM),p.estadoComercial||'en_revision',EST_COM)+'</select>')+
     fld('pFin','Fecha de ingreso','<input class="inp" id="pFin" name="fechaIngreso" type="date" value="'+esc(p.fechaIngreso||(id?'':today()))+'">')+
     '</div></details>';
-  var G={pend:[],upc:[],usarUpc:true};   // fotos por subir e imágenes de UPCitemdb por descargar al guardar
+  var G={pend:[],upc:[],usarUpc:true,valorRef:null};   // fotos por subir e imágenes de UPCitemdb por descargar al guardar
   openModal(head(id?'Editar juguete':'Nuevo juguete')+'<form class="stack" style="display:flex;flex-direction:column;gap:14px"><div class="form">'+
     fld('pCod','Código','<input class="inp mono" id="pCod" name="codigo" required maxlength="20" value="'+esc(p.codigo)+'">')+
     fld('pCla','Clase','<select class="sel" id="pCla" name="clase">'+opt(['A','B','C'],p.clase,{A:'A · Muy buscado o caro',B:'B · Demanda normal',C:'C · Barato, para combos'})+'</select>')+
@@ -545,7 +545,7 @@ function productoForm(id,pre){
         if(+p.precioListaUsd>0&&v===+p.precioListaUsd&&+p.precioListaTipoCambio>0){lisH.textContent='Guardado en pesos: '+money(+p.precioLista)+' (US$'+v.toFixed(2)+' × '+(+p.precioListaTipoCambio).toFixed(4)+', tipo de cambio con que se convirtió).';return}
         lisH.textContent=v>0?'Se guardará en pesos: '+money(Math.round(v*tc))+' (US$'+v.toFixed(2)+' × '+tc.toFixed(4)+', tipo de cambio de hoy).':'Captura el precio en dólares; se guardará convertido a pesos.'}
       lisMon.addEventListener('change',lisHint);lisIn.addEventListener('input',lisHint);el.addEventListener('lista-moneda',lisHint);lisHint();
-      wireMx(el,chk,id);
+      wireMx(el,chk,id,G);
       wireGaleria(el,id,G);
       wireBarras(el,id,chk,pre.resultado,G);
       wireForm(el,function(f){
@@ -561,6 +561,7 @@ function productoForm(id,pre){
           pesoKg:+f.elements.pesoKg.value||0,largoCm:+f.elements.largoCm.value||0,anchoCm:+f.elements.anchoCm.value||0,altoCm:+f.elements.altoCm.value||0,
           fechaIngreso:f.elements.fechaIngreso.value||null};
         if(f.elements.palletId)o.palletId=f.elements.palletId.value||null;
+        if(G.valorRef>0){o.valorReferencia=G.valorRef;o.valorReferenciaOrigen='upcitemdb'}
         if(f.elements.condicion)o.condicion=f.elements.condicion.value;
         if(!id&&!o.palletId){w.innerHTML='<p class="warnline bad">Elige el pallet de origen.</p>';return}
         var dup=list('productos').some(function(x){return x.id!==id&&String(x.codigo).toLowerCase()===o.codigo.toLowerCase()});
@@ -596,19 +597,6 @@ function costoDe(p,s){
   if(+p.precioMexico>0&&isFinite(s.factor))return +p.precioMexico*s.factor;
   return NaN;
 }
-function sugerirMx(precioMx,cantidad,id){
-  if(!(precioMx>0))return null;
-  var d=+cfg().descuentoSugerido||0,fp=factorProporcional({id:id,cantidad:cantidad,precioMexico:precioMx}),r={notas:[]};
-  r.objetivo=Math.round(precioMx*(1-d/100));
-  r.notas.push('Objetivo: precio en México '+money(precioMx)+' − '+d+'% = '+money(r.objetivo)+'.');
-  if(isFinite(fp.factor)){
-    r.minimo=Math.round(precioMx*fp.factor);
-    r.notas.push('Mínimo (proporcional): '+money(precioMx)+' × factor '+nf4.format(fp.factor)+' = '+money(r.minimo)+'. Factor = inversión '+money(fp.inv)+' ÷ valor en México del pallet '+money(fp.valor)+'.');
-    if(fp.conMx<fp.piezas)r.notas.push('Solo '+num(fp.conMx)+' de '+num(fp.piezas)+' piezas tienen precio en México: el factor bajará al capturar el resto y conviene recalcular los mínimos.');
-    if(r.objetivo<r.minimo)r.aviso='Con este objetivo no se recupera la parte de la inversión que le toca a este juguete ('+money(r.minimo)+').';
-  }else r.notas.push('Mínimo: captura la inversión en Ajustes para calcularlo.');
-  return r;
-}
 var TIENDAS=[
   {k:'precioLiverpool',id:'pLv',n:'Liverpool',url:function(q){return 'https://www.liverpool.com.mx/tienda?s='+encodeURIComponent(q)}},
   {k:'precioMercadoLibre',id:'pMl',n:'Mercado Libre',url:function(q){return 'https://listado.mercadolibre.com.mx/'+encodeURIComponent(q.trim().replace(/\s+/g,'-'))}},
@@ -621,8 +609,9 @@ function camposTiendas(p){
       '<a class="btn sm" id="'+t.id+'L" href="#" target="_blank" rel="noopener noreferrer" title="Buscar en '+t.n+' (se abre en otra pestaña)">Buscar ↗</a></div></div>'}).join('')+
     '</div><span class="hint">“Buscar” abre la tienda con el nombre del juguete. Captura el precio que veas; el Precio en México es el promedio de las tiendas capturadas.</span></div>';
 }
-function wireMx(el,chk,id){
+function wireMx(el,chk,id,G){
   var mxI=el.querySelector('#pMx'),box=el.querySelector('#pMxSug'),ob=el.querySelector('#pObj'),mn=el.querySelector('#pMin'),cant=el.querySelector('#pCan'),nom=el.querySelector('#pNom');
+  var p0=id?D.productos[id]:null;if(p0&&+p0.valorReferencia>0&&G&&!G.valorRef)G.valorRef=+p0.valorReferencia;
   function vacioOAuto(c){return !String(c.value).trim()||+c.value===0||c.dataset.auto}
   function poner(c,v){if(v==null)return;c.value=v;c.dataset.auto='1'}
   function enlaces(){var q=nom.value.trim();TIENDAS.forEach(function(t){var a=el.querySelector('#'+t.id+'L');if(q){a.href=t.url(q);a.removeAttribute('aria-disabled')}else{a.href='#';a.setAttribute('aria-disabled','true')}})}
@@ -630,25 +619,47 @@ function wireMx(el,chk,id){
     var vals=TIENDAS.map(function(t){return +el.querySelector('#'+t.id).value||0}),pr=promedioTiendas(vals),n=vals.filter(function(x){return x>0}).length;
     var h=el.querySelector('#pMxH');
     if(pr!=null){mxI.value=pr;mxI.readOnly=true;h.textContent='Promedio de '+n+' tienda'+(n>1?'s':'')+'. Para capturarlo a mano, borra los precios por tienda.'}
-    else{mxI.readOnly=false;h.textContent='Sin precios por tienda: puedes capturarlo a mano. Es la base de la sugerencia.'}
+    else{mxI.readOnly=false;h.textContent='Sin precios por tienda: puedes capturarlo a mano. Si lo dejas vacío, se usan los precios de EE. UU. del código de barras.'}
   }
-  function pinta(auto){
-    var s=sugerirMx(+mxI.value||0,+cant.value||0,id);
-    if(!s){box.innerHTML='';chk();return}
-    var aplicados=[];
-    if(auto){if(vacioOAuto(ob)){poner(ob,s.objetivo);aplicados.push('objetivo')}if(s.minimo!=null&&vacioOAuto(mn)){poner(mn,s.minimo);aplicados.push('mínimo')}}
+  function v(n){var c=el.querySelector('[name="'+n+'"]');return c?(+c.value||0):0}
+  // Precio sugerido y mínimo: referencia de mercado → costo por pieza (real o estimado) → motor de precios (mejor canal).
+  var t=null,pide=0;
+  function pinta(auto){clearTimeout(t);t=setTimeout(function(){if(box.isConnected)pedir(auto)},300)}
+  function pedir(auto){
+    var pal=el.querySelector('#pPal'),k=++pide;
+    var body={productoId:id||null,palletId:pal?(pal.value||null):null,cantidad:Math.max(1,Math.round(+cant.value||1)),precioMexico:+mxI.value||0,
+      valorReferencia:G&&G.valorRef>0?G.valorRef:null,categoria:(el.querySelector('#pCat')||{}).value||'',
+      pesoKg:v('pesoKg')||null,largoCm:v('largoCm')||null,anchoCm:v('anchoCm')||null,altoCm:v('altoCm')||null};
+    if(!(body.precioMexico>0)&&!(body.valorReferencia>0)&&!id){box.innerHTML='';return}
+    api('POST','productos/sugerir-precio',body).then(function(r){if(k!==pide)return;pintaSug(r,auto)},function(){if(k===pide)box.innerHTML=''});
+  }
+  function pintaSug(r,auto){
+    if(!box.isConnected)return;   // el formulario ya se cerró
+    var av=(r.avisos||[]).map(function(x){return '<p class="warnline">'+esc(x)+'</p>'}).join('');
+    if(!r.ok){box.innerHTML=av?'<div class="sugbox"><p class="small"><b>Precio sugerido</b></p>'+av+'</div>':'';chk();return}
+    var c=r.costo,e=c.estimacion,ca=r.canal,aplicados=[];
+    if(auto){if(vacioOAuto(ob)){poner(ob,r.precioObjetivo);aplicados.push('objetivo')}if(vacioOAuto(mn)){poner(mn,r.precioMinimo);aplicados.push('mínimo')}}
     chk();
-    box.innerHTML='<div class="sugbox"><p class="small"><b>Sugerencia con el precio en México</b> (descuento de '+(+cfg().descuentoSugerido||0)+'%, se cambia en Ajustes)</p>'+
-      '<ul class="small sug">'+s.notas.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>'+
-      (s.aviso?'<p class="warnline">'+esc(s.aviso)+'</p>':'')+
+    var notas=[
+      'Referencia de mercado: '+money2(r.referencia)+' por pieza ('+(r.origenReferencia==='precio_mexico'?'precio en México':'promedio de precios en EE. UU. del código de barras, convertido a pesos')+').',
+      c.origen==='real'?'Costo por pieza: '+money2(c.unitario)+' (costo real del costeo del pallet).'
+        :'Costo por pieza estimado: inversión del pallet '+money2(e.inversion)+' × '+money2(e.valorPieza)+' ÷ '+money2(e.baseReparto)+' = '+money2(c.unitario)+' ('+(e.usaValorMercadoPallet?'valor de mercado estimado del pallet':'valor de los juguetes registrados en el pallet')+'). Se vuelve real al calcular el costeo del pallet.',
+      'Canal: '+ca.plataforma+(ca.utilidad!=null?' · al precio sugerido ganas '+money2(ca.utilidad)+' ('+ca.margenPct+' % de margen)':'')+'.'];
+    var otros=(r.canales||[]).filter(function(x){return x.plataformaId!==ca.plataformaId}).slice(0,3);
+    box.innerHTML='<div class="sugbox"><p><b>Precio sugerido: '+money(r.precioObjetivo)+'</b> · <b>Precio mínimo: '+money(r.precioMinimo)+'</b> <span class="small muted">('+esc(ca.plataforma)+')</span></p>'+
+      '<ul class="small sug">'+notas.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>'+
+      (otros.length?'<p class="small muted">Otros canales: '+otros.map(function(x){return esc(x.plataforma)+' '+money(x.sugerido)+' (mín. '+money(x.minimo)+')'}).join(' · ')+'</p>':'')+av+
+      (r.fiscalPendiente?'<p class="small muted">Régimen fiscal pendiente: sin IVA ni ISR.</p>':'')+
       (aplicados.length?'<p class="small muted">Se llenó: precio '+aplicados.join(' y ')+'.</p>':'')+
       '<div class="row"><button class="btn sm" type="button" id="pMxAplicar">Usar estos precios</button></div></div>';
-    box.querySelector('#pMxAplicar').addEventListener('click',function(){poner(ob,s.objetivo);poner(mn,s.minimo);chk();toast('Precios sugeridos aplicados')});
+    box.querySelector('#pMxAplicar').addEventListener('click',function(){poner(ob,r.precioObjetivo);poner(mn,r.precioMinimo);chk();toast('Precios sugeridos aplicados')});
   }
   TIENDAS.forEach(function(t){el.querySelector('#'+t.id).addEventListener('input',function(){promedio();pinta(true)});
     el.querySelector('#'+t.id+'L').addEventListener('click',function(e){if(!nom.value.trim()){e.preventDefault();toast('Escribe primero el nombre del juguete');nom.focus()}})});
   mxI.addEventListener('input',function(){pinta(true)});
   cant.addEventListener('input',function(){pinta(true)});
+  var pal=el.querySelector('#pPal');if(pal)pal.addEventListener('change',function(){pinta(true)});
+  el.addEventListener('sugerir-precio',function(){pinta(true)});
   nom.addEventListener('input',enlaces);
   el.addEventListener('nombre-cambiado',enlaces);
   enlaces();promedio();pinta(false);
@@ -787,9 +798,9 @@ function wireBarras(el,id,chk,inicial,G){
     // El precio de lista se llena con el monto original en dólares (selector USD); se guarda convertido a pesos.
     var lisC=campo('precioLista'),lisM=el.querySelector('#pLisMon');
     if(sg.precioListaUsd&&lisC&&lisM&&(!String(lisC.value).trim()||+lisC.value===0||lisC.dataset.auto)){lisM.value='USD';datos.precioLista=sg.precioListaUsd}
-    // Con precio en México capturado, la sugerencia en dólares no reemplaza objetivo ni mínimo.
-    if(!tieneMx){datos.precioObjetivo=sg.precioObjetivo}
-    var llenos=aplicar(datos,false);el.dispatchEvent(new Event('nombre-cambiado'));el.dispatchEvent(new Event('lista-moneda'));
+    // Referencia de mercado (promedio de precios de EE. UU. × tipo de cambio): base del precio sugerido y del costo estimado.
+    if(sg.valorReferencia>0)G.valorRef=+sg.valorReferencia;
+    var llenos=aplicar(datos,false);el.dispatchEvent(new Event('nombre-cambiado'));el.dispatchEvent(new Event('lista-moneda'));el.dispatchEvent(new Event('sugerir-precio'));
     G.upc=(e.imagenes&&e.imagenes.length?e.imagenes:(e.imagen?[e.imagen]:[])).slice(0,6);G.render();
     var rango=(e.precioBajo!=null||e.precioAlto!=null)?'Precios registrados en tiendas de EE. UU.: '+(e.moneda==='USD'?'US$':e.moneda+' ')+[e.precioBajo,e.precioAlto].filter(function(x){return x!=null}).map(function(x){return (+x).toFixed(2)}).join(' – ')+(e.ofertas?' · '+e.ofertas+' oferta'+(e.ofertas>1?'s':''):''):'Sin precios registrados.';
     res.innerHTML='<div class="bcres">'+(e.imagen?'<img class="bcimg" src="'+esc(e.imagen)+'" alt="" referrerpolicy="no-referrer" onerror="this.remove()">':'')+

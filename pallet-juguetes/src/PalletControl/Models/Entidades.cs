@@ -19,6 +19,12 @@ public class Producto
     /// <summary>Si el precio de lista se capturó en dólares: el monto original y el tipo de cambio con que se convirtió. Null = capturado en pesos.</summary>
     public decimal? PrecioListaUsd { get; set; }
     public decimal? PrecioListaTipoCambio { get; set; }
+    /// <summary>
+    /// Valor de mercado de referencia por pieza, en pesos, cuando no hay precio en México: promedio de los precios bajo y alto
+    /// de UPCitemdb (EE. UU.) × tipo de cambio del día. Se usa para estimar el costo y repartir la inversión (método proporcional).
+    /// </summary>
+    public decimal? ValorReferencia { get; set; }
+    public string ValorReferenciaOrigen { get; set; } = "";
     public decimal PrecioObjetivo { get; set; }
     public decimal PrecioMinimo { get; set; }
     /// <summary>
@@ -71,6 +77,8 @@ public class Pallet
     public decimal GastosAdicionales { get; set; }
     /// <summary>CostoMxn + GastosAdicionales.</summary>
     public decimal InversionTotal { get; set; }
+    /// <summary>Valor de mercado total estimado del pallet (manifiesto del proveedor), en la moneda de compra. Opcional: estabiliza el costo estimado.</summary>
+    public decimal? ValorMercadoEstimado { get; set; }
     /// <summary>recepcion, en_venta, liquidado o cerrado.</summary>
     public string Estatus { get; set; } = "recepcion";
     /// <summary>equitativa, proporcional o manual.</summary>

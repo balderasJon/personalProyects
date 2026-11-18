@@ -2,6 +2,20 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-18 · Precio sugerido y mínimo al escanear
+
+**Agregado**
+- Al escanear el código de barras (o al capturar precio en México, cantidad o pallet) se calculan y llenan el **precio objetivo** y el **mínimo**: referencia de mercado (precio en México o promedio de precios de EE. UU. × tipo de cambio) → costo por pieza (real o estimado proporcional) → motor de precios en el mejor canal (o venta directa sin comisiones si no hay tarifas). Con explicación de cada paso y avisos.
+- Pallet: campo opcional **valor de mercado estimado** (manifiesto, en la moneda de compra) para que el estimado sea estable desde el primer juguete.
+- Juguete: **valor de referencia** guardado; el costeo proporcional lo usa cuando no hay precio en México ni valor relativo del lote.
+- 6 pruebas nuevas (5 unitarias, 1 de integración): 96 en total.
+
+**Cambiado**
+- El código de barras ya no pone como objetivo el precio más bajo de EE. UU. convertido; el objetivo y el mínimo salen del motor de precios.
+
+**Datos (migración automática, no destructiva)**
+- Columnas nuevas `ValorReferencia`, `ValorReferenciaOrigen` (productos) y `ValorMercadoEstimado` (pallets), vacías en los registros existentes.
+
 ## 2026-11-18 · Precio de lista en dólares con conversión
 
 **Agregado**

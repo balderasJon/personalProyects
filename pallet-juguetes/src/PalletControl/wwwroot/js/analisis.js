@@ -168,6 +168,7 @@ function palletForm(p){
     '<div class="f" id="plTcF">'+'<label for="plTc">Tipo de cambio aplicado</label><input class="inp num" id="plTc" name="tipoCambio" type="number" min="0.0001" step="0.0001" value="'+esc(tcDef)+'">'+
       '<select class="sel" name="tipoCambioFuente" aria-label="Fuente del tipo de cambio">'+PC.opt(['DOF','Manual'],fuenteDef,{DOF:'DOF',Manual:'Capturado a mano'})+'</select><span class="hint">Pesos por dólar. El valor sugerido es el del día.</span></div>'+
     '<div class="full"><p class="small" id="plPrev"></p></div>'+
+    fld('plVm','Valor de mercado estimado (opcional)','<input class="inp num" id="plVm" name="valorMercadoEstimado" type="number" min="0" step="0.01" value="'+esc(p.valorMercadoEstimado||'')+'">','Valor comercial total del pallet en la moneda de compra (el «retail value» del manifiesto del proveedor). Con él, el precio sugerido al escanear cada juguete es estable desde el primero.',true)+
     fld('plEst','Estatus','<select class="sel" id="plEst" name="estatus">'+PC.opt(Object.keys(EST),p.estatus,EST)+'</select>')+
     fld('plMet','Método de costeo predeterminado','<select class="sel" id="plMet" name="metodoCosteo">'+PC.opt(Object.keys(MET),p.metodoCosteo,MET)+'</select>')+
     fld('plMod','Piezas no vendibles','<select class="sel" id="plMod" name="modoMerma">'+PC.opt(Object.keys(MERMA),p.modoMerma,MERMA)+'</select>',null,true)+
@@ -181,7 +182,8 @@ function palletForm(p){
       PC.wireForm(el,function(){
         var b={nombre:f.elements.nombre.value.trim(),proveedor:f.elements.proveedor.value.trim(),fechaCompra:f.elements.fechaCompra.value,paisOrigen:f.elements.paisOrigen.value.trim(),
           moneda:f.elements.moneda.value,costoOriginal:+f.elements.costoOriginal.value||0,tipoCambio:+f.elements.tipoCambio.value||0,tipoCambioFuente:f.elements.tipoCambioFuente.value,
-          estatus:f.elements.estatus.value,metodoCosteo:f.elements.metodoCosteo.value,modoMerma:f.elements.modoMerma.value,notas:f.elements.notas.value};
+          estatus:f.elements.estatus.value,metodoCosteo:f.elements.metodoCosteo.value,modoMerma:f.elements.modoMerma.value,notas:f.elements.notas.value,
+          valorMercadoEstimado:+f.elements.valorMercadoEstimado.value||0};
         (nuevo?PC.api('POST','pallets',b):PC.api('PUT','pallets/'+p.id,b)).then(function(r){PC.closeModal();PC.toast(nuevo?'Pallet registrado':'Pallet actualizado');if(nuevo)st.sel=r.id;PC.cargar()},
           function(e){msg.innerHTML='<p class="warnline bad">'+esc(e.mensaje)+'</p>'});
       },function(){PC.api('DELETE','pallets/'+p.id).then(function(){PC.closeModal();PC.toast('Pallet eliminado');st.sel=null;PC.cargar()},function(e){msg.innerHTML='<p class="warnline bad">'+esc(e.mensaje)+'</p>'})});

@@ -7,7 +7,8 @@ using PalletControl.Servicios;
 namespace PalletControl.Endpoints;
 
 public record PalletIn(string? Nombre, string? Proveedor, DateOnly? FechaCompra, string? PaisOrigen, string? Moneda,
-    decimal CostoOriginal, decimal TipoCambio, string? TipoCambioFuente, string? Estatus, string? MetodoCosteo, string? ModoMerma, string? Notas);
+    decimal CostoOriginal, decimal TipoCambio, string? TipoCambioFuente, string? Estatus, string? MetodoCosteo, string? ModoMerma, string? Notas,
+    decimal? ValorMercadoEstimado = null);
 public record PalletGastoIn(DateOnly? Fecha, string? Tipo, string? Concepto, decimal MontoMxn, bool IncluidoEnCosto);
 public record LoteIn(string? PalletId, string? Condicion, int Cantidad, bool? Comercializable, string? Tratamiento, decimal? ValorRelativoUnitario, string? Notas);
 public record LoteActualizarIn(bool Comercializable, string? Tratamiento, decimal? ValorRelativoUnitario, string? Notas);
@@ -254,6 +255,8 @@ public static class PalletsApi
         p.MetodoCosteo = metodo;
         p.ModoMerma = modo;
         p.Notas = T(i.Notas, 500);
+        if (i.ValorMercadoEstimado < 0) return Results.BadRequest(new Error("El valor de mercado estimado no puede ser negativo."));
+        p.ValorMercadoEstimado = i.ValorMercadoEstimado is > 0 ? Dinero.Centavos(i.ValorMercadoEstimado.Value) : null;
         await Inventario.RecalcularPalletAsync(db, p);
         await Inventario.SincronizarInversionGlobalAsync(db);
         await db.GuardarAsync();

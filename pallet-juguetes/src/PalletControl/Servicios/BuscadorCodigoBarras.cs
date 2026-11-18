@@ -38,7 +38,8 @@ public record ProductoExterno(
 
 /// <summary>Precios sugeridos en MXN y cómo se calculó cada uno.</summary>
 /// <summary>PrecioListaUsd: el precio de lista original en dólares (el de lista ya viene convertido a pesos).</summary>
-public record Sugerencia(decimal? PrecioLista, decimal? PrecioObjetivo, decimal? PrecioMinimo, List<string> Explicacion, decimal? PrecioListaUsd = null);
+/// <summary>ValorReferencia: promedio de los precios bajo y alto × tipo de cambio (pesos por pieza), base del precio sugerido.</summary>
+public record Sugerencia(decimal? PrecioLista, decimal? PrecioObjetivo, decimal? PrecioMinimo, List<string> Explicacion, decimal? PrecioListaUsd = null, decimal? ValorReferencia = null);
 
 public record ResultadoBusqueda(
     string Origen,                 // inventario | upcitemdb | ninguno
@@ -193,7 +194,7 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
     {
         var notas = new List<string>();
         var cfg = await db.Configuracion.AsNoTracking().OrderBy(x => x.Id).FirstAsync(ct);
-        decimal? lista = null, objetivo = null, minimo = null, listaUsd = null;
+        decimal? lista = null, objetivo = null, minimo = null, listaUsd = null, referencia = null;
 
         if (e.PrecioBajo is null && e.PrecioAlto is null)
             notas.Add("UPCitemdb no tiene precios registrados para este código; no se sugieren precio de lista ni objetivo.");
@@ -204,6 +205,8 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
         else
         {
             var tc = cfg.TipoCambioUsd;
+            referencia = Dominio.Calculo.EstimacionCosto.Referencia(e.PrecioBajo, e.PrecioAlto, tc);
+            if (referencia is not null) notas.Add($"Referencia de mercado: promedio de precios en EE. UU. × {tc:0.####} = ${referencia:N2} por pieza.");
             if (e.PrecioAlto is { } a)
             {
                 lista = Math.Round(a * tc, 0, MidpointRounding.AwayFromZero);
@@ -217,9 +220,9 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
             }
         }
 
-        notas.Add("Mínimo: se calcula con el método proporcional en cuanto captures el precio en México del juguete.");
+        notas.Add("Precio sugerido y mínimo: se calculan abajo con el costo estimado de la pieza y el motor de precios.");
 
-        return new Sugerencia(lista, objetivo, minimo, notas, listaUsd);
+        return new Sugerencia(lista, objetivo, minimo, notas, listaUsd, referencia);
     }
 
     private static string Recortar(string? s, int max) => (s ?? "").Trim() is var t && t.Length > max ? t[..max] : (s ?? "").Trim();

@@ -114,6 +114,10 @@ public static class Esquema
         // ---- Precio de lista capturado en dólares (monto original y tipo de cambio usado) ----
         AgregarColumna(db, "productos", "PrecioListaUsd", "TEXT NULL");
         AgregarColumna(db, "productos", "PrecioListaTipoCambio", "TEXT NULL");
+        // ---- Precio sugerido al escanear: valor de referencia del juguete y valor de mercado del pallet ----
+        AgregarColumna(db, "productos", "ValorReferencia", "TEXT NULL");
+        AgregarColumna(db, "productos", "ValorReferenciaOrigen", "TEXT NOT NULL DEFAULT ''");
+        AgregarColumna(db, "pallets", "ValorMercadoEstimado", "TEXT NULL");
 
         // ---- Fase 5: vínculos con plataformas conectadas ----
         AgregarColumna(db, "publicaciones", "CuentaIntegracionId", "TEXT NULL");

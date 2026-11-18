@@ -90,9 +90,17 @@ También se puede escanear o escribir el código en el campo *Código de barras*
 | Campo | Regla |
 |---|---|
 | Precio en México | Promedio de los precios capturados en **Liverpool, Mercado Libre y Walmart** (los que tengan valor). Sin precios por tienda, se puede capturar a mano |
-| Precio objetivo | Precio en México − % de descuento de Ajustes (35% de inicio, el ejemplo del plan). Sin precio en México: precio más bajo de UPCitemdb (USD) × tipo de cambio |
-| Precio mínimo | **Método proporcional** (ver abajo). Requiere el precio en México |
+| Precio objetivo | **Precio sugerido** del mejor canal (ver «Precio sugerido al escanear») |
+| Precio mínimo | **Mínimo** del mejor canal: el precio que cubre el costo de la pieza, las comisiones y envíos de la plataforma y tu margen mínimo (10 %) |
 | Precio de lista (referencia) | Precio más alto registrado en UPCitemdb (USD) × tipo de cambio del día. Se llena con el monto en dólares (selector **USD**) y se guarda convertido a pesos |
+
+**Precio sugerido al escanear.** No necesitas saber en cuánto vender: al escanear el código de barras (o al capturar el precio en México, la cantidad o el pallet) la aplicación calcula y llena el precio objetivo y el mínimo, y explica cada paso:
+
+1. **Referencia de mercado por pieza:** el precio en México si lo capturaste; si no, el promedio de los precios bajo y alto de UPCitemdb (tiendas de EE. UU.) × el tipo de cambio del día.
+2. **Costo por pieza:** el costo real si el pallet ya tiene costeo; si no, un estimado con el método proporcional: inversión del pallet × referencia del juguete ÷ valor de mercado del pallet. Ese valor es el *valor de mercado estimado* que capturas en el pallet (manifiesto del proveedor); sin él, se usa la suma de los juguetes ya registrados, y el estimado baja conforme registras más.
+3. **Motor de precios** con ese costo: mínimo (margen mínimo 10 %) y sugerido (objetivo 30 %, terminación 9) en el mejor canal con tarifa capturada. Sin tarifas, como venta directa sin comisiones.
+
+Si el mínimo queda arriba de la referencia de mercado, la aplicación avisa que el juguete no recupera su costo a precio de mercado. Los precios llenados son sugerencias: puedes cambiarlos antes de guardar. El valor de referencia se guarda con el juguete y también se usa en el costeo proporcional del pallet cuando no hay precio en México.
 
 **Moneda de los precios.** Todos los precios se guardan en **pesos mexicanos**. El precio de lista se puede capturar en dólares con el selector **MXN / USD**: se convierte con el tipo de cambio del día (redondeado al peso) y se guardan también el monto en dólares y el tipo de cambio usado, que aparecen en la ficha del juguete y en el CSV. Si después cambia el tipo de cambio, la referencia no se recalcula sola; se recalcula solo si cambias el monto en dólares. Sin tipo de cambio del día no se acepta un precio en dólares. El precio mínimo, el objetivo, el precio en México y los precios por tienda son siempre en pesos.
 

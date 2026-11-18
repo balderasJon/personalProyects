@@ -110,6 +110,13 @@ public static class Inventario
 
     // ---------- Costeo ----------
 
+    /// <summary>
+    /// Valor comercial por pieza para el reparto proporcional: el del lote; si no, el precio en México;
+    /// si no, el valor de referencia (precios de EE. UU. convertidos a pesos).
+    /// </summary>
+    public static decimal? ValorRelativo(InventarioLote l, Producto p) =>
+        l.ValorRelativoUnitario ?? (p.PrecioMexico > 0 ? p.PrecioMexico : p.ValorReferencia is > 0 ? p.ValorReferencia : null);
+
     public record EntradaCosteo(Pallet Pallet, List<(InventarioLote Lote, Producto Producto, decimal? ValorRelativo)> Lotes, string Huella);
 
     /// <summary>Datos de entrada del costeo de un pallet y su huella (para detectar costeos desactualizados).</summary>
@@ -120,7 +127,7 @@ public static class Inventario
         var ids = lotes.Select(l => l.ProductoId).Distinct().ToList();
         var productos = await db.Productos.AsNoTracking().Where(x => ids.Contains(x.Id)).ToDictionaryAsync(x => x.Id);
         var filas = lotes.OrderBy(l => l.Id, StringComparer.Ordinal)
-            .Select(l => (l, productos[l.ProductoId], l.ValorRelativoUnitario ?? (productos[l.ProductoId].PrecioMexico > 0 ? productos[l.ProductoId].PrecioMexico : (decimal?)null)))
+            .Select(l => (l, productos[l.ProductoId], ValorRelativo(l, productos[l.ProductoId])))
             .ToList();
         var sb = new StringBuilder($"{p.InversionTotal}|");
         foreach (var (l, _, v) in filas) sb.Append($"{l.Id}:{l.Cantidad}:{l.Comercializable}:{v};");
