@@ -2,7 +2,7 @@
 
 Aplicación local para administrar el negocio del pallet de juguetes: pallets y costo real de cada pieza, inventario por lotes, ventas, gastos, indicadores semanales y recuperación de la inversión.
 
-> **Documentación del módulo de costos, precios y rentabilidad:** [`docs/`](docs/README.md) — diagnóstico (Fase 0), Fase 1 (pallets y costeo), Fase 2 (plataformas y precios) y bitácora de cambios.
+> **Documentación del módulo de costos, precios y rentabilidad:** [`docs/`](docs/README.md) — diagnóstico (Fase 0), Fase 1 (pallets y costeo), Fase 2 (plataformas y precios), Fase 3 (ventas, cobros, devoluciones, publicaciones y rentabilidad real) y bitácora de cambios.
 
 Es la versión instalable del artefacto **Control Pallet de Juguetes**. Usa la misma interfaz y los mismos cálculos, pero guarda los datos en una base SQLite en tu computadora. Está pensada para una sola persona; también puedes abrirla desde el celular en la misma red Wi‑Fi.
 
@@ -59,12 +59,15 @@ Los juguetes sin precio en México o sin precio objetivo no suman y se indica cu
 
 Estas reglas se revisan en el servidor (no solo en la pantalla), así se respetan aunque tengas la aplicación abierta en varias pestañas o en el celular:
 
-- No se puede vender o apartar más piezas de las disponibles.
+- No se puede vender o apartar más piezas de las disponibles (por lote; sin lote elegido se toman las del pallet más antiguo).
+- Una venta solo cuenta como cobrada cuando se registra el importe que llegó a la cuenta.
+- No se puede ajustar ni reclasificar un lote por debajo de sus piezas vendidas.
 - El código de juguete no se repite (sin distinguir mayúsculas).
 - Un código de barras pertenece a un solo juguete; si aparece otra caja igual, se aumenta la cantidad.
 - La cantidad de un juguete no puede quedar debajo de lo ya vendido o apartado.
 - No se puede eliminar un juguete que tiene ventas registradas.
 - La fecha de pago se asigna sola al pasar una venta a Pagado o Entregado.
+- Una venta pagada, cobrada o con incidencias no se elimina: se cancela, para conservar el historial.
 
 Si la tienes abierta en varias pestañas o dispositivos, los demás se actualizan solos en unos 4 segundos.
 
@@ -238,8 +241,11 @@ pallet-juguetes/
 │   ├── Endpoints/PreciosApi.cs Plataformas, tarifas, objetivos, fiscal y rentabilidad
 │   ├── Dominio/Calculo/MotorPrecios.cs    Motor de precios y selección de tarifa (puro)
 │   ├── Servicios/Rentabilidad.cs          Costo real + tarifa + objetivo → precios por canal
+│   ├── Dominio/Calculo/ResultadoVenta.cs  Resultado real de una venta, asignación de lotes y reparto (puro)
+│   ├── Servicios/Ventas.cs                Ventas por lote, gastos, cobros, incidencias y publicaciones
+│   ├── Endpoints/VentasApi.cs  Ventas, publicaciones y rentabilidad real
 │   ├── Endpoints/Dtos.cs       Contratos de entrada
-│   └── wwwroot/                Interfaz (index.html, css/app.css, js/app.js, js/analisis.js, js/precios.js)
+│   └── wwwroot/                Interfaz (index.html, css/app.css, js/app.js, js/analisis.js, js/precios.js, js/ventas.js)
 ├── tests/PalletControl.Tests/  Pruebas unitarias (Unitarias/) y de integración (Integracion/)
 ├── docs/                       Documentación del módulo de costos y rentabilidad
 ├── PalletControl.sln
@@ -265,14 +271,14 @@ pallet-juguetes/
 | POST | `/api/productos/{id}/imagenes` | Sube fotos (multipart) |
 | POST | `/api/productos/{id}/imagenes/upcitemdb` | Descarga las imágenes de UPCitemdb del código de barras del juguete |
 | PUT / DELETE | `/api/imagenes/{id}[/principal]` | Marca como principal o borra una imagen |
-| POST / PUT / DELETE | `/api/ventas[/{id}]` | Ventas |
-| PATCH | `/api/ventas/{id}/estado` | Avanzar a pagado o entregado |
+| POST / PUT / DELETE | `/api/ventas[/{id}]` | Ventas (ver Fase 3 para los campos nuevos, cobro e incidencias) |
+| PATCH | `/api/ventas/{id}/estado` | Avanzar a pagado o entregado (opcional: importe cobrado) |
 | POST / PUT / DELETE | `/api/gastos[/{id}]` | Gastos |
 | PUT / DELETE | `/api/semanas/{fecha}` | Indicadores semanales (la fecha se ajusta a su lunes) |
 | PUT | `/api/configuracion` | Ajustes del negocio |
 | GET | `/api/respaldo` | Descarga JSON completo |
 
-Las rutas de pallets, lotes, costeo, usuarios y sesión están en [`docs/01-fase1-pallets-y-costeo.md`](docs/01-fase1-pallets-y-costeo.md#61-api-nueva-todas-requieren-sesión-salvo-apiauth); las de plataformas, tarifas y rentabilidad, en [`docs/02-fase2-plataformas-y-precios.md`](docs/02-fase2-plataformas-y-precios.md#61-api-todas-requieren-sesión). Todas las rutas requieren sesión, salvo `/api/auth/*`.
+Las rutas de pallets, lotes, costeo, usuarios y sesión están en [`docs/01-fase1-pallets-y-costeo.md`](docs/01-fase1-pallets-y-costeo.md#61-api-nueva-todas-requieren-sesión-salvo-apiauth); las de plataformas, tarifas y rentabilidad, en [`docs/02-fase2-plataformas-y-precios.md`](docs/02-fase2-plataformas-y-precios.md#61-api-todas-requieren-sesión); las de ventas, cobros, incidencias, publicaciones y rentabilidad real, en [`docs/03-fase3-ventas-y-rentabilidad-real.md`](docs/03-fase3-ventas-y-rentabilidad-real.md#61-api-todas-requieren-sesión). Todas las rutas requieren sesión, salvo `/api/auth/*`.
 
 Los errores de validación regresan `400` o `409` con `{ "mensaje": "..." }` en español.
 

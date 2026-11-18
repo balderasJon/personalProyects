@@ -129,6 +129,7 @@ app.MapAuth();
 app.MapApi();
 app.MapPallets();
 app.MapPrecios();
+app.MapVentas();
 
 app.Lifetime.ApplicationStarted.Register(() =>
 {

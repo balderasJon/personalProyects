@@ -155,6 +155,7 @@ public static class PalletsApi
             Inventario.Mover(db, lote, i.Cantidad, "ajuste", i.Motivo!);
             await Inventario.SincronizarProductoAsync(db, lote.ProductoId);
             await ValidarNoMenosQueVendidasAsync(db, lote.ProductoId);
+            await Ventas.RevisarPublicacionesAsync(db, lote.ProductoId, null, 0);
             await db.GuardarAsync();
             return Results.Ok(lote);
         }));
@@ -165,6 +166,8 @@ public static class PalletsApi
             if (lote is null) return Results.NotFound(new Error("El lote ya no existe."));
             var destino = await Inventario.ReclasificarAsync(db, lote, i.Cantidad, i.Condicion ?? "", string.IsNullOrWhiteSpace(i.Motivo) ? "Cambio de condición" : i.Motivo!);
             await Inventario.SincronizarProductoAsync(db, lote.ProductoId);
+            await Ventas.ValidarLotesAsync(db, lote.ProductoId);   // no se reclasifican piezas ya vendidas
+            await Ventas.RevisarPublicacionesAsync(db, lote.ProductoId, null, 0);
             await db.GuardarAsync();
             return Results.Ok(new { origen = lote, destino });
         }));
@@ -298,6 +301,7 @@ public static class PalletsApi
         var p = (await db.Productos.FindAsync(productoId))!;
         var vend = await Inventario.VendidasAsync(db, productoId);
         if (p.Cantidad < vend) throw new ErrorNegocio($"El juguete quedaría con {p.Cantidad} pieza(s) y ya tiene {vend} vendida(s) o apartada(s).", 409);
+        await Ventas.ValidarLotesAsync(db, productoId);
     }
 
     private static async Task<(Inventario.EntradaCosteo, ResultadoCosteo, string, string)> CalcularAsync(AppDbContext db, string palletId, CosteoIn i)

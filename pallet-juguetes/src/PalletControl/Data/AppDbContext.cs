@@ -29,6 +29,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IUsuarioActual
     public DbSet<ParametroRentabilidad> Parametros => Set<ParametroRentabilidad>();
     public DbSet<ConfiguracionFiscal> Fiscal => Set<ConfiguracionFiscal>();
     public DbSet<PrecioProducto> PreciosProducto => Set<PrecioProducto>();
+    public DbSet<VentaDetalle> VentaDetalles => Set<VentaDetalle>();
+    public DbSet<VentaGasto> VentaGastos => Set<VentaGasto>();
+    public DbSet<VentaIncidencia> VentaIncidencias => Set<VentaIncidencia>();
+    public DbSet<Publicacion> Publicaciones => Set<Publicacion>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder c)
     {
@@ -170,6 +174,57 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IUsuarioActual
             e.Property(x => x.Canal).HasMaxLength(40);
             e.Property(x => x.Cliente).HasMaxLength(80);
             e.Property(x => x.Notas).HasMaxLength(400);
+            e.HasIndex(x => x.Folio);
+            e.HasOne<Plataforma>().WithMany().HasForeignKey(x => x.PlataformaId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.CostoOrigen).HasMaxLength(20).HasDefaultValue("sin_costeo");
+            e.Property(x => x.FactorIngreso).HasDefaultValue(1m);
+        });
+        b.Entity<VentaDetalle>(e =>
+        {
+            e.ToTable("venta_detalle");
+            e.HasKey(x => x.Id);
+            e.HasOne<Venta>().WithMany().HasForeignKey(x => x.VentaId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<InventarioLote>().WithMany().HasForeignKey(x => x.LoteId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.VentaId);
+            e.HasIndex(x => x.LoteId);
+            e.Property(x => x.CostoOrigen).HasMaxLength(20);
+            e.ToTable(t => t.HasCheckConstraint("CK_detalle_cantidades", "\"Cantidad\" > 0 AND \"Devueltas\" >= 0 AND \"Devueltas\" <= \"Cantidad\" AND \"DevueltasAMerma\" >= 0 AND \"DevueltasAMerma\" <= \"Devueltas\""));
+        });
+        b.Entity<VentaGasto>(e =>
+        {
+            e.ToTable("venta_gastos");
+            e.HasKey(x => x.Id);
+            e.HasOne<Venta>().WithMany().HasForeignKey(x => x.VentaId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.VentaId);
+            e.Property(x => x.Tipo).HasMaxLength(20);
+            e.Property(x => x.Concepto).HasMaxLength(120);
+        });
+        b.Entity<VentaIncidencia>(e =>
+        {
+            e.ToTable("venta_incidencias");
+            e.HasKey(x => x.Id);
+            e.HasOne<Venta>().WithMany().HasForeignKey(x => x.VentaId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.VentaId);
+            e.Property(x => x.Tipo).HasMaxLength(14);
+            e.Property(x => x.CondicionDestino).HasMaxLength(20);
+            e.Property(x => x.Estado).HasMaxLength(10);
+            e.Property(x => x.Motivo).HasMaxLength(300);
+            e.Property(x => x.Usuario).HasMaxLength(40);
+        });
+        b.Entity<Publicacion>(e =>
+        {
+            e.ToTable("publicaciones");
+            e.HasKey(x => x.Id);
+            e.HasOne<Producto>().WithMany().HasForeignKey(x => x.ProductoId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Plataforma>().WithMany().HasForeignKey(x => x.PlataformaId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.ProductoId);
+            e.HasIndex(x => new { x.PlataformaId, x.Estatus });
+            e.Property(x => x.IdExterno).HasMaxLength(80);
+            e.Property(x => x.Url).HasMaxLength(500);
+            e.Property(x => x.Estatus).HasMaxLength(12);
+            e.Property(x => x.RequiereAccion).HasMaxLength(20);
+            e.Property(x => x.Observaciones).HasMaxLength(500);
+            e.Property(x => x.Fuente).HasMaxLength(30);
         });
         b.Entity<Gasto>(e =>
         {

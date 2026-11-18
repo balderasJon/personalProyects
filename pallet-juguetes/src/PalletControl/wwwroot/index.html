@@ -71,7 +71,7 @@
   <div class="head"><div><p class="eyebrow">Del mensaje a la entrega</p><h2>Ventas</h2><p class="muted small" id="venSub"></p></div>
     <div class="row"><div class="seg" role="group" aria-label="Vista"><button id="vBoard" aria-pressed="true">Tablero</button><button id="vList" aria-pressed="false">Lista</button></div>
       <button class="btn primary" data-act="nuevaVenta">+ Venta</button></div></div>
-  <div class="callout sun"><b>Regla de oro:</b> pasen una venta a “Pagado” solo cuando el abono aparezca en su banca. Una captura de pantalla no demuestra que el pago llegó.</div>
+  <div class="callout sun"><b>Regla de oro:</b> una venta solo cuenta como dinero recuperado cuando registran su cobro con el importe que apareció en su banca (en marketplaces, el depósito ya sin comisiones). Una captura de pantalla no demuestra que el pago llegó.</div>
   <div class="filters">
     <input class="inp" id="vBuscar" type="search" placeholder="Buscar cliente o juguete" aria-label="Buscar venta">
     <select class="sel" id="vCanal" aria-label="Canal"><option value="">Todos los canales</option></select>
@@ -102,6 +102,8 @@
     <button class="subtab" type="button" data-sub="simulador">Simulador de precios</button>
     <button class="subtab" type="button" data-sub="pallets">Pallets y costos</button>
     <button class="subtab" type="button" data-sub="plataformas">Plataformas y tarifas</button>
+    <button class="subtab" type="button" data-sub="publicaciones">Publicaciones</button>
+    <button class="subtab" type="button" data-sub="real">Rentabilidad real</button>
   </nav>
   <div id="anBody"></div>
 </section>
@@ -141,6 +143,7 @@
 
 <script src="js/app.js"></script>
 <script src="js/precios.js"></script>
+<script src="js/ventas.js"></script>
 <script src="js/analisis.js"></script>
 </body>
 </html>

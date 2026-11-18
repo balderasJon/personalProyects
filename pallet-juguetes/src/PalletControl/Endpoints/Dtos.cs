@@ -11,11 +11,6 @@ public record ProductoIn(string? Codigo, string? CodigoBarras, string? Nombre, s
     decimal? PesoKg = null, decimal? LargoCm = null, decimal? AnchoCm = null, decimal? AltoCm = null,
     string? EstadoComercial = null, DateOnly? FechaIngreso = null);
 
-public record VentaIn(string? ProductoId, int Cantidad, decimal Precio, string? Estado, DateOnly? Fecha,
-    string? Canal, string? Cliente, string? Notas);
-
-public record CambioEstadoIn(string? Estado);
-
 public record GastoIn(string? Tipo, decimal Monto, DateOnly? Fecha, string? Concepto);
 
 public record SemanaIn(int Publicadas, int Mensajes, decimal Horas, string? Notas);

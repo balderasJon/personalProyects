@@ -219,6 +219,27 @@ public class Venta
     public string Canal { get; set; } = "";
     public string Cliente { get; set; } = "";
     public string Notas { get; set; } = "";
+    // ---- Fase 3: encabezado financiero. ProductoId/Cantidad/Precio resumen el renglón; el detalle por lote está en venta_detalle. ----
+    public int Folio { get; set; }
+    public string? PlataformaId { get; set; }
+    public string? PublicacionId { get; set; }
+    public string? TarifaId { get; set; }
+    public decimal PrecioPublicado { get; set; }
+    /// <summary>Descuento total sobre la venta (además del precio unitario pactado).</summary>
+    public decimal Descuento { get; set; }
+    /// <summary>1/(1+IVA) si se cobró IVA en esta venta; 1 si no. Se guarda al registrar.</summary>
+    public decimal FactorIngreso { get; set; } = 1m;
+    public decimal RetencionIsr { get; set; }
+    public decimal RetencionIva { get; set; }
+    /// <summary>Importe que efectivamente llegó a la cuenta. Null = no cobrada.</summary>
+    public decimal? ImporteCobrado { get; set; }
+    public DateOnly? FechaCobro { get; set; }
+    public int CantidadDevuelta { get; set; }
+    /// <summary>Costo histórico total de las piezas (suma del detalle).</summary>
+    public decimal CostoTotal { get; set; }
+    /// <summary>costeo, estimado_migracion, sin_costeo o mixto.</summary>
+    public string CostoOrigen { get; set; } = "sin_costeo";
+    public bool Migrada { get; set; }
     public DateTime CreadoUtc { get; set; } = DateTime.UtcNow;
     public DateTime ActualizadoUtc { get; set; } = DateTime.UtcNow;
 }

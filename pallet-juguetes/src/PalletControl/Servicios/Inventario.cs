@@ -63,7 +63,7 @@ public static class Inventario
     }
 
     public static async Task<int> VendidasAsync(AppDbContext db, string productoId) =>
-        await db.Ventas.Where(v => v.ProductoId == productoId && v.Estado != "cancelado").SumAsync(v => (int?)v.Cantidad) ?? 0;
+        await db.Ventas.Where(v => v.ProductoId == productoId && v.Estado != "cancelado").SumAsync(v => (int?)(v.Cantidad - v.CantidadDevuelta)) ?? 0;
 
     /// <summary>Registra un movimiento y ajusta la cantidad del lote. Nunca deja cantidades negativas.</summary>
     public static void Mover(AppDbContext db, InventarioLote lote, int cantidad, string tipo, string motivo, string referencia = "")

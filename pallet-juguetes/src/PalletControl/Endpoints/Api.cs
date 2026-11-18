@@ -39,6 +39,12 @@ public static class Api
             imagenes = (await db.Imagenes.AsNoTracking().OrderBy(i => i.CreadoUtc).ToListAsync())
                 .Select(i => new { i.Id, i.ProductoId, i.Origen, i.Principal, url = "/imagenes/" + i.Archivo }),
             ventas = await db.Ventas.AsNoTracking().ToListAsync(),
+            // Fase 3: renglones por lote (para existencias por lote), resultado real por venta, publicaciones y plataformas
+            ventaDetalles = (await db.VentaDetalles.AsNoTracking().ToListAsync())
+                .Select(d => new { d.VentaId, d.ProductoId, d.LoteId, d.PalletId, d.Cantidad, d.Devueltas }),
+            ventaResultados = await VentasApi.ResultadosAsync(db),
+            publicaciones = await db.Publicaciones.AsNoTracking().Where(p => p.Estatus != "eliminado").ToListAsync(),
+            plataformas = await db.Plataformas.AsNoTracking().OrderBy(p => p.Orden).ThenBy(p => p.Nombre).Select(p => new { p.Id, p.Nombre, p.Activa }).ToListAsync(),
             gastos = await db.Gastos.AsNoTracking().ToListAsync(),
             semanas = await db.Semanas.AsNoTracking().ToListAsync(),
             pallets = await db.Pallets.AsNoTracking().OrderBy(p => p.FechaCompra).ToListAsync(),
@@ -217,28 +223,7 @@ public static class Api
             catch (ErrorBusqueda e) { return Results.Json(new Error(e.Message), statusCode: e.Estado); }
         });
 
-        // ---------- Ventas ----------
-        api.MapPost("/ventas", (VentaIn i, AppDbContext db) => Bloqueado(() => GuardarVenta(db, null, i)));
-        api.MapPut("/ventas/{id}", (string id, VentaIn i, AppDbContext db) => Bloqueado(() => GuardarVenta(db, id, i)));
-        api.MapPatch("/ventas/{id}/estado", (string id, CambioEstadoIn i, AppDbContext db) => Bloqueado(async () =>
-        {
-            var v = await db.Ventas.FindAsync(id);
-            if (v is null) return Results.NotFound(new Error("La venta ya no existe."));
-            if (i.Estado is not ("pagado" or "entregado")) return Mal("Solo se puede avanzar a pagado o entregado.");
-            v.Estado = i.Estado;
-            v.FechaPago ??= Hoy;
-            v.ActualizadoUtc = DateTime.UtcNow;
-            await db.GuardarAsync();
-            return Results.Ok(v);
-        }));
-        api.MapDelete("/ventas/{id}", (string id, AppDbContext db) => Bloqueado(async () =>
-        {
-            var v = await db.Ventas.FindAsync(id);
-            if (v is null) return Results.NotFound(new Error("La venta ya no existe."));
-            db.Ventas.Remove(v);
-            await db.GuardarAsync();
-            return Results.NoContent();
-        }));
+        // ---------- Ventas: Endpoints/VentasApi.cs (Fase 3) ----------
 
         // ---------- Gastos ----------
         api.MapPost("/gastos", (GastoIn i, AppDbContext db) => Bloqueado(() => GuardarGasto(db, null, i)));
@@ -307,7 +292,16 @@ public static class Api
                 lotes = await db.Lotes.AsNoTracking().ToListAsync(),
                 movimientos = await db.Movimientos.AsNoTracking().ToListAsync(),
                 costeoCorridas = await db.CosteoCorridas.AsNoTracking().ToListAsync(),
-                costosLote = await db.CostosLote.AsNoTracking().ToListAsync()
+                costosLote = await db.CostosLote.AsNoTracking().ToListAsync(),
+                plataformas = await db.Plataformas.AsNoTracking().ToListAsync(),
+                tarifas = await db.Tarifas.AsNoTracking().ToListAsync(),
+                parametrosRentabilidad = await db.Parametros.AsNoTracking().ToListAsync(),
+                fiscal = await db.Fiscal.AsNoTracking().ToListAsync(),
+                preciosProducto = await db.PreciosProducto.AsNoTracking().ToListAsync(),
+                ventaDetalles = await db.VentaDetalles.AsNoTracking().ToListAsync(),
+                ventaGastos = await db.VentaGastos.AsNoTracking().ToListAsync(),
+                ventaIncidencias = await db.VentaIncidencias.AsNoTracking().ToListAsync(),
+                publicaciones = await db.Publicaciones.AsNoTracking().ToListAsync(),
             });
         });
     }
@@ -350,9 +344,10 @@ public static class Api
         finally { Escritura.Release(); }
     }
 
+    /// <summary>Piezas vendidas netas (vendidas − devueltas) de ventas no canceladas.</summary>
     private static Task<int> Vendidas(AppDbContext db, string productoId, string? exceptoVenta) =>
         db.Ventas.Where(v => v.ProductoId == productoId && v.Estado != "cancelado" && v.Id != exceptoVenta)
-                 .SumAsync(v => (int?)v.Cantidad).ContinueWith(t => t.Result ?? 0);
+                 .SumAsync(v => (int?)(v.Cantidad - v.CantidadDevuelta)).ContinueWith(t => t.Result ?? 0);
 
     private static string? ValidarProducto(ProductoIn i)
     {
@@ -538,49 +533,6 @@ public static class Api
         foreach (var prod in porCodigo.Values) await Inventario.SincronizarProductoAsync(db, prod.Id);
         await db.GuardarAsync();
         return Results.Ok(new { nuevos, actualizados, cantidadNoActualizada = omitidos });
-    }
-
-    private static async Task<IResult> GuardarVenta(AppDbContext db, string? id, VentaIn i)
-    {
-        if (string.IsNullOrWhiteSpace(i.ProductoId)) return Mal("Elige un juguete.");
-        var estado = i.Estado ?? "apartado";
-        if (!Catalogos.EstadosVenta.Contains(estado)) return Mal("Estado de venta no válido.");
-        if (i.Cantidad < 1) return Mal("La cantidad mínima es 1.");
-        if (i.Precio < 0) return Mal("El precio no puede ser negativo.");
-        var p = await db.Productos.FindAsync(i.ProductoId);
-        if (p is null) return Mal("El juguete elegido ya no existe.");
-
-        Venta? v = null;
-        if (id is not null)
-        {
-            v = await db.Ventas.FindAsync(id);
-            if (v is null) return Results.NotFound(new Error("La venta ya no existe."));
-        }
-        if (estado != "cancelado")
-        {
-            var disp = p.Cantidad - await Vendidas(db, p.Id, id);
-            if (i.Cantidad > disp) return Choque($"Solo hay {Math.Max(0, disp)} pieza(s) disponible(s) de {p.Nombre}.");
-        }
-
-        var fecha = i.Fecha ?? Hoy;
-        DateOnly? fechaPago;
-        if (!Catalogos.Cobrada(estado)) fechaPago = null;
-        else if (v is not null && Catalogos.Cobrada(v.Estado) && v.FechaPago is not null) fechaPago = v.FechaPago;
-        else fechaPago = v is not null ? Hoy : fecha;
-
-        if (v is null) { v = new Venta { Id = NuevoId() }; db.Ventas.Add(v); }
-        v.ProductoId = p.Id;
-        v.Cantidad = i.Cantidad;
-        v.Precio = i.Precio;
-        v.Estado = estado;
-        v.Fecha = fecha;
-        v.FechaPago = fechaPago;
-        v.Canal = T(i.Canal, 40);
-        v.Cliente = T(i.Cliente, 80);
-        v.Notas = T(i.Notas, 400);
-        v.ActualizadoUtc = DateTime.UtcNow;
-        await db.GuardarAsync();
-        return id is null ? Results.Created($"/api/ventas/{v.Id}", v) : Results.Ok(v);
     }
 
     private static async Task<IResult> GuardarGasto(AppDbContext db, string? id, GastoIn i)

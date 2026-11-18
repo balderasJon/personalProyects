@@ -2,6 +2,31 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-18 · Fase 3 — Ventas, cobros, devoluciones, publicaciones y rentabilidad real
+
+**Agregado**
+- Ventas con folio, plataforma, publicación, lote, precio publicado, descuento, gastos por venta (precargados con la tarifa vigente y marcados como estimados), retenciones e importe cobrado.
+- Costo histórico por pieza congelado al vender, con su origen (costeo vigente, desactualizado, estimado o sin costeo).
+- Cobro separado del registro: solo lo cobrado cuenta como efectivo y capital recuperado.
+- Cancelaciones, devoluciones (a inventario vendible o a merma), reembolsos y reclamaciones, con movimientos de inventario y efecto en la utilidad.
+- Publicaciones por canal con existencias centrales y avisos para pausar, ajustar o reactivar (control de doble venta).
+- Rentabilidad real por periodo, plataforma, juguete y pallet; capital recuperado por pallet.
+- Ficha de la venta, vistas «Publicaciones» y «Rentabilidad real», avisos nuevos en Resumen y columnas de utilidad y cobro en Ventas y en la exportación.
+- 16 pruebas nuevas (9 unitarias, 7 de integración): 66 en total.
+
+**Cambiado**
+- «Ventas cobradas», la gráfica de recuperación, la semana y la utilidad neta usan el importe cobrado y el efectivo neto, no el estado «Pagado».
+- Las ventas generan movimientos en el kárdex (venta, cancelación, devolución); la cantidad recibida del lote no cambia.
+- Lo vendido se cuenta neto de devoluciones.
+- Eliminar una venta solo se permite si está apartada, sin cobro ni incidencias; en otro caso se cancela.
+- No se puede ajustar ni reclasificar un lote por debajo de sus piezas vendidas.
+- El respaldo JSON incluye las tablas de las fases 2 y 3.
+
+**Datos (migración automática, no destructiva)**
+- Respaldo `pallet-antes-de-fase3-*.db` antes de migrar.
+- Columnas nuevas en `ventas`; tablas nuevas `venta_detalle`, `venta_gastos`, `venta_incidencias` y `publicaciones`.
+- Ventas anteriores: folio por fecha de alta, plataforma por nombre de canal (si coincide), renglones por lote, costo estimado con el costeo vigente, salida en el kárdex de las no canceladas y cobro por su total de las pagadas o entregadas. Ningún monto anterior se modifica. Es idempotente.
+
 ## 2026-11-18 · Fase 2 — Plataformas, tarifas y motor de precios
 
 **Agregado**

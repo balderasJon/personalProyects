@@ -86,7 +86,8 @@ public class Fase1Tests : IClassFixture<AppFactory>
         await (await c.PostAsJsonAsync($"/api/lotes/{lote.Str("id")}/ajuste", new { cantidad = -4, motivo = "Conteo" })).Json(409);
         await (await c.PostAsJsonAsync($"/api/lotes/{lote.Str("id")}/ajuste", new { cantidad = 3, motivo = "Llegaron más" })).Json();
         var movs = (await (await c.GetAsync($"/api/productos/{prod}/lotes")).Json()).GetProperty("movimientos");
-        Assert.Equal(["ajuste", "reclasificacion_entrada", "reclasificacion_salida", "recepcion"], movs.EnumerateArray().Select(m => m.Str("tipo")));
+        // Desde la Fase 3 la venta deja su salida en el kárdex (sin cambiar la cantidad costeable del lote).
+        Assert.Equal(["ajuste", "venta", "reclasificacion_entrada", "reclasificacion_salida", "recepcion"], movs.EnumerateArray().Select(m => m.Str("tipo")));
     }
 
     // Caso 4 de punta a punta: mismo resultado que la prueba unitaria y cuadre exacto.

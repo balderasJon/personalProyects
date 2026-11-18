@@ -90,10 +90,28 @@ public static class Esquema
         AgregarColumna(db, "productos", "EstadoComercial", "TEXT NOT NULL DEFAULT 'en_revision'");
         AgregarColumna(db, "productos", "FechaIngreso", "TEXT NULL");
 
-        // ---- Fase 1: tablas nuevas, tal como las define el modelo de EF ----
+        // ---- Fase 3: encabezado financiero de la venta ----
+        AgregarColumna(db, "ventas", "Folio", "INTEGER NOT NULL DEFAULT 0");
+        AgregarColumna(db, "ventas", "PlataformaId", "TEXT NULL");
+        AgregarColumna(db, "ventas", "PublicacionId", "TEXT NULL");
+        AgregarColumna(db, "ventas", "TarifaId", "TEXT NULL");
+        AgregarColumna(db, "ventas", "PrecioPublicado", "TEXT NOT NULL DEFAULT '0.0'");
+        AgregarColumna(db, "ventas", "Descuento", "TEXT NOT NULL DEFAULT '0.0'");
+        AgregarColumna(db, "ventas", "FactorIngreso", "TEXT NOT NULL DEFAULT '1.0'");
+        AgregarColumna(db, "ventas", "RetencionIsr", "TEXT NOT NULL DEFAULT '0.0'");
+        AgregarColumna(db, "ventas", "RetencionIva", "TEXT NOT NULL DEFAULT '0.0'");
+        AgregarColumna(db, "ventas", "ImporteCobrado", "TEXT NULL");
+        AgregarColumna(db, "ventas", "FechaCobro", "TEXT NULL");
+        AgregarColumna(db, "ventas", "CantidadDevuelta", "INTEGER NOT NULL DEFAULT 0");
+        AgregarColumna(db, "ventas", "CostoTotal", "TEXT NOT NULL DEFAULT '0.0'");
+        AgregarColumna(db, "ventas", "CostoOrigen", "TEXT NOT NULL DEFAULT 'sin_costeo'");
+        AgregarColumna(db, "ventas", "Migrada", "INTEGER NOT NULL DEFAULT 0");
+
+        // ---- Tablas nuevas, tal como las define el modelo de EF ----
         CrearTablasFaltantes(db);
         MigrarAPallets(db, dirRespaldos);
         SembrarFase2(db);
+        MigrarVentasFase3(db, dirRespaldos);
     }
 
     /// <summary>
@@ -202,6 +220,75 @@ public static class Esquema
             if (p.Cantidad > 0)
                 db.Movimientos.Add(new MovimientoInventario { LoteId = lote.Id, Tipo = "inventario_inicial", Cantidad = p.Cantidad, Usuario = "sistema", Motivo = "Saldo inicial al migrar a la Fase 1" });
             p.FechaIngreso ??= lote.FechaIngreso;
+        }
+        db.SaveChanges();
+        tx.Commit();
+    }
+
+    /// <summary>
+    /// Migración de la Fase 3: cada venta anterior recibe folio, plataforma (si su canal coincide con una), renglones por lote
+    /// (piezas vendibles del pallet más antiguo primero), costo histórico estimado con el costeo vigente y su salida en el kárdex.
+    /// Las ventas pagadas o entregadas se consideran cobradas por su total (no tenían gastos registrados).
+    /// Guarda un respaldo antes y no borra ni modifica montos existentes.
+    /// </summary>
+    private static void MigrarVentasFase3(AppDbContext db, string dirRespaldos)
+    {
+        var pendientes = db.Ventas.Where(v => v.Folio == 0).ToList().OrderBy(v => v.CreadoUtc).ThenBy(v => v.Id).ToList();
+        if (pendientes.Count == 0) return;
+        Directory.CreateDirectory(dirRespaldos);
+        db.Database.ExecuteSqlRaw("VACUUM INTO {0}", Path.Combine(dirRespaldos, $"pallet-antes-de-fase3-{DateTime.Now:yyyy-MM-dd-HHmmss}.db"));
+
+        using var tx = db.Database.BeginTransaction();
+        var folio = (db.Ventas.Max(v => (int?)v.Folio) ?? 0) + 1;
+        static string Clave(string s) => new string(s.Normalize(System.Text.NormalizationForm.FormD)
+            .Where(ch => char.IsLetterOrDigit(ch)).ToArray()).ToLowerInvariant();
+        var plataformas = db.Plataformas.ToList().ToDictionary(p => Clave(p.Nombre), p => p.Id);
+        var vigentes = db.CosteoCorridas.Where(c => c.Vigente).Select(c => c.Id).ToList();
+        var costos = db.CostosLote.Where(c => vigentes.Contains(c.CorridaId)).ToList().ToDictionary(c => c.LoteId);
+        var pallets = db.Pallets.ToList().ToDictionary(p => p.Id);
+        var lotes = db.Lotes.ToList();
+        var asignado = new Dictionary<string, int>();
+        foreach (var v in pendientes)
+        {
+            v.Folio = folio++;
+            v.Migrada = true;
+            v.PrecioPublicado = v.Precio;
+            if (v.PlataformaId is null && plataformas.TryGetValue(Clave(v.Canal), out var pid)) v.PlataformaId = pid;
+            var activa = v.Estado != "cancelado";
+            var orden = lotes.Where(l => l.ProductoId == v.ProductoId)
+                .OrderByDescending(l => l.Comercializable).ThenBy(l => pallets[l.PalletId].FechaCompra).ThenBy(l => l.FechaIngreso).ThenBy(l => l.Id).ToList();
+            if (orden.Count == 0) continue;   // sin lote (no debería ocurrir tras la Fase 1)
+            var asign = Dominio.Calculo.CalculoVenta.AsignarLotes(v.Cantidad,
+                orden.Select(l => (l.Id, Math.Max(0, l.Cantidad - asignado.GetValueOrDefault(l.Id)))).ToList())
+                ?? [(orden[0].Id, v.Cantidad)];
+            decimal costoTotal = 0; var origenes = new HashSet<string>();
+            foreach (var (loteId, cant) in asign)
+            {
+                var lote = orden.First(l => l.Id == loteId);
+                var c = costos.GetValueOrDefault(loteId);
+                var cu = c is not null && c.Cantidad > 0 ? c.CostoUnitario : 0m;
+                var origen = c is not null ? "estimado_migracion" : "sin_costeo";
+                origenes.Add(origen);
+                var ct = Dominio.Calculo.Dinero.Centavos(cu * cant);
+                costoTotal += ct;
+                db.VentaDetalles.Add(new VentaDetalle
+                {
+                    Id = Guid.NewGuid().ToString("N")[..12], VentaId = v.Id, ProductoId = v.ProductoId, LoteId = loteId, PalletId = lote.PalletId,
+                    Cantidad = cant, PrecioUnitario = v.Precio, CostoUnitario = cu, CostoTotal = ct, CostoCorridaId = c?.CorridaId, CostoOrigen = origen,
+                });
+                if (activa)
+                {
+                    asignado[loteId] = asignado.GetValueOrDefault(loteId) + cant;
+                    db.Movimientos.Add(new MovimientoInventario { LoteId = loteId, Tipo = "venta", Cantidad = -cant, Referencia = $"V-{v.Folio:00000}", Usuario = "sistema", Motivo = "Venta anterior (migración a la Fase 3)" });
+                }
+            }
+            v.CostoTotal = costoTotal;
+            v.CostoOrigen = origenes.Count == 1 ? origenes.First() : "mixto";
+            if (Catalogos.Cobrada(v.Estado) && v.ImporteCobrado is null)
+            {
+                v.ImporteCobrado = Dominio.Calculo.Dinero.Centavos(v.Precio * v.Cantidad);
+                v.FechaCobro = v.FechaPago ?? v.Fecha;
+            }
         }
         db.SaveChanges();
         tx.Commit();

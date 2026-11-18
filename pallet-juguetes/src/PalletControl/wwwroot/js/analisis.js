@@ -20,7 +20,7 @@ function pillCosteo(c){
 function err(e){PC.toast((e&&e.mensaje)||'No se pudo completar la operación.')}
 
 /* ---------- subnavegación de Análisis comercial ---------- */
-var SUBS=['productos','simulador','pallets','plataformas'],vista='pallets';
+var SUBS=['productos','simulador','pallets','plataformas','publicaciones','real'],vista='pallets';
 try{var v0=localStorage.getItem('pallet-analisis-vista');if(SUBS.indexOf(v0)>=0)vista=v0}catch(e){}
 function marcarSub(){document.querySelectorAll('[data-sub]').forEach(function(b){if(b.dataset.sub===vista)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')})}
 document.querySelectorAll('[data-sub]').forEach(function(b){b.addEventListener('click',function(){vista=b.dataset.sub;try{localStorage.setItem('pallet-analisis-vista',vista)}catch(e){}
@@ -30,6 +30,7 @@ function irA(v,opciones){vista=v;try{localStorage.setItem('pallet-analisis-vista
 /* ---------- render ---------- */
 function render(){
   marcarSub();
+  if((vista==='publicaciones'||vista==='real')&&window.PCV){window.PCV.render(vista,body);return}
   if(vista!=='pallets'&&window.PCP){window.PCP.render(vista,body);return}
   var n=++st.pide;
   if(st.sel){
@@ -258,7 +259,7 @@ function loteNuevo(pid){
         PC.api('POST','productos/'+pid+'/lotes',{palletId:f.elements.palletId.value,condicion:f.elements.condicion.value,cantidad:Math.round(+f.elements.cantidad.value||0),valorRelativoUnitario:v===''?null:+v})
           .then(function(){trasLote('Lote agregado')},function(e){el.querySelector('#lnMsg').innerHTML='<p class="warnline bad">'+esc(e.mensaje)+'</p>'})})});
 }
-var TIPOS_MOV={inventario_inicial:'Saldo inicial',recepcion:'Recepción',ajuste:'Ajuste',reclasificacion_salida:'Cambio de condición (sale)',reclasificacion_entrada:'Cambio de condición (entra)'};
+var TIPOS_MOV={inventario_inicial:'Saldo inicial',recepcion:'Recepción',ajuste:'Ajuste',reclasificacion_salida:'Cambio de condición (sale)',reclasificacion_entrada:'Cambio de condición (entra)',venta:'Venta',cancelacion_venta:'Venta cancelada o editada (regresa)',devolucion:'Devolución del cliente'};
 function movimientos(pid){
   PC.api('GET','productos/'+pid+'/lotes').then(function(r){
     var lotes={};r.lotes.forEach(function(x){lotes[x.lote.id]=x});
@@ -267,7 +268,7 @@ function movimientos(pid){
         r.movimientos.map(function(m){var x=lotes[m.loteId];return '<tr><td>'+esc(new Date(m.fechaUtc).toLocaleString('es-MX'))+'</td><td>'+esc(TIPOS_MOV[m.tipo]||m.tipo)+'</td><td>'+(x?esc((x.pallet||'')+' · '+PC.condNombre(x.lote.condicion)):'')+'</td>'+
           '<td class="r '+(m.cantidad<0?'tone-bad':'tone-good')+'">'+(m.cantidad>0?'+':'')+num(m.cantidad)+'</td><td class="wrap small">'+esc(m.motivo)+'</td><td>'+esc(m.usuario)+'</td></tr>'}).join('')+'</tbody></table></div>'
         :'<p class="small muted">Sin movimientos.</p>')+
-      '<p class="small muted">Las ventas todavía no generan movimientos de lote: se integran en la Fase 3.</p>');
+      '<p class="small muted">Las salidas por venta, cancelación y devolución muestran la existencia; no cambian las piezas recibidas (la cantidad que se costea).</p>');
   },err);
 }
 
