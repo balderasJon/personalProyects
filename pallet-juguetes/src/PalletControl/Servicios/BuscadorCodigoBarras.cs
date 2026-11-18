@@ -37,7 +37,8 @@ public record ProductoExterno(
 }
 
 /// <summary>Precios sugeridos en MXN y cómo se calculó cada uno.</summary>
-public record Sugerencia(decimal? PrecioLista, decimal? PrecioObjetivo, decimal? PrecioMinimo, List<string> Explicacion);
+/// <summary>PrecioListaUsd: el precio de lista original en dólares (el de lista ya viene convertido a pesos).</summary>
+public record Sugerencia(decimal? PrecioLista, decimal? PrecioObjetivo, decimal? PrecioMinimo, List<string> Explicacion, decimal? PrecioListaUsd = null);
 
 public record ResultadoBusqueda(
     string Origen,                 // inventario | upcitemdb | ninguno
@@ -192,7 +193,7 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
     {
         var notas = new List<string>();
         var cfg = await db.Configuracion.AsNoTracking().OrderBy(x => x.Id).FirstAsync(ct);
-        decimal? lista = null, objetivo = null, minimo = null;
+        decimal? lista = null, objetivo = null, minimo = null, listaUsd = null;
 
         if (e.PrecioBajo is null && e.PrecioAlto is null)
             notas.Add("UPCitemdb no tiene precios registrados para este código; no se sugieren precio de lista ni objetivo.");
@@ -206,6 +207,7 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
             if (e.PrecioAlto is { } a)
             {
                 lista = Math.Round(a * tc, 0, MidpointRounding.AwayFromZero);
+                listaUsd = a;
                 notas.Add($"Lista: precio más alto registrado US${a:0.00} × {tc:0.####} = ${lista:N0}.");
             }
             if (e.PrecioBajo is { } b)
@@ -217,7 +219,7 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
 
         notas.Add("Mínimo: se calcula con el método proporcional en cuanto captures el precio en México del juguete.");
 
-        return new Sugerencia(lista, objetivo, minimo, notas);
+        return new Sugerencia(lista, objetivo, minimo, notas, listaUsd);
     }
 
     private static string Recortar(string? s, int max) => (s ?? "").Trim() is var t && t.Length > max ? t[..max] : (s ?? "").Trim();

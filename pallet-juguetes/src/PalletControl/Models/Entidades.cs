@@ -14,7 +14,11 @@ public class Producto
     /// <summary>nuevo, danado o incompleto.</summary>
     public string Estado { get; set; } = "nuevo";
     public int Cantidad { get; set; }
+    /// <summary>Precio de lista de referencia, siempre en pesos mexicanos.</summary>
     public decimal PrecioLista { get; set; }
+    /// <summary>Si el precio de lista se capturó en dólares: el monto original y el tipo de cambio con que se convirtió. Null = capturado en pesos.</summary>
+    public decimal? PrecioListaUsd { get; set; }
+    public decimal? PrecioListaTipoCambio { get; set; }
     public decimal PrecioObjetivo { get; set; }
     public decimal PrecioMinimo { get; set; }
     /// <summary>

@@ -360,6 +360,7 @@ public static class Api
         if (string.IsNullOrWhiteSpace(i.Nombre)) return "El nombre del juguete es obligatorio.";
         if (BuscadorCodigoBarras.Normalizar(i.CodigoBarras).Length > 20) return "El código de barras admite máximo 20 caracteres.";
         if (i.Cantidad < 0) return "La cantidad no puede ser negativa.";
+        if (i.PrecioListaUsd < 0) return "El precio de lista en dólares no puede ser negativo.";
         if (i.PrecioLista < 0 || i.PrecioObjetivo < 0 || i.PrecioMinimo < 0 || i.PrecioMexico < 0
             || i.PrecioLiverpool < 0 || i.PrecioMercadoLibre < 0 || i.PrecioWalmart < 0) return "Los precios no pueden ser negativos.";
         if (i.Clase is not null && !Catalogos.Clases.Contains(i.Clase)) return "La clase debe ser A, B o C.";
@@ -370,14 +371,36 @@ public static class Api
         return null;
     }
 
-    private static void Aplicar(Producto p, ProductoIn i)
+    /// <summary>
+    /// El precio de lista siempre se guarda en pesos. Si se captura en dólares, se convierte con el tipo de cambio del día
+    /// (redondeado al peso) y se guardan el monto original y el tipo de cambio usado.
+    /// </summary>
+    private static void AplicarPrecioLista(Producto p, ProductoIn i, decimal tipoCambio)
+    {
+        if (i.PrecioListaUsd is > 0)
+        {
+            if (tipoCambio <= 0) throw new ErrorNegocio("No hay tipo de cambio del día para convertir el precio de lista en dólares. Defínelo arriba (Tipo de cambio) o captura el precio en pesos.");
+            var usd = Math.Round(i.PrecioListaUsd.Value, 2, MidpointRounding.AwayFromZero);
+            // Si es el mismo monto en dólares ya convertido, se conserva el tipo de cambio original (la referencia no cambia sola).
+            if (p.PrecioListaUsd == usd && p.PrecioListaTipoCambio is > 0) return;
+            p.PrecioListaUsd = usd;
+            p.PrecioListaTipoCambio = tipoCambio;
+            p.PrecioLista = Math.Round(usd * tipoCambio, 0, MidpointRounding.AwayFromZero);
+            return;
+        }
+        // En pesos: un cliente anterior (null) que no cambia el monto conserva el dato en dólares; si lo cambia, ya es un precio en pesos.
+        if (i.PrecioListaUsd == 0 || i.PrecioLista != p.PrecioLista) { p.PrecioListaUsd = null; p.PrecioListaTipoCambio = null; }
+        p.PrecioLista = i.PrecioLista;
+    }
+
+    private static void Aplicar(Producto p, ProductoIn i, decimal tipoCambio = 0)
     {
         p.Codigo = T(i.Codigo, 20);
         p.CodigoBarras = BuscadorCodigoBarras.Normalizar(i.CodigoBarras);
         p.Nombre = T(i.Nombre, 120);
         p.Categoria = T(i.Categoria, 60);
         p.Clase = i.Clase ?? "B";
-        p.PrecioLista = i.PrecioLista;
+        AplicarPrecioLista(p, i, tipoCambio);
         p.PrecioObjetivo = i.PrecioObjetivo;
         p.PrecioMinimo = i.PrecioMinimo;
         p.PrecioLiverpool = Math.Max(0, i.PrecioLiverpool);
@@ -473,7 +496,7 @@ public static class Api
             var vend = await Vendidas(db, id, null);
             if (i.Cantidad < vend) return Choque($"La cantidad no puede ser menor que las {vend} piezas ya vendidas o apartadas.");
         }
-        Aplicar(p, i);
+        Aplicar(p, i, (await db.Configuracion.OrderBy(x => x.Id).FirstAsync()).TipoCambioUsd);
         await AplicarInventarioAsync(db, p, i, id is null, null);
         await Inventario.SincronizarProductoAsync(db, p.Id);
         await db.GuardarAsync();

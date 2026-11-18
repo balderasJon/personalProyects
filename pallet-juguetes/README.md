@@ -92,7 +92,9 @@ También se puede escanear o escribir el código en el campo *Código de barras*
 | Precio en México | Promedio de los precios capturados en **Liverpool, Mercado Libre y Walmart** (los que tengan valor). Sin precios por tienda, se puede capturar a mano |
 | Precio objetivo | Precio en México − % de descuento de Ajustes (35% de inicio, el ejemplo del plan). Sin precio en México: precio más bajo de UPCitemdb (USD) × tipo de cambio |
 | Precio mínimo | **Método proporcional** (ver abajo). Requiere el precio en México |
-| Precio de lista (referencia) | Precio más alto registrado en UPCitemdb (USD) × tipo de cambio del día |
+| Precio de lista (referencia) | Precio más alto registrado en UPCitemdb (USD) × tipo de cambio del día. Se llena con el monto en dólares (selector **USD**) y se guarda convertido a pesos |
+
+**Moneda de los precios.** Todos los precios se guardan en **pesos mexicanos**. El precio de lista se puede capturar en dólares con el selector **MXN / USD**: se convierte con el tipo de cambio del día (redondeado al peso) y se guardan también el monto en dólares y el tipo de cambio usado, que aparecen en la ficha del juguete y en el CSV. Si después cambia el tipo de cambio, la referencia no se recalcula sola; se recalcula solo si cambias el monto en dólares. Sin tipo de cambio del día no se acepta un precio en dólares. El precio mínimo, el objetivo, el precio en México y los precios por tienda son siempre en pesos.
 
 **Precios por tienda.** Cada tienda tiene un botón *Buscar ↗* que abre su búsqueda con el nombre del juguete en otra pestaña; capturas el precio que ves. La aplicación no consulta esas tiendas por su cuenta: Liverpool y Walmart no ofrecen una API pública de precios, y la búsqueda de Mercado Libre por API exige registrar una aplicación con token (sin él responde 403).
 
@@ -202,7 +204,7 @@ Recomendación: copien periódicamente la carpeta `datos/respaldos` a una USB o 
 ### Pasar los datos que ya capturaron en el artefacto
 
 1. En el artefacto: Ajustes → Exportar **Inventario** (CSV).
-2. Abran el CSV en Excel y copien las columnas en este orden: Código, Juguete, Categoría, Cantidad, Estado, Precio de lista, Precio objetivo, Clase y, opcionales, Código de barras y Precio en México. (El CSV que exporta esta aplicación ya trae ese orden en sus primeras 10 columnas.)
+2. Abran el CSV en Excel y copien las columnas en este orden: Código, Juguete, Categoría, Cantidad, Estado, Precio de lista (en pesos), Precio objetivo, Clase y, opcionales, Código de barras y Precio en México. (El CSV que exporta esta aplicación ya trae ese orden en sus primeras 10 columnas.)
 3. En esta aplicación: Inventario → *Importar desde Excel* → pegar.
 
 Ventas, gastos y semanas no tienen importación automática; se recapturan.

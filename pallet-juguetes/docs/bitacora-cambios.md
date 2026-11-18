@@ -2,6 +2,17 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-18 · Precio de lista en dólares con conversión
+
+**Agregado**
+- Selector **MXN / USD** en el precio de lista. En USD se convierte con el tipo de cambio del día (redondeado al peso) y se guardan el monto en dólares y el tipo de cambio usado; se muestran en la ficha y en el CSV del inventario.
+- Al escanear un código de barras, el precio de lista se llena con el monto en dólares de UPCitemdb (selector en USD).
+- Sin tipo de cambio del día no se acepta un precio en dólares (nunca se guardan dólares como pesos).
+- 1 prueba de integración nueva: 90 en total.
+
+**Datos (migración automática, no destructiva)**
+- Columnas nuevas `PrecioListaUsd` y `PrecioListaTipoCambio` en `productos` (vacías en los juguetes existentes, que siguen en pesos).
+
 ## 2026-11-18 · Fase 5 — Integraciones con APIs oficiales
 
 **Agregado**

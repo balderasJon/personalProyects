@@ -111,6 +111,10 @@ public static class Esquema
         AgregarColumna(db, "configuracion", "DiasSinMovimiento", "INTEGER NOT NULL DEFAULT 30");
         AgregarColumna(db, "configuracion", "BandaCompetenciaPct", "TEXT NOT NULL DEFAULT '5.0'");
 
+        // ---- Precio de lista capturado en dólares (monto original y tipo de cambio usado) ----
+        AgregarColumna(db, "productos", "PrecioListaUsd", "TEXT NULL");
+        AgregarColumna(db, "productos", "PrecioListaTipoCambio", "TEXT NULL");
+
         // ---- Fase 5: vínculos con plataformas conectadas ----
         AgregarColumna(db, "publicaciones", "CuentaIntegracionId", "TEXT NULL");
         AgregarColumna(db, "publicaciones", "EstatusRemoto", "TEXT NOT NULL DEFAULT ''");

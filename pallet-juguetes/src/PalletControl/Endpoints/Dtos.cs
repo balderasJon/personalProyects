@@ -9,7 +9,9 @@ public record ProductoIn(string? Codigo, string? CodigoBarras, string? Nombre, s
     string? Marca = null, string? Modelo = null, string? Subcategoria = null, string? DescripcionComercial = null,
     string? AccesoriosIncluidos = null, string? EdadRecomendada = null,
     decimal? PesoKg = null, decimal? LargoCm = null, decimal? AnchoCm = null, decimal? AltoCm = null,
-    string? EstadoComercial = null, DateOnly? FechaIngreso = null);
+    string? EstadoComercial = null, DateOnly? FechaIngreso = null,
+    // Precio de lista en dólares: si es > 0 se convierte con el tipo de cambio del día; 0 = capturado en pesos; null = cliente anterior.
+    decimal? PrecioListaUsd = null);
 
 public record GastoIn(string? Tipo, decimal Monto, DateOnly? Fecha, string? Concepto);
 
