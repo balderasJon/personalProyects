@@ -3,7 +3,7 @@
 **Módulo:** Gestión de Costos, Análisis de Precios y Rentabilidad Multicanal
 **Aplicación:** Control Pallet de Juguetes (`pallet-juguetes/`)
 **Fecha:** 18 de noviembre de 2026
-**Estado:** Diagnóstico concluido. No se ha modificado código ni base de datos. Pendiente de validación y de las decisiones de la sección 11.
+**Estado:** Diagnóstico concluido y decisiones de la sección 11 tomadas. No se ha modificado código ni base de datos.
 
 ---
 
@@ -24,7 +24,7 @@ Para el módulo solicitado, la base es reutilizable: catálogo de productos, có
 
 La propuesta es **extender** la aplicación existente sin reemplazar componentes: nuevas tablas relacionadas con las actuales, migración no destructiva con respaldo previo y un núcleo de cálculo financiero puro (sin acceso a base de datos), probado con casos numéricos verificables.
 
-Antes de implementar se necesitan **cuatro decisiones del negocio** (sección 11).
+Las cuatro decisiones del negocio necesarias para implementar ya están tomadas (sección 11).
 
 ---
 
@@ -313,28 +313,18 @@ En cada fase: pruebas, documentación (`docs/`), bitácora de cambios y verifica
 
 ---
 
-## 11. Decisiones necesarias antes de implementar
+## 11. Decisiones
 
-### 11.1 Granularidad del inventario
-- **(A) Lotes (recomendada):** producto × pallet × condición con cantidad, más kárdex de movimientos. Permite, por ejemplo, 10 piezas nuevas y 2 dañadas del mismo juguete. Mantiene la captura actual por cantidad.
-- **(B) Unidad individual:** una fila por pieza física, con su propia condición, costo y estado. Es lo más exacto, pero obliga a capturar o etiquetar pieza por pieza.
+Decisiones tomadas por el usuario el 18 de noviembre de 2026, después de revisar este diagnóstico:
 
-### 11.2 Autenticación
-No existe, y el servidor es accesible desde toda la red local.
-- **(A)** Agregar inicio de sesión local (usuario y contraseña con hash, sesión por cookie) y bitácora con usuario.
-- **(B)** Sin inicio de sesión, limitando el acceso a esta computadora (`localhost`); la bitácora registra el equipo de origen.
+| # | Tema | Decisión | Efecto en el diseño |
+|---|---|---|---|
+| 11.1 | Granularidad del inventario | **Por lotes** | Tabla `inventario_lotes` (producto × pallet × condición, con cantidad) y kárdex `movimientos_inventario`. La captura sigue siendo por cantidad. |
+| 11.2 | Autenticación | **Inicio de sesión local** | Usuario y contraseña con hash, sesión por cookie, todos los endpoints `/api/*` protegidos y bitácora de cambios con el usuario. Se sigue pudiendo usar desde el celular en la red local. |
+| 11.3 | Régimen fiscal | **Aún no definido** | Motor fiscal configurable con conceptos en cero y una advertencia visible en pantallas y reportes hasta que se capture el régimen. Se recomienda validarlo con un contador. No bloquea las fases 1 y 2. |
+| 11.4 | Condición de los productos existentes | **nuevo → Nuevo sellado**, dañado → Dañado, incompleto → Incompleto | Conversión automática al migrar, corregible después lote por lote. |
 
-### 11.3 Régimen fiscal
-Se necesita para separar IVA trasladado y acreditable, ISR y retenciones.
-- ¿Están inscritos en el RFC? ¿En qué régimen: RESICO, actividad empresarial o plataformas tecnológicas?
-- ¿Facturan o cobran IVA?
-- Si aún no está definido, el motor fiscal se deja configurable con conceptos en cero y una advertencia visible; se recomienda validarlo con un contador.
-
-### 11.4 Condición de los productos existentes
-Hoy el estado es nuevo, dañado o incompleto. ¿Cómo se convierte a las 7 condiciones nuevas?
-- Propuesta: dañado → **Dañado**, incompleto → **Incompleto** y nuevo → **Nuevo sellado**, revisable después pieza por pieza. El estado actual no distingue "sellado" de "caja abierta".
-
-### 11.5 Otras definiciones (con propuesta por defecto)
+### 11.5 Definiciones por defecto (pendientes de confirmar; se aplican si no se indica otra cosa)
 - **Canales ya usados en ventas** ("Grupos de Facebook", "Conocidos", "Bazar o escuela", "Instagram"): se conservan como plataformas adicionales, sin reasignarlos.
 - **Merma:** su costo se absorbe proporcionalmente en los productos vendibles del mismo pallet y además se reporta por separado como merma. Alternativa: tratarla como pérdida aparte.
 - **Moneda del pallet actual:** se registra como MXN con la inversión que tengan capturada en Ajustes. No conozco su valor real; el predeterminado de la aplicación es $49,000.
