@@ -284,6 +284,10 @@ public class Configuracion
     public DateOnly? TipoCambioPublicado { get; set; }
     /// <summary>% que se descuenta al precio en México para sugerir el precio objetivo.</summary>
     public int DescuentoSugerido { get; set; } = 35;
+    /// <summary>Fase 4: días sin venderse para considerar un juguete sin movimiento y candidato a liquidación.</summary>
+    public int DiasSinMovimiento { get; set; } = 30;
+    /// <summary>Fase 4: ±% alrededor de la mediana de la competencia que cuenta como "en precio de mercado".</summary>
+    public decimal BandaCompetenciaPct { get; set; } = 5m;
     public DateTime ActualizadoUtc { get; set; } = DateTime.UtcNow;
 }
 

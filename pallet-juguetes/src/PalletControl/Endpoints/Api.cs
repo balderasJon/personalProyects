@@ -209,9 +209,13 @@ public static class Api
             var idsLote = lotes.Select(l => l.Id).ToList();
             db.Movimientos.RemoveRange(await db.Movimientos.Where(m => idsLote.Contains(m.LoteId)).ToListAsync());
             db.Lotes.RemoveRange(lotes);
+            var comp = await db.Competencia.Where(c => c.ProductoId == id).ToListAsync();   // Fase 4: sus precios de competencia
+            db.Competencia.RemoveRange(comp);
+            db.Publicaciones.RemoveRange(await db.Publicaciones.Where(x => x.ProductoId == id).ToListAsync());
             db.Productos.Remove(p);
             await db.GuardarAsync();
             foreach (var img in imgs) alm.Borrar(img.Archivo);
+            foreach (var c in comp) if (c.ImagenArchivo is not null) alm.Borrar(c.ImagenArchivo);
             return Results.NoContent();
         }));
         api.MapPost("/productos/importar", (List<ProductoIn> filas, string? palletId, AppDbContext db) => Bloqueado(() => Importar(db, filas, palletId)));
@@ -302,6 +306,7 @@ public static class Api
                 ventaGastos = await db.VentaGastos.AsNoTracking().ToListAsync(),
                 ventaIncidencias = await db.VentaIncidencias.AsNoTracking().ToListAsync(),
                 publicaciones = await db.Publicaciones.AsNoTracking().ToListAsync(),
+                competencia = await db.Competencia.AsNoTracking().ToListAsync(),
             });
         });
     }

@@ -9,6 +9,7 @@ a.btn{text-decoration:none;display:inline-block}
   --accent:#2750D8; --accent-fg:#FFFFFF; --accent-soft:#DCE4FB;
   --sun:#B87400; --sun-soft:#FCEBC4;
   --good:#12754A; --good-soft:#D6EFE2; --bad:#B72B32; --bad-soft:#F8DADB;
+  --chart-pos:#2750D8; --chart-neg:#B72B32; --chart-grid:#E3E8F1;
   --scrim:rgba(16,26,51,.45);
   --f-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
   --f-body:'Figtree','Segoe UI',system-ui,sans-serif;
@@ -18,12 +19,12 @@ a.btn{text-decoration:none;display:inline-block}
   --bg:#0E1424; --surface:#161E33; --surface-2:#1F2A46; --fg:#E8ECF7; --fg-2:#9FAAC8; --line:#2B3654;
   --accent:#86A2FF; --accent-fg:#0E1424; --accent-soft:#22305F;
   --sun:#F5B544; --sun-soft:#3A2E12;
-  --good:#4CCB8B; --good-soft:#12372A; --bad:#FF8A8F; --bad-soft:#402024; --scrim:rgba(0,0,0,.6); color-scheme:dark}}
+  --good:#4CCB8B; --good-soft:#12372A; --bad:#FF8A8F; --bad-soft:#402024; --chart-pos:#6F8CF5; --chart-neg:#E25A63; --chart-grid:#25304C; --scrim:rgba(0,0,0,.6); color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0E1424; --surface:#161E33; --surface-2:#1F2A46; --fg:#E8ECF7; --fg-2:#9FAAC8; --line:#2B3654;
   --accent:#86A2FF; --accent-fg:#0E1424; --accent-soft:#22305F;
   --sun:#F5B544; --sun-soft:#3A2E12;
-  --good:#4CCB8B; --good-soft:#12372A; --bad:#FF8A8F; --bad-soft:#402024; --scrim:rgba(0,0,0,.6); color-scheme:dark}
+  --good:#4CCB8B; --good-soft:#12372A; --bad:#FF8A8F; --bad-soft:#402024; --chart-pos:#6F8CF5; --chart-neg:#E25A63; --chart-grid:#25304C; --scrim:rgba(0,0,0,.6); color-scheme:dark}
 
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;
@@ -273,3 +274,30 @@ table.dtab td{padding:7px 4px;border-bottom:1px solid var(--line)}
 table.dtab tr:last-child td{border-bottom:0}
 .subnav{margin-bottom:2px}
 .panel:has(.rentdet){max-width:1180px}
+
+/* ---- Fase 4: gráficas del dashboard (marcas delgadas, extremo redondeado de 4px, base recta) ---- */
+.hb{display:flex;flex-direction:column;gap:6px}
+.hb-r{display:grid;grid-template-columns:minmax(0,42%) minmax(0,1fr);gap:10px;align-items:center;font-size:.85rem}
+.hb-l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg)}
+.hb-t{position:relative;height:22px}
+.hb-z{position:absolute;top:0;bottom:0;width:1px;background:var(--chart-grid)}
+.hb-b{position:absolute;top:4px;height:14px;background:var(--chart-pos)}
+.hb-b.pos{border-radius:0 4px 4px 0} .hb-b.neg{background:var(--chart-neg);border-radius:4px 0 0 4px}
+.hb-v{position:absolute;top:2px;font-size:.78rem;font-variant-numeric:tabular-nums;color:var(--fg-2);white-space:nowrap}
+.hb-r:hover .hb-b{filter:brightness(1.12)}
+.ch-tip{position:fixed;z-index:60;pointer-events:none;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:.8rem;box-shadow:0 6px 20px rgba(0,0,0,.12);max-width:260px}
+.ch-tip b{display:block;font-size:.95rem}
+.ch-line{width:100%;height:auto;display:block}
+.ch-line .grid{stroke:var(--chart-grid);stroke-width:1}
+.ch-line .ax{fill:var(--fg-2);font-size:12px}
+.ch-line .ln{fill:none;stroke:var(--chart-pos);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.ch-line .ar{fill:var(--chart-pos);opacity:.1}
+.ch-line .ref{stroke:var(--fg-2);stroke-width:1}
+.ch-line .dot{fill:var(--chart-pos);stroke:var(--surface);stroke-width:2}
+.ch-line .cross{stroke:var(--fg-2);stroke-width:1}
+.dash-f{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
+.dash-f label{display:flex;flex-direction:column;gap:2px;font-size:.78rem;color:var(--fg-2)}
+.dash-f .inp,.dash-f .sel{min-width:0;max-width:200px}
+.comp-img{width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.dash-h{margin-top:10px}
+.grid .card.wide{grid-column:1/-1}

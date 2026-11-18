@@ -107,6 +107,10 @@ public static class Esquema
         AgregarColumna(db, "ventas", "CostoOrigen", "TEXT NOT NULL DEFAULT 'sin_costeo'");
         AgregarColumna(db, "ventas", "Migrada", "INTEGER NOT NULL DEFAULT 0");
 
+        // ---- Fase 4: umbrales de inteligencia comercial (configurables) ----
+        AgregarColumna(db, "configuracion", "DiasSinMovimiento", "INTEGER NOT NULL DEFAULT 30");
+        AgregarColumna(db, "configuracion", "BandaCompetenciaPct", "TEXT NOT NULL DEFAULT '5.0'");
+
         // ---- Tablas nuevas, tal como las define el modelo de EF ----
         CrearTablasFaltantes(db);
         MigrarAPallets(db, dirRespaldos);

@@ -679,7 +679,7 @@ function detalleForm(id){
       fila('Valor en México',+p.precioMexico>0?money((+p.cantidad||0)*(+p.precioMexico))+' <span class="small muted">('+num(disp)+' disponibles: '+money(disp*(+p.precioMexico))+')</span>':'')+
     '</dl></div>'+
     tablaLotes+
-    '<div id="detRent"></div>'+
+    '<div id="detRent"></div><div id="detComp"></div>'+
     (p.descripcionComercial?'<div><h3>Descripción comercial</h3><p class="pre small">'+esc(p.descripcionComercial)+'</p></div>':'')+
     (p.accesoriosIncluidos?'<div><h3>Accesorios incluidos</h3><p class="small">'+esc(p.accesoriosIncluidos)+'</p></div>':'')+
     (p.caracteristicas?'<div><h3>Características</h3><p class="pre small">'+esc(p.caracteristicas)+'</p></div>':'')+
@@ -698,6 +698,7 @@ function detalleForm(id){
     car.addEventListener('touchend',function(e){if(x0==null)return;var dx=e.changedTouches[0].clientX-x0;if(Math.abs(dx)>40)ver(k+(dx<0?1:-1));x0=null});
     car.focus();
     if(window.PCP)window.PCP.fichaRentabilidad(id,el.querySelector('#detRent'));
+    if(window.PCC)window.PCC.fichaCompetencia(id,el.querySelector('#detComp'));
   });
 }
 

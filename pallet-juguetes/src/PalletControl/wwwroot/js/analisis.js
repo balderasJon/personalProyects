@@ -20,7 +20,7 @@ function pillCosteo(c){
 function err(e){PC.toast((e&&e.mensaje)||'No se pudo completar la operación.')}
 
 /* ---------- subnavegación de Análisis comercial ---------- */
-var SUBS=['productos','simulador','pallets','plataformas','publicaciones','real'],vista='pallets';
+var SUBS=['dashboard','productos','simulador','pallets','plataformas','competencia','publicaciones','real','reportes'],vista='pallets';
 try{var v0=localStorage.getItem('pallet-analisis-vista');if(SUBS.indexOf(v0)>=0)vista=v0}catch(e){}
 function marcarSub(){document.querySelectorAll('[data-sub]').forEach(function(b){if(b.dataset.sub===vista)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')})}
 document.querySelectorAll('[data-sub]').forEach(function(b){b.addEventListener('click',function(){vista=b.dataset.sub;try{localStorage.setItem('pallet-analisis-vista',vista)}catch(e){}
@@ -31,6 +31,7 @@ function irA(v,opciones){vista=v;try{localStorage.setItem('pallet-analisis-vista
 function render(){
   marcarSub();
   if((vista==='publicaciones'||vista==='real')&&window.PCV){window.PCV.render(vista,body);return}
+  if((vista==='dashboard'||vista==='competencia'||vista==='reportes')&&window.PCC){window.PCC.render(vista,body);return}
   if(vista!=='pallets'&&window.PCP){window.PCP.render(vista,body);return}
   var n=++st.pide;
   if(st.sel){

@@ -33,6 +33,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IUsuarioActual
     public DbSet<VentaGasto> VentaGastos => Set<VentaGasto>();
     public DbSet<VentaIncidencia> VentaIncidencias => Set<VentaIncidencia>();
     public DbSet<Publicacion> Publicaciones => Set<Publicacion>();
+    public DbSet<Competencia> Competencia => Set<Competencia>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder c)
     {
@@ -225,6 +226,29 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IUsuarioActual
             e.Property(x => x.RequiereAccion).HasMaxLength(20);
             e.Property(x => x.Observaciones).HasMaxLength(500);
             e.Property(x => x.Fuente).HasMaxLength(30);
+        });
+        b.Entity<Competencia>(e =>
+        {
+            e.ToTable("competencia");
+            e.HasKey(x => x.Id);
+            e.HasOne<Producto>().WithMany().HasForeignKey(x => x.ProductoId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Plataforma>().WithMany().HasForeignKey(x => x.PlataformaId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.ProductoId, x.Vigente });
+            e.Property(x => x.ProductoReferencia).HasMaxLength(160);
+            e.Property(x => x.PlataformaTexto).HasMaxLength(60);
+            e.Property(x => x.Marca).HasMaxLength(80);
+            e.Property(x => x.Modelo).HasMaxLength(80);
+            e.Property(x => x.Condicion).HasMaxLength(20);
+            e.Property(x => x.CodigoBarras).HasMaxLength(20);
+            e.Property(x => x.Caracteristicas).HasMaxLength(600);
+            e.Property(x => x.Url).HasMaxLength(500);
+            e.Property(x => x.Vendedor).HasMaxLength(100);
+            e.Property(x => x.Observaciones).HasMaxLength(500);
+            e.Property(x => x.ImagenArchivo).HasMaxLength(80);
+            e.Property(x => x.Fuente).HasMaxLength(30);
+            e.Property(x => x.Usuario).HasMaxLength(40);
+            e.Property(x => x.Vigente).HasDefaultValue(true);
+            e.ToTable(t => t.HasCheckConstraint("CK_competencia_precios", "\"PrecioPublicado\" >= 0 AND \"PrecioEnvio\" >= 0"));
         });
         b.Entity<Gasto>(e =>
         {

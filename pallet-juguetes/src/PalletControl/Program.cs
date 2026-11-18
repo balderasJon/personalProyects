@@ -130,6 +130,7 @@ app.MapApi();
 app.MapPallets();
 app.MapPrecios();
 app.MapVentas();
+app.MapComercial();
 
 app.Lifetime.ApplicationStarted.Register(() =>
 {

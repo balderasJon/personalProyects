@@ -2,6 +2,22 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-18 · Fase 4 — Inteligencia comercial: competencia, dashboard y reportes
+
+**Agregado**
+- Competencia: precios de productos similares con plataforma o tienda, marca, modelo, condición, código de barras, características, foto, envío, URL, vendedor y fecha; vigentes o descartados.
+- Estadística del mercado (mínimo, máximo, promedio, mediana), diferencia % y posición competitiva con banda configurable (±5 %); aviso si el mercado está debajo de tu mínimo; resumen en la ficha del juguete.
+- Dashboard ejecutivo con filtros por fecha, pallet, categoría, juguete y plataforma: inversión, ingresos, costo vendido, gastos comerciales, utilidad bruta y neta estimada, margen, ROI, capital recuperado y pendiente; indicadores de inventario (disponibles, publicados, vendidos, dañados, incompletos, sin movimiento, antigüedad); ventas y utilidad por plataforma, rentabilidad por categoría, rotación, condición, más y menos rentables, más vendidos, capital por pallet, candidatos a liquidación y evolución de la recuperación.
+- Reportes CSV para Excel: ventas, rentabilidad por juguete, plataformas, categorías, capital por pallet, inventario por lote, competencia y candidatos a liquidación.
+- Umbrales configurables: días sin movimiento (30) y banda de precio de mercado (±5 %).
+- 14 pruebas nuevas (9 unitarias, 5 de integración): 80 en total.
+
+**Corregido**
+- Eliminar un juguete sin ventas que tenía publicaciones registradas fallaba por la relación entre tablas; ahora se eliminan sus publicaciones y precios de competencia junto con él.
+
+**Datos (migración automática, no destructiva)**
+- Tabla nueva `competencia`; columnas nuevas `DiasSinMovimiento` y `BandaCompetenciaPct` en `configuracion`. No se modifica ningún dato anterior.
+
 ## 2026-11-18 · Fase 3 — Ventas, cobros, devoluciones, publicaciones y rentabilidad real
 
 **Agregado**

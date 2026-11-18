@@ -2,7 +2,7 @@
 
 Aplicación local para administrar el negocio del pallet de juguetes: pallets y costo real de cada pieza, inventario por lotes, ventas, gastos, indicadores semanales y recuperación de la inversión.
 
-> **Documentación del módulo de costos, precios y rentabilidad:** [`docs/`](docs/README.md) — diagnóstico (Fase 0), Fase 1 (pallets y costeo), Fase 2 (plataformas y precios), Fase 3 (ventas, cobros, devoluciones, publicaciones y rentabilidad real) y bitácora de cambios.
+> **Documentación del módulo de costos, precios y rentabilidad:** [`docs/`](docs/README.md) — diagnóstico (Fase 0), Fase 1 (pallets y costeo), Fase 2 (plataformas y precios), Fase 3 (ventas, cobros, devoluciones, publicaciones y rentabilidad real), Fase 4 (competencia, dashboard y reportes) y bitácora de cambios.
 
 Es la versión instalable del artefacto **Control Pallet de Juguetes**. Usa la misma interfaz y los mismos cálculos, pero guarda los datos en una base SQLite en tu computadora. Está pensada para una sola persona; también puedes abrirla desde el celular en la misma red Wi‑Fi.
 
@@ -244,8 +244,11 @@ pallet-juguetes/
 │   ├── Dominio/Calculo/ResultadoVenta.cs  Resultado real de una venta, asignación de lotes y reparto (puro)
 │   ├── Servicios/Ventas.cs                Ventas por lote, gastos, cobros, incidencias y publicaciones
 │   ├── Endpoints/VentasApi.cs  Ventas, publicaciones y rentabilidad real
+│   ├── Dominio/Calculo/Indicadores.cs     Estadística de precios, posición competitiva, antigüedad y rotación (puro)
+│   ├── Servicios/Comercial.cs             Competencia e indicadores del dashboard
+│   ├── Endpoints/ComercialApi.cs Competencia, dashboard y reportes CSV
 │   ├── Endpoints/Dtos.cs       Contratos de entrada
-│   └── wwwroot/                Interfaz (index.html, css/app.css, js/app.js, js/analisis.js, js/precios.js, js/ventas.js)
+│   └── wwwroot/                Interfaz (index.html, css/app.css, js/app.js, js/analisis.js, js/precios.js, js/ventas.js, js/comercial.js)
 ├── tests/PalletControl.Tests/  Pruebas unitarias (Unitarias/) y de integración (Integracion/)
 ├── docs/                       Documentación del módulo de costos y rentabilidad
 ├── PalletControl.sln
@@ -278,7 +281,7 @@ pallet-juguetes/
 | PUT | `/api/configuracion` | Ajustes del negocio |
 | GET | `/api/respaldo` | Descarga JSON completo |
 
-Las rutas de pallets, lotes, costeo, usuarios y sesión están en [`docs/01-fase1-pallets-y-costeo.md`](docs/01-fase1-pallets-y-costeo.md#61-api-nueva-todas-requieren-sesión-salvo-apiauth); las de plataformas, tarifas y rentabilidad, en [`docs/02-fase2-plataformas-y-precios.md`](docs/02-fase2-plataformas-y-precios.md#61-api-todas-requieren-sesión); las de ventas, cobros, incidencias, publicaciones y rentabilidad real, en [`docs/03-fase3-ventas-y-rentabilidad-real.md`](docs/03-fase3-ventas-y-rentabilidad-real.md#61-api-todas-requieren-sesión). Todas las rutas requieren sesión, salvo `/api/auth/*`.
+Las rutas de pallets, lotes, costeo, usuarios y sesión están en [`docs/01-fase1-pallets-y-costeo.md`](docs/01-fase1-pallets-y-costeo.md#61-api-nueva-todas-requieren-sesión-salvo-apiauth); las de plataformas, tarifas y rentabilidad, en [`docs/02-fase2-plataformas-y-precios.md`](docs/02-fase2-plataformas-y-precios.md#61-api-todas-requieren-sesión); las de ventas, cobros, incidencias, publicaciones y rentabilidad real, en [`docs/03-fase3-ventas-y-rentabilidad-real.md`](docs/03-fase3-ventas-y-rentabilidad-real.md#61-api-todas-requieren-sesión); las de competencia, dashboard y reportes, en [`docs/04-fase4-inteligencia-comercial.md`](docs/04-fase4-inteligencia-comercial.md#61-api-todas-requieren-sesión). Todas las rutas requieren sesión, salvo `/api/auth/*`.
 
 Los errores de validación regresan `400` o `409` con `{ "mensaje": "..." }` en español.
 
