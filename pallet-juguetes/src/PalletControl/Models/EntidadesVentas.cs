@@ -78,6 +78,12 @@ public class Publicacion
     public string Observaciones { get; set; } = "";
     /// <summary>manual; en la Fase 5, la API que la sincronizó.</summary>
     public string Fuente { get; set; } = "manual";
+    // ---- Fase 5: vínculo con la cuenta conectada y último estado leído de la plataforma ----
+    public string? CuentaIntegracionId { get; set; }
+    public string EstatusRemoto { get; set; } = "";
+    public int? ExistenciasRemotas { get; set; }
+    public decimal? PrecioRemoto { get; set; }
+    public DateTime? SincronizadoUtc { get; set; }
     public DateTime CreadoUtc { get; set; } = DateTime.UtcNow;
     public DateTime ActualizadoUtc { get; set; } = DateTime.UtcNow;
 }

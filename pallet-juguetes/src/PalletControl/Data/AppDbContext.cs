@@ -34,6 +34,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IUsuarioActual
     public DbSet<VentaIncidencia> VentaIncidencias => Set<VentaIncidencia>();
     public DbSet<Publicacion> Publicaciones => Set<Publicacion>();
     public DbSet<Competencia> Competencia => Set<Competencia>();
+    public DbSet<IntegracionCuenta> IntegracionCuentas => Set<IntegracionCuenta>();
+    public DbSet<SincronizacionLote> SincronizacionLotes => Set<SincronizacionLote>();
+    public DbSet<SincronizacionPropuesta> SincronizacionPropuestas => Set<SincronizacionPropuesta>();
+    public DbSet<IntegracionEvento> IntegracionEventos => Set<IntegracionEvento>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder c)
     {
@@ -176,6 +180,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IUsuarioActual
             e.Property(x => x.Cliente).HasMaxLength(80);
             e.Property(x => x.Notas).HasMaxLength(400);
             e.HasIndex(x => x.Folio);
+            e.HasIndex(x => x.PedidoExterno);
             e.HasOne<Plataforma>().WithMany().HasForeignKey(x => x.PlataformaId).OnDelete(DeleteBehavior.Restrict);
             e.Property(x => x.CostoOrigen).HasMaxLength(20).HasDefaultValue("sin_costeo");
             e.Property(x => x.FactorIngreso).HasDefaultValue(1m);
@@ -249,6 +254,53 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IUsuarioActual
             e.Property(x => x.Usuario).HasMaxLength(40);
             e.Property(x => x.Vigente).HasDefaultValue(true);
             e.ToTable(t => t.HasCheckConstraint("CK_competencia_precios", "\"PrecioPublicado\" >= 0 AND \"PrecioEnvio\" >= 0"));
+        });
+        b.Entity<IntegracionCuenta>(e =>
+        {
+            e.ToTable("integracion_cuentas");
+            e.HasKey(x => x.Id);
+            e.HasOne<Plataforma>().WithMany().HasForeignKey(x => x.PlataformaId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.Conector).HasMaxLength(20);
+            e.Property(x => x.Nombre).HasMaxLength(80);
+            e.Property(x => x.Estado).HasMaxLength(24);
+            e.Property(x => x.CuentaExterna).HasMaxLength(80);
+            e.Property(x => x.OAuthState).HasMaxLength(80);
+            e.Property(x => x.UltimoError).HasMaxLength(500);
+        });
+        b.Entity<SincronizacionLote>(e =>
+        {
+            e.ToTable("sincronizacion_lotes");
+            e.HasKey(x => x.Id);
+            e.HasOne<IntegracionCuenta>().WithMany().HasForeignKey(x => x.CuentaId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.CuentaId);
+            e.Property(x => x.Estado).HasMaxLength(12);
+            e.Property(x => x.Resumen).HasMaxLength(500);
+            e.Property(x => x.Usuario).HasMaxLength(40);
+        });
+        b.Entity<SincronizacionPropuesta>(e =>
+        {
+            e.ToTable("sincronizacion_propuestas");
+            e.HasKey(x => x.Id);
+            e.HasOne<SincronizacionLote>().WithMany().HasForeignKey(x => x.LoteId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.LoteId);
+            e.Property(x => x.Tipo).HasMaxLength(20);
+            e.Property(x => x.Destino).HasMaxLength(12);
+            e.Property(x => x.ReferenciaExterna).HasMaxLength(80);
+            e.Property(x => x.Descripcion).HasMaxLength(500);
+            e.Property(x => x.Antes).HasMaxLength(200);
+            e.Property(x => x.Despues).HasMaxLength(200);
+            e.Property(x => x.Estado).HasMaxLength(12);
+            e.Property(x => x.Resultado).HasMaxLength(500);
+        });
+        b.Entity<IntegracionEvento>(e =>
+        {
+            e.ToTable("integracion_eventos");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.CuentaId, x.FechaUtc });
+            e.Property(x => x.Nivel).HasMaxLength(8);
+            e.Property(x => x.Operacion).HasMaxLength(60);
+            e.Property(x => x.Detalle).HasMaxLength(1000);
+            e.Property(x => x.Usuario).HasMaxLength(40);
         });
         b.Entity<Gasto>(e =>
         {
@@ -333,8 +385,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, IUsuarioActual
     }
 
     // ---------- Auditoría: cada alta, cambio o baja de entidades de negocio queda en la bitácora ----------
-    private static readonly HashSet<Type> NoAuditar = [typeof(VersionDatos), typeof(ConsultaCodigoBarras), typeof(Auditoria), typeof(MovimientoInventario), typeof(CostoLote)];
-    private static readonly HashSet<string> CamposPrivados = ["Hash", "Sal", "Iteraciones"];
+    private static readonly HashSet<Type> NoAuditar = [typeof(VersionDatos), typeof(ConsultaCodigoBarras), typeof(Auditoria), typeof(MovimientoInventario), typeof(CostoLote), typeof(IntegracionEvento)];
+    private static readonly HashSet<string> CamposPrivados = ["Hash", "Sal", "Iteraciones", "SecretosCifrados", "OAuthState"];
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {

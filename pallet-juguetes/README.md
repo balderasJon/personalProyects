@@ -2,7 +2,7 @@
 
 Aplicación local para administrar el negocio del pallet de juguetes: pallets y costo real de cada pieza, inventario por lotes, ventas, gastos, indicadores semanales y recuperación de la inversión.
 
-> **Documentación del módulo de costos, precios y rentabilidad:** [`docs/`](docs/README.md) — diagnóstico (Fase 0), Fase 1 (pallets y costeo), Fase 2 (plataformas y precios), Fase 3 (ventas, cobros, devoluciones, publicaciones y rentabilidad real), Fase 4 (competencia, dashboard y reportes) y bitácora de cambios.
+> **Documentación del módulo de costos, precios y rentabilidad:** [`docs/`](docs/README.md) — diagnóstico (Fase 0), Fase 1 (pallets y costeo), Fase 2 (plataformas y precios), Fase 3 (ventas, cobros, devoluciones, publicaciones y rentabilidad real), Fase 4 (competencia, dashboard y reportes), Fase 5 (integraciones con Mercado Libre y Meta) y bitácora de cambios.
 
 Es la versión instalable del artefacto **Control Pallet de Juguetes**. Usa la misma interfaz y los mismos cálculos, pero guarda los datos en una base SQLite en tu computadora. Está pensada para una sola persona; también puedes abrirla desde el celular en la misma red Wi‑Fi.
 
@@ -188,6 +188,7 @@ La regla se limita al perfil de red **privada**; la red de la casa debe estar ma
 ## 3. Datos y respaldos
 
 - Base de datos: `datos/pallet.db` (SQLite, un solo archivo).
+- **Claves de cifrado:** `datos/claves` guarda las claves con las que se cifran las credenciales de las integraciones. Si mudas la aplicación a otra PC, copia toda la carpeta `datos` (incluida `claves`); sin ellas habrá que volver a capturar las credenciales.
 - **Respaldo automático:** cada vez que la aplicación arranca se crea, si aún no existe, una copia del día en `datos/respaldos/pallet-AAAA-MM-DD.db`. Se conservan las últimas 14 (configurable en `appsettings.json` → `Respaldos:Conservar`).
 - **Migración a un solo socio:** al abrir por primera vez esta versión con una base anterior, se guarda una copia `datos/respaldos/pallet-antes-de-un-socio-AAAA-MM-DD-HHMMSS.db`, se suman las horas de los dos socios en un solo campo y se eliminan nombres de socios, reparto, responsable de venta y quién pagó cada gasto.
 - **Migración a la Fase 1 (pallets):** al abrir por primera vez esta versión con una base anterior, se guarda `datos/respaldos/pallet-antes-de-fase1-AAAA-MM-DD-HHMMSS.db` y se crea **"Pallet 1"** con la inversión de Ajustes; cada juguete queda en un lote con su condición (nuevo → Nuevo sellado, dañado → Dañado, incompleto → Incompleto). No se borra nada.
@@ -247,8 +248,11 @@ pallet-juguetes/
 │   ├── Dominio/Calculo/Indicadores.cs     Estadística de precios, posición competitiva, antigüedad y rotación (puro)
 │   ├── Servicios/Comercial.cs             Competencia e indicadores del dashboard
 │   ├── Endpoints/ComercialApi.cs Competencia, dashboard y reportes CSV
+│   ├── Dominio/Integracion/Planificador.cs Propuestas de sincronización (puro)
+│   ├── Servicios/Integraciones/           Conectores (Mercado Libre, Meta), credenciales cifradas, lectura y aplicación confirmada
+│   ├── Endpoints/IntegracionesApi.cs Cuentas conectadas, lecturas y propuestas
 │   ├── Endpoints/Dtos.cs       Contratos de entrada
-│   └── wwwroot/                Interfaz (index.html, css/app.css, js/app.js, js/analisis.js, js/precios.js, js/ventas.js, js/comercial.js)
+│   └── wwwroot/                Interfaz (index.html, css/app.css, js/app.js, js/analisis.js, js/precios.js, js/ventas.js, js/comercial.js, js/integraciones.js)
 ├── tests/PalletControl.Tests/  Pruebas unitarias (Unitarias/) y de integración (Integracion/)
 ├── docs/                       Documentación del módulo de costos y rentabilidad
 ├── PalletControl.sln
@@ -281,7 +285,7 @@ pallet-juguetes/
 | PUT | `/api/configuracion` | Ajustes del negocio |
 | GET | `/api/respaldo` | Descarga JSON completo |
 
-Las rutas de pallets, lotes, costeo, usuarios y sesión están en [`docs/01-fase1-pallets-y-costeo.md`](docs/01-fase1-pallets-y-costeo.md#61-api-nueva-todas-requieren-sesión-salvo-apiauth); las de plataformas, tarifas y rentabilidad, en [`docs/02-fase2-plataformas-y-precios.md`](docs/02-fase2-plataformas-y-precios.md#61-api-todas-requieren-sesión); las de ventas, cobros, incidencias, publicaciones y rentabilidad real, en [`docs/03-fase3-ventas-y-rentabilidad-real.md`](docs/03-fase3-ventas-y-rentabilidad-real.md#61-api-todas-requieren-sesión); las de competencia, dashboard y reportes, en [`docs/04-fase4-inteligencia-comercial.md`](docs/04-fase4-inteligencia-comercial.md#61-api-todas-requieren-sesión). Todas las rutas requieren sesión, salvo `/api/auth/*`.
+Las rutas de pallets, lotes, costeo, usuarios y sesión están en [`docs/01-fase1-pallets-y-costeo.md`](docs/01-fase1-pallets-y-costeo.md#61-api-nueva-todas-requieren-sesión-salvo-apiauth); las de plataformas, tarifas y rentabilidad, en [`docs/02-fase2-plataformas-y-precios.md`](docs/02-fase2-plataformas-y-precios.md#61-api-todas-requieren-sesión); las de ventas, cobros, incidencias, publicaciones y rentabilidad real, en [`docs/03-fase3-ventas-y-rentabilidad-real.md`](docs/03-fase3-ventas-y-rentabilidad-real.md#61-api-todas-requieren-sesión); las de competencia, dashboard y reportes, en [`docs/04-fase4-inteligencia-comercial.md`](docs/04-fase4-inteligencia-comercial.md#61-api-todas-requieren-sesión); las de integraciones, en [`docs/05-fase5-integraciones.md`](docs/05-fase5-integraciones.md#61-api-todas-requieren-sesión-salvo-el-regreso-de-oauth). Todas las rutas requieren sesión, salvo `/api/auth/*`.
 
 Los errores de validación regresan `400` o `409` con `{ "mensaje": "..." }` en español.
 

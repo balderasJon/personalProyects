@@ -2,6 +2,22 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-18 · Fase 5 — Integraciones con APIs oficiales
+
+**Agregado**
+- Análisis comercial › Integraciones: cuentas por plataforma con capacidades declaradas según la documentación oficial.
+- Mercado Libre: conexión OAuth 2.0 (con PKCE opcional y opción de pegar la dirección de regreso), renovación de token, vínculo de anuncios, pausar/reactivar/ajustar piezas, enviar precio, importar pedidos pagados con comisión y envío reales, detectar cancelaciones y proponer cobros estimados.
+- Meta: catálogo de Facebook/Instagram/WhatsApp — agotado/disponible y piezas (`quantity_to_sell_on_facebook`).
+- «Leer plataforma» genera propuestas; solo se aplican las marcadas y confirmadas. Resultado por propuesta e historial; bitácora técnica sin secretos.
+- Credenciales cifradas (Data Protection; DPAPI en Windows), nunca devueltas ni respaldadas; captura solo desde la PC principal.
+- 9 pruebas nuevas (6 unitarias, 3 de integración con plataformas simuladas): 89 en total.
+
+**Pendiente**
+- Amazon México: no se pudo consultar su documentación oficial; no se programó sin verificarla.
+
+**Datos (migración automática, no destructiva)**
+- Tablas nuevas `integracion_cuentas`, `sincronizacion_lotes`, `sincronizacion_propuestas`, `integracion_eventos`; columnas nuevas en `publicaciones` y `ventas`. Carpeta nueva `datos/claves` (claves de cifrado; no se sube al repositorio).
+
 ## 2026-11-18 · Fase 4 — Inteligencia comercial: competencia, dashboard y reportes
 
 **Agregado**

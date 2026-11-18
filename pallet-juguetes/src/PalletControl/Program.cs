@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using PalletControl.Data;
@@ -72,6 +73,19 @@ builder.Services.AddHttpClient<Traductor>(h =>
     h.Timeout = TimeSpan.FromSeconds(15);
     h.DefaultRequestHeaders.UserAgent.ParseAdd("PalletControl/1.0");
 });
+// Fase 5: integraciones por API oficial. Las credenciales se cifran con Data Protection; las claves viven junto a los datos
+// (en Windows, además protegidas con DPAPI de la cuenta del usuario).
+var dpb = builder.Services.AddDataProtection().SetApplicationName("PalletControl")
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(dbDir, "claves")));
+if (OperatingSystem.IsWindows()) dpb.ProtectKeysWithDpapi();
+builder.Services.AddHttpClient("integraciones", h =>
+{
+    h.Timeout = TimeSpan.FromSeconds(30);
+    h.DefaultRequestHeaders.UserAgent.ParseAdd("PalletControl/1.0");
+});
+builder.Services.AddSingleton<PalletControl.Servicios.Integraciones.IConector, PalletControl.Servicios.Integraciones.ConectorMercadoLibre>();
+builder.Services.AddSingleton<PalletControl.Servicios.Integraciones.IConector, PalletControl.Servicios.Integraciones.ConectorMeta>();
+builder.Services.AddScoped<PalletControl.Servicios.Integraciones.ServicioIntegraciones>();
 var imgDir = Path.Combine(dbDir, "imagenes");
 Directory.CreateDirectory(imgDir);
 builder.Services.AddSingleton(new AlmacenImagenes(imgDir));
@@ -131,6 +145,7 @@ app.MapPallets();
 app.MapPrecios();
 app.MapVentas();
 app.MapComercial();
+app.MapIntegraciones();
 
 app.Lifetime.ApplicationStarted.Register(() =>
 {

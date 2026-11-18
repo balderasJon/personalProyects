@@ -111,6 +111,15 @@ public static class Esquema
         AgregarColumna(db, "configuracion", "DiasSinMovimiento", "INTEGER NOT NULL DEFAULT 30");
         AgregarColumna(db, "configuracion", "BandaCompetenciaPct", "TEXT NOT NULL DEFAULT '5.0'");
 
+        // ---- Fase 5: vínculos con plataformas conectadas ----
+        AgregarColumna(db, "publicaciones", "CuentaIntegracionId", "TEXT NULL");
+        AgregarColumna(db, "publicaciones", "EstatusRemoto", "TEXT NOT NULL DEFAULT ''");
+        AgregarColumna(db, "publicaciones", "ExistenciasRemotas", "INTEGER NULL");
+        AgregarColumna(db, "publicaciones", "PrecioRemoto", "TEXT NULL");
+        AgregarColumna(db, "publicaciones", "SincronizadoUtc", "TEXT NULL");
+        AgregarColumna(db, "ventas", "PedidoExterno", "TEXT NULL");
+        AgregarColumna(db, "ventas", "CuentaIntegracionId", "TEXT NULL");
+
         // ---- Tablas nuevas, tal como las define el modelo de EF ----
         CrearTablasFaltantes(db);
         MigrarAPallets(db, dirRespaldos);

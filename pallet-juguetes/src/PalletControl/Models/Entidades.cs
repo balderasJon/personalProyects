@@ -240,6 +240,9 @@ public class Venta
     /// <summary>costeo, estimado_migracion, sin_costeo o mixto.</summary>
     public string CostoOrigen { get; set; } = "sin_costeo";
     public bool Migrada { get; set; }
+    /// <summary>Fase 5: pedido de la plataforma del que se importó (evita importarlo dos veces).</summary>
+    public string? PedidoExterno { get; set; }
+    public string? CuentaIntegracionId { get; set; }
     public DateTime CreadoUtc { get; set; } = DateTime.UtcNow;
     public DateTime ActualizadoUtc { get; set; } = DateTime.UtcNow;
 }
