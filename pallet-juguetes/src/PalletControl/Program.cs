@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using PalletControl.Data;
@@ -27,7 +28,26 @@ var dbDir = Path.GetDirectoryName(dbPath)!;
 Directory.CreateDirectory(dbDir);
 csb.DataSource = dbPath;
 var cs = csb.ToString();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IUsuarioActual, UsuarioActualHttp>();
 builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(cs));
+
+// Inicio de sesión local con cookie (decisión 11.2).
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(o =>
+    {
+        o.Cookie.Name = "pallet.sesion";
+        o.Cookie.HttpOnly = true;
+        o.Cookie.SameSite = SameSiteMode.Strict;
+        o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        o.ExpireTimeSpan = TimeSpan.FromHours(12);
+        o.SlidingExpiration = true;
+        // Es una API: sin redirecciones, solo códigos de estado.
+        o.Events.OnRedirectToLogin = c => { c.Response.StatusCode = 401; return Task.CompletedTask; };
+        o.Events.OnRedirectToAccessDenied = c => { c.Response.StatusCode = 403; return Task.CompletedTask; };
+        o.Events.OnValidatePrincipal = AuthApi.ValidarSesionAsync;
+    });
+builder.Services.AddAuthorization();
 builder.Services.AddHttpClient<BuscadorCodigoBarras>(h =>
 {
     h.Timeout = TimeSpan.FromSeconds(12);
@@ -88,12 +108,26 @@ app.UseStaticFiles(new StaticFileOptions
 {
     OnPrepareResponse = c => c.Context.Response.Headers.CacheControl = "no-cache"
 });
+app.UseAuthentication();
+app.UseAuthorization();
+// Las fotos también requieren sesión.
+app.Use(async (ctx, next) =>
+{
+    if (ctx.Request.Path.StartsWithSegments("/imagenes") && ctx.User.Identity?.IsAuthenticated != true)
+    {
+        ctx.Response.StatusCode = 401;
+        return;
+    }
+    await next();
+});
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(imgDir),
     RequestPath = "/imagenes"
 });
+app.MapAuth();
 app.MapApi();
+app.MapPallets();
 
 app.Lifetime.ApplicationStarted.Register(() =>
 {
@@ -125,3 +159,6 @@ static IEnumerable<IPAddress> IpsLocales() =>
         .SelectMany(n => n.GetIPProperties().UnicastAddresses)
         .Select(a => a.Address)
         .Where(a => a.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(a));
+
+/// <summary>Visible para las pruebas de integración (WebApplicationFactory).</summary>
+public partial class Program;

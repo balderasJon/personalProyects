@@ -19,7 +19,7 @@ public static class Api
 
     public static void MapApi(this WebApplication app)
     {
-        var api = app.MapGroup("/api");
+        var api = app.MapGroup("/api").RequireAuthorization();
 
         api.MapGet("/version", async (AppDbContext db, TipoCambioDof tc) =>
         {
@@ -41,7 +41,14 @@ public static class Api
             ventas = await db.Ventas.AsNoTracking().ToListAsync(),
             gastos = await db.Gastos.AsNoTracking().ToListAsync(),
             semanas = await db.Semanas.AsNoTracking().ToListAsync(),
-            catalogos = new { Catalogos.Canales, Catalogos.TiposGasto }
+            pallets = await db.Pallets.AsNoTracking().OrderBy(p => p.FechaCompra).ToListAsync(),
+            lotes = await db.Lotes.AsNoTracking().ToListAsync(),
+            costos = await CostosVigentesAsync(db),
+            catalogos = new
+            {
+                Catalogos.Canales, Catalogos.TiposGasto, Catalogos.TiposGastoPallet, Catalogos.EstadosComerciales, Catalogos.Tratamientos,
+                condiciones = Catalogos.Condiciones.Select(c => new { c.Codigo, c.Nombre, c.Comercializable }),
+            }
         });
         });
 
@@ -49,18 +56,27 @@ public static class Api
         // Recalcula y guarda el mínimo de todos los juguetes con precio en México.
         api.MapPost("/productos/recalcular-minimos", (AppDbContext db) => Bloqueado(async () =>
         {
-            var c = await db.Configuracion.FirstAsync();
+            // Fase 1: si el juguete tiene costo real (costeo vigente de su pallet), el mínimo es ese costo,
+            // redondeado hacia arriba al peso para no vender por debajo. Si no, se usa el factor proporcional global anterior.
+            var c = await db.Configuracion.OrderBy(x => x.Id).FirstAsync();
             var ps = await db.Productos.ToListAsync();
-            if (Precios.Factor(c.Inversion, ps) is not { } f)
-                return Mal("Captura el precio en México de al menos un juguete para calcular los mínimos.");
-            var n = 0;
-            foreach (var p in ps.Where(p => p.PrecioMexico > 0))
+            var vigentes = await db.CosteoCorridas.Where(x => x.Vigente).Select(x => x.Id).ToListAsync();
+            var costos = (await db.CostosLote.Where(x => vigentes.Contains(x.CorridaId) && x.Comercializable && x.Cantidad > 0).ToListAsync())
+                .GroupBy(x => x.ProductoId).ToDictionary(g => g.Key, g => g.Sum(x => x.CostoTotal) / g.Sum(x => x.Cantidad));
+            var f = Precios.Factor(c.Inversion, ps);
+            if (costos.Count == 0 && f is null)
+                return Mal("Calcula el costeo de un pallet o captura el precio en México para calcular los mínimos.");
+            int n = 0, conCosto = 0;
+            foreach (var p in ps)
             {
-                var m = Precios.Minimo(p.PrecioMexico, f);
-                if (m != p.PrecioMinimo) { p.PrecioMinimo = m; p.ActualizadoUtc = DateTime.UtcNow; n++; }
+                decimal? m = costos.TryGetValue(p.Id, out var cu) ? Math.Ceiling(cu)
+                           : f is { } ff && p.PrecioMexico > 0 ? Precios.Minimo(p.PrecioMexico, ff) : null;
+                if (costos.ContainsKey(p.Id)) conCosto++;
+                if (m is { } mm && mm != p.PrecioMinimo) { p.PrecioMinimo = mm; p.ActualizadoUtc = DateTime.UtcNow; n++; }
             }
             await db.GuardarAsync();
-            return Results.Ok(new { actualizados = n, factor = Math.Round(f, 4), sinPrecioMexico = ps.Count(p => p.PrecioMexico <= 0) });
+            return Results.Ok(new { actualizados = n, conCostoReal = conCosto, factor = f is null ? (decimal?)null : Math.Round(f.Value, 4),
+                sinPrecioMexico = ps.Count(p => p.PrecioMexico <= 0 && !costos.ContainsKey(p.Id)) });
         }));
 
         // ---------- Traducción al español (MyMemory) ----------
@@ -76,7 +92,7 @@ public static class Api
         api.MapPut("/tipo-cambio", (TipoCambioIn i, AppDbContext db) => Bloqueado(async () =>
         {
             if (i.Valor <= 0 || i.Valor > 1000) return Mal("Captura un tipo de cambio válido (pesos por dólar).");
-            var c = await db.Configuracion.FirstAsync();
+            var c = await db.Configuracion.OrderBy(x => x.Id).FirstAsync();
             c.TipoCambioUsd = Math.Round(i.Valor, 4);
             c.TipoCambioFecha = Hoy;
             c.TipoCambioFuente = "Manual";
@@ -87,7 +103,7 @@ public static class Api
             return Results.Ok(c);
         }));
         api.MapPost("/tipo-cambio/consultar", async (AppDbContext db, TipoCambioDof tc) =>
-            await tc.ForzarAsync(db) ? Results.Ok(await db.Configuracion.AsNoTracking().FirstAsync())
+            await tc.ForzarAsync(db) ? Results.Ok(await db.Configuracion.AsNoTracking().OrderBy(x => x.Id).FirstAsync())
                                      : Results.Json(new Error(TipoCambioDof.UltimoError ?? "No se pudo consultar."), statusCode: 503));
 
         // ---------- Imágenes de juguetes ----------
@@ -183,12 +199,16 @@ public static class Api
             if (n > 0) return Choque($"Este juguete tiene {n} venta(s) registrada(s). Elimínenlas primero o ajusten la cantidad a lo vendido.");
             var imgs = await db.Imagenes.Where(x => x.ProductoId == id).ToListAsync();
             db.Imagenes.RemoveRange(imgs);
+            var lotes = await db.Lotes.Where(l => l.ProductoId == id).ToListAsync();
+            var idsLote = lotes.Select(l => l.Id).ToList();
+            db.Movimientos.RemoveRange(await db.Movimientos.Where(m => idsLote.Contains(m.LoteId)).ToListAsync());
+            db.Lotes.RemoveRange(lotes);
             db.Productos.Remove(p);
             await db.GuardarAsync();
             foreach (var img in imgs) alm.Borrar(img.Archivo);
             return Results.NoContent();
         }));
-        api.MapPost("/productos/importar", (List<ProductoIn> filas, AppDbContext db) => Bloqueado(() => Importar(db, filas)));
+        api.MapPost("/productos/importar", (List<ProductoIn> filas, string? palletId, AppDbContext db) => Bloqueado(() => Importar(db, filas, palletId)));
 
         // ---------- Código de barras: inventario propio y, si no está, UPCitemdb ----------
         api.MapGet("/codigo-barras/{codigo}", async (string codigo, AppDbContext db, BuscadorCodigoBarras b, CancellationToken ct) =>
@@ -260,7 +280,7 @@ public static class Api
         {
             var c = await db.Configuracion.FindAsync(1);
             if (c is null) { c = new Configuracion(); db.Configuracion.Add(c); }
-            c.Inversion = Math.Max(0, i.Inversion);
+            if (!await db.Pallets.AnyAsync()) c.Inversion = Math.Max(0, i.Inversion);   // con pallets, es la suma de sus inversiones
             c.StockBajo = Math.Max(0, i.StockBajo);
             c.MetaMensual = Math.Max(0, i.MetaMensual);
             c.DescuentoSugerido = Math.Clamp(i.DescuentoSugerido, 0, 90);
@@ -281,9 +301,31 @@ public static class Api
                 ventas = await db.Ventas.AsNoTracking().ToListAsync(),
                 gastos = await db.Gastos.AsNoTracking().ToListAsync(),
                 semanas = await db.Semanas.AsNoTracking().ToListAsync(),
-                imagenes = await db.Imagenes.AsNoTracking().ToListAsync()
+                imagenes = await db.Imagenes.AsNoTracking().ToListAsync(),
+                pallets = await db.Pallets.AsNoTracking().ToListAsync(),
+                palletGastos = await db.PalletGastos.AsNoTracking().ToListAsync(),
+                lotes = await db.Lotes.AsNoTracking().ToListAsync(),
+                movimientos = await db.Movimientos.AsNoTracking().ToListAsync(),
+                costeoCorridas = await db.CosteoCorridas.AsNoTracking().ToListAsync(),
+                costosLote = await db.CostosLote.AsNoTracking().ToListAsync()
             });
         });
+    }
+
+    /// <summary>Costo vigente por lote (de la corrida vigente de cada pallet) y si ese costeo está desactualizado.</summary>
+    private static async Task<object> CostosVigentesAsync(AppDbContext db)
+    {
+        var corridas = await db.CosteoCorridas.AsNoTracking().Where(c => c.Vigente).ToListAsync();
+        var ids = corridas.Select(c => c.Id).ToList();
+        var costos = await db.CostosLote.AsNoTracking().Where(c => ids.Contains(c.CorridaId)).ToListAsync();
+        var estado = new List<object>();
+        foreach (var c in corridas)
+            estado.Add(new { c.PalletId, corridaId = c.Id, c.FechaUtc, c.Metodo, desactualizado = c.Huella != (await Inventario.EntradaAsync(db, c.PalletId)).Huella });
+        return new
+        {
+            corridas = estado,
+            lotes = costos.Select(x => new { x.LoteId, x.CorridaId, x.Cantidad, x.CostoTotal, x.CostoUnitario, x.EsMerma, x.Comercializable }),
+        };
     }
 
     private static async Task AgregarImagenAsync(AppDbContext db, AlmacenImagenes alm, string productoId,
@@ -296,10 +338,15 @@ public static class Api
         db.Imagenes.Add(new ProductoImagen { Id = id, ProductoId = productoId, Archivo = archivo, Origen = origen, Principal = !tienePrincipal });
     }
 
-    private static async Task<IResult> Bloqueado(Func<Task<IResult>> f)
+    /// <summary>
+    /// Ejecuta una escritura con el candado global (evita carreras en validaciones de inventario).
+    /// Los errores de negocio se convierten en respuestas con mensaje en español y no guardan nada.
+    /// </summary>
+    public static async Task<IResult> Bloqueado(Func<Task<IResult>> f)
     {
         await Escritura.WaitAsync();
         try { return await f(); }
+        catch (ErrorNegocio e) { return Results.Json(new Error(e.Message), statusCode: e.Estado); }
         finally { Escritura.Release(); }
     }
 
@@ -317,6 +364,9 @@ public static class Api
             || i.PrecioLiverpool < 0 || i.PrecioMercadoLibre < 0 || i.PrecioWalmart < 0) return "Los precios no pueden ser negativos.";
         if (i.Clase is not null && !Catalogos.Clases.Contains(i.Clase)) return "La clase debe ser A, B o C.";
         if (i.Estado is not null && !Catalogos.EstadosProducto.Contains(i.Estado)) return "Estado de juguete no válido.";
+        if (i.Condicion is not null && !Catalogos.CondicionValida(i.Condicion)) return "Condición no válida.";
+        if (i.EstadoComercial is not null && !Catalogos.EstadosComerciales.Contains(i.EstadoComercial)) return "Estado comercial no válido.";
+        if (i.PesoKg < 0 || i.LargoCm < 0 || i.AnchoCm < 0 || i.AltoCm < 0) return "El peso y las medidas no pueden ser negativos.";
         return null;
     }
 
@@ -327,8 +377,6 @@ public static class Api
         p.Nombre = T(i.Nombre, 120);
         p.Categoria = T(i.Categoria, 60);
         p.Clase = i.Clase ?? "B";
-        p.Estado = i.Estado ?? "nuevo";
-        p.Cantidad = i.Cantidad;
         p.PrecioLista = i.PrecioLista;
         p.PrecioObjetivo = i.PrecioObjetivo;
         p.PrecioMinimo = i.PrecioMinimo;
@@ -339,7 +387,71 @@ public static class Api
         p.PrecioMexico = Precios.PromedioTiendas(p.PrecioLiverpool, p.PrecioMercadoLibre, p.PrecioWalmart) ?? i.PrecioMexico;
         p.Caracteristicas = T(i.Caracteristicas, 2000);
         p.Notas = T(i.Notas, 500);
+        if (i.Marca is not null) p.Marca = T(i.Marca, 60);
+        if (i.Modelo is not null) p.Modelo = T(i.Modelo, 60);
+        if (i.Subcategoria is not null) p.Subcategoria = T(i.Subcategoria, 60);
+        if (i.DescripcionComercial is not null) p.DescripcionComercial = T(i.DescripcionComercial, 2000);
+        if (i.AccesoriosIncluidos is not null) p.AccesoriosIncluidos = T(i.AccesoriosIncluidos, 300);
+        if (i.EdadRecomendada is not null) p.EdadRecomendada = T(i.EdadRecomendada, 40);
+        if (i.PesoKg is not null) p.PesoKg = i.PesoKg > 0 ? Math.Round(i.PesoKg.Value, 3) : null;   // 0 = borrar
+        if (i.LargoCm is not null) p.LargoCm = i.LargoCm > 0 ? Math.Round(i.LargoCm.Value, 2) : null;
+        if (i.AnchoCm is not null) p.AnchoCm = i.AnchoCm > 0 ? Math.Round(i.AnchoCm.Value, 2) : null;
+        if (i.AltoCm is not null) p.AltoCm = i.AltoCm > 0 ? Math.Round(i.AltoCm.Value, 2) : null;
+        if (i.EstadoComercial is not null) p.EstadoComercial = i.EstadoComercial;
+        if (i.FechaIngreso is not null) p.FechaIngreso = i.FechaIngreso;
         p.ActualizadoUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Cantidad y condición viven en los lotes. Producto nuevo: crea su lote en el pallet indicado.
+    /// Producto con un solo lote activo: la cantidad se ajusta (con movimiento en el kárdex) y la condición se cambia en el lote.
+    /// Con varios lotes, la cantidad se administra en cada lote.
+    /// </summary>
+    private static async Task<bool> AplicarInventarioAsync(AppDbContext db, Producto p, ProductoIn i, bool nuevo, string? palletPorDefecto, bool estricto = true)
+    {
+        var lotes = nuevo ? [] : await Inventario.LotesDeAsync(db, p.Id);
+        if (lotes.Count == 0)
+        {
+            var palletId = i.PalletId ?? palletPorDefecto ?? await PalletUnicoAsync(db)
+                ?? throw new ErrorNegocio("Elige el pallet de origen del juguete (o registra primero un pallet en Análisis comercial › Pallets y costos).");
+            var condicion = i.Condicion ?? Catalogos.CondicionDesdeEstado(i.Estado ?? "nuevo");
+            var fecha = i.FechaIngreso ?? p.FechaIngreso ?? DateOnly.FromDateTime(DateTime.Now);
+            p.FechaIngreso ??= fecha;
+            var lote = await Inventario.LoteAsync(db, p.Id, palletId, condicion, fecha);
+            Inventario.Mover(db, lote, i.Cantidad, "recepcion", nuevo ? "Alta del juguete" : "Primer lote del juguete");
+            return true;
+        }
+        var activos = lotes.Where(l => l.Cantidad > 0).ToList();
+        if (activos.Count > 1)
+        {
+            if (i.Cantidad != lotes.Sum(l => l.Cantidad))
+            {
+                if (estricto) throw new ErrorNegocio("Este juguete tiene varios lotes: ajusta la cantidad en cada lote (ficha del juguete › Lotes).");
+                return false;
+            }
+            return true;
+        }
+        var unico = activos.SingleOrDefault() ?? lotes.OrderByDescending(l => l.ActualizadoUtc).First();
+        // Condición: la del formulario o, en clientes anteriores, la equivalente del estado (nuevo/dañado/incompleto).
+        var nuevaCond = i.Condicion
+            ?? (i.Estado is not null && i.Estado != Catalogos.EstadoDesdeCondicion(unico.Condicion) ? Catalogos.CondicionDesdeEstado(i.Estado) : unico.Condicion);
+        if (nuevaCond != unico.Condicion)
+        {
+            if (lotes.Any(l => l.Id != unico.Id && l.PalletId == unico.PalletId && l.Condicion == nuevaCond))
+                throw new ErrorNegocio("Ya existe un lote con esa condición; usa “Cambiar condición” en los lotes del juguete.");
+            unico.Condicion = nuevaCond;
+            unico.Comercializable = Catalogos.ComercializablePorDefecto(nuevaCond);
+            unico.Tratamiento = "";
+            unico.ActualizadoUtc = DateTime.UtcNow;
+        }
+        Inventario.Mover(db, unico, i.Cantidad - unico.Cantidad, "ajuste", "Ajuste desde la ficha del juguete");
+        return true;
+    }
+
+    private static async Task<string?> PalletUnicoAsync(AppDbContext db)
+    {
+        var ids = await db.Pallets.Select(p => p.Id).Take(2).ToListAsync();
+        return ids.Count == 1 ? ids[0] : null;
     }
 
     private static async Task<IResult> GuardarProducto(AppDbContext db, string? id, ProductoIn i)
@@ -353,7 +465,7 @@ public static class Api
             return Choque($"El código de barras {barras} ya está registrado en el juguete {otro.Codigo} · {otro.Nombre}. Aumenten la cantidad de ese juguete.");
 
         Producto? p;
-        if (id is null) { p = new Producto { Id = NuevoId() }; db.Productos.Add(p); }
+        if (id is null) { p = new Producto { Id = NuevoId(), FechaIngreso = i.FechaIngreso }; db.Productos.Add(p); }
         else
         {
             p = await db.Productos.FindAsync(id);
@@ -362,14 +474,18 @@ public static class Api
             if (i.Cantidad < vend) return Choque($"La cantidad no puede ser menor que las {vend} piezas ya vendidas o apartadas.");
         }
         Aplicar(p, i);
+        await AplicarInventarioAsync(db, p, i, id is null, null);
+        await Inventario.SincronizarProductoAsync(db, p.Id);
         await db.GuardarAsync();
         return id is null ? Results.Created($"/api/productos/{p.Id}", p) : Results.Ok(p);
     }
 
-    private static async Task<IResult> Importar(AppDbContext db, List<ProductoIn> filas)
+    private static async Task<IResult> Importar(AppDbContext db, List<ProductoIn> filas, string? palletId)
     {
         if (filas.Count == 0) return Mal("No llegaron filas para importar.");
         if (filas.Count > 5000) return Mal("Máximo 5,000 filas por importación.");
+        if (palletId is not null && await db.Pallets.FindAsync(palletId) is null) return Mal("El pallet elegido no existe.");
+        var omitidos = new List<string>();
         var existentes = await db.Productos.ToListAsync();
         var porCodigo = existentes.ToDictionary(p => p.Codigo.ToLowerInvariant());
         // Los códigos automáticos no deben chocar ni con los existentes ni con los que vienen en el mismo lote.
@@ -399,7 +515,9 @@ public static class Api
                 var notas = p.Notas; var min = p.PrecioMinimo; var barrasPrevio = p.CodigoBarras;
                 var caract = p.Caracteristicas; var mx = p.PrecioMexico;
                 var (lv, ml, wm) = (p.PrecioLiverpool, p.PrecioMercadoLibre, p.PrecioWalmart);
-                Aplicar(p, f with { Cantidad = Math.Max(f.Cantidad, vend) });
+                var fc = f with { Cantidad = Math.Max(f.Cantidad, vend) };
+                Aplicar(p, fc);
+                if (!await AplicarInventarioAsync(db, p, fc, false, palletId, estricto: false)) omitidos.Add(p.Codigo);
                 p.Notas = notas; p.PrecioMinimo = min; p.Caracteristicas = caract;
                 if (p.PrecioMexico == 0) p.PrecioMexico = mx;
                 (p.PrecioLiverpool, p.PrecioMercadoLibre, p.PrecioWalmart) = (lv, ml, wm);
@@ -412,12 +530,14 @@ public static class Api
                 p = new Producto { Id = NuevoId() };
                 Aplicar(p, f);
                 db.Productos.Add(p);
+                await AplicarInventarioAsync(db, p, f, true, palletId);
                 porCodigo[key] = p;
                 nuevos++;
             }
         }
+        foreach (var prod in porCodigo.Values) await Inventario.SincronizarProductoAsync(db, prod.Id);
         await db.GuardarAsync();
-        return Results.Ok(new { nuevos, actualizados });
+        return Results.Ok(new { nuevos, actualizados, cantidadNoActualizada = omitidos });
     }
 
     private static async Task<IResult> GuardarVenta(AppDbContext db, string? id, VentaIn i)

@@ -244,3 +244,24 @@ button.lnk.nom:hover{color:var(--accent);text-decoration-color:var(--accent)}
 .dt dt{font-size:.8rem;color:var(--fg-2);font-weight:600}
 .dt dd{margin:0;min-width:0;overflow-wrap:anywhere}
 .pre{white-space:pre-wrap;margin-top:4px}
+
+/* ---- Fase 1: acceso, cuenta y Análisis comercial ---- */
+.acceso{position:fixed;inset:0;z-index:70;background:var(--bg);display:flex;align-items:flex-start;justify-content:center;overflow:auto;
+  padding:max(48px,calc(env(safe-area-inset-top,0px) + 24px)) 16px 24px}
+.panel.acc{max-width:420px;display:flex;flex-direction:column;gap:14px}
+.panel.acc h2{font-size:1.4rem}
+.userbtn{background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-weight:600;font-size:.85rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.userbtn:hover{border-color:var(--accent)}
+.subnav{display:flex;gap:6px;flex-wrap:wrap}
+.subtab{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-weight:600;color:var(--fg-2)}
+.subtab[aria-current="page"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+details.com{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--surface)}
+details.com>summary{cursor:pointer;font-weight:600;padding:2px 0}
+details.com[open]>summary{margin-bottom:10px}
+.cuadre{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));margin-top:10px}
+.cuadre>div{background:var(--surface-2);border-radius:10px;padding:10px 12px;font-size:.82rem;color:var(--fg-2);display:flex;flex-direction:column;gap:2px}
+.cuadre b{font-size:1.05rem;color:var(--fg);font-variant-numeric:tabular-nums}
+.cuadre b.tone-good{color:var(--good)} .cuadre b.tone-bad{color:var(--bad)}
+.tag-w{display:inline-block;font-size:.66rem;font-weight:700;border-radius:999px;padding:1px 6px;background:var(--sun-soft);color:var(--sun);vertical-align:middle}
+.card .pf h3{margin:0}
+#plTcF{gap:6px}

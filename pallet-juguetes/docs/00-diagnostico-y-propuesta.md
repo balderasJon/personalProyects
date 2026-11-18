@@ -294,9 +294,9 @@ docs/                       ← NUEVO: documentación del módulo
 | Fase | Contenido | Entregable | Criterio para avanzar |
 |---|---|---|---|
 | 0 | Diagnóstico (este documento) | Diagnóstico y propuesta | Decisiones de la sección 11 |
-| 1 | Pallets, gastos de pallet, catálogo comercial ampliado, inventario y movimientos, costeo de 3 métodos con historial, migración del pallet actual | Costo real por producto | Pruebas 1–7, 18 y 20 en verde; cuadre al centavo; regresión de lo existente |
+| 1 | Pallets, gastos de pallet, catálogo comercial ampliado, inventario y movimientos, costeo de 3 métodos con historial, migración del pallet actual | Costo real por producto | Pruebas 1–7 y 18 en verde; cuadre al centavo; regresión de lo existente. *(Ajuste al cerrar la Fase 1: la prueba 20 pasa a la Fase 3, porque la recuperación de inversión depende del cobro real de las ventas.)* |
 | 2 | Plataformas, tarifas con vigencia, parámetros de rentabilidad, motor de precios y simulador, rentabilidad en la ficha del producto | Precio recomendado por canal | Pruebas 8–11 y 17; nunca sugerir menos del mínimo |
-| 3 | Ventas ampliadas, gastos por venta, cobros, devoluciones, cancelaciones, reembolsos, publicaciones con control de doble venta | Utilidad real por operación | Pruebas 12–16 y 19; inventario y ventas consistentes |
+| 3 | Ventas ampliadas, gastos por venta, cobros, devoluciones, cancelaciones, reembolsos, publicaciones con control de doble venta | Utilidad real por operación | Pruebas 12–16, 19 y 20; inventario y ventas consistentes |
 | 4 | Competencia, dashboard con filtros, reportes y gráficas | Análisis comercial integral | Indicadores reconciliados con los datos fuente |
 | 5 | Interfaces para APIs oficiales (Mercado Libre, Amazon) y sincronización de publicaciones | Automatización progresiva | Limitaciones documentadas por plataforma |
 

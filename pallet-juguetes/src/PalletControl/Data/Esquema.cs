@@ -1,4 +1,6 @@
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using PalletControl.Models;
 
 namespace PalletControl.Data;
 
@@ -37,7 +39,7 @@ public static class Esquema
         }
         foreach (var (tabla, columna) in ColumnasRetiradas)
             if (Existe(db, tabla, columna))
-                db.Database.ExecuteSqlRaw($"ALTER TABLE \"{tabla}\" DROP COLUMN \"{columna}\"");
+                EjecutarDdl(db, $"ALTER TABLE \"{Id(tabla)}\" DROP COLUMN \"{Id(columna)}\"");
 
         AgregarColumna(db, "productos", "CodigoBarras", "TEXT NOT NULL DEFAULT ''");
         AgregarColumna(db, "configuracion", "TipoCambioUsd", "TEXT NOT NULL DEFAULT '0.0'");
@@ -73,15 +75,119 @@ public static class Esquema
                 "Respuesta" TEXT NOT NULL,
                 "ConsultadoUtc" TEXT NOT NULL);
             """);
+
+        // ---- Fase 1: datos comerciales del producto ----
+        AgregarColumna(db, "productos", "Marca", "TEXT NOT NULL DEFAULT ''");
+        AgregarColumna(db, "productos", "Modelo", "TEXT NOT NULL DEFAULT ''");
+        AgregarColumna(db, "productos", "Subcategoria", "TEXT NOT NULL DEFAULT ''");
+        AgregarColumna(db, "productos", "DescripcionComercial", "TEXT NOT NULL DEFAULT ''");
+        AgregarColumna(db, "productos", "AccesoriosIncluidos", "TEXT NOT NULL DEFAULT ''");
+        AgregarColumna(db, "productos", "EdadRecomendada", "TEXT NOT NULL DEFAULT ''");
+        AgregarColumna(db, "productos", "PesoKg", "TEXT NULL");
+        AgregarColumna(db, "productos", "LargoCm", "TEXT NULL");
+        AgregarColumna(db, "productos", "AnchoCm", "TEXT NULL");
+        AgregarColumna(db, "productos", "AltoCm", "TEXT NULL");
+        AgregarColumna(db, "productos", "EstadoComercial", "TEXT NOT NULL DEFAULT 'en_revision'");
+        AgregarColumna(db, "productos", "FechaIngreso", "TEXT NULL");
+
+        // ---- Fase 1: tablas nuevas, tal como las define el modelo de EF ----
+        CrearTablasFaltantes(db);
+        MigrarAPallets(db, dirRespaldos);
     }
 
+    /// <summary>
+    /// Crea las tablas e índices del modelo que no existan, usando el script que genera EF Core.
+    /// Así una base migrada queda igual que una base nueva.
+    /// </summary>
+    private static void CrearTablasFaltantes(AppDbContext db)
+    {
+        var script = db.Database.GenerateCreateScript();
+        foreach (var sentencia in script.Split(";", StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).Where(x => x.Length > 0))
+        {
+            var tabla = Regex.Match(sentencia, "^CREATE TABLE \"([^\"]+)\"");
+            if (tabla.Success)
+            {
+                if (!ExisteTabla(db, tabla.Groups[1].Value)) db.Database.ExecuteSqlRaw(sentencia);
+                continue;
+            }
+            if (Regex.IsMatch(sentencia, "^CREATE (UNIQUE )?INDEX \""))
+                db.Database.ExecuteSqlRaw(Regex.Replace(sentencia, "^CREATE (UNIQUE )?INDEX ", "CREATE $1INDEX IF NOT EXISTS "));
+        }
+    }
+
+    /// <summary>
+    /// Migración de la Fase 1: si hay productos y aún no hay pallets, crea "Pallet 1" con la inversión de Ajustes
+    /// y un lote por producto (condición según la decisión 11.4), con su movimiento de inventario inicial.
+    /// Guarda un respaldo antes. No borra ni cambia datos existentes.
+    /// </summary>
+    private static void MigrarAPallets(AppDbContext db, string dirRespaldos)
+    {
+        if (db.Pallets.Any() || !db.Productos.Any()) return;
+
+        Directory.CreateDirectory(dirRespaldos);
+        db.Database.ExecuteSqlRaw("VACUUM INTO {0}", Path.Combine(dirRespaldos, $"pallet-antes-de-fase1-{DateTime.Now:yyyy-MM-dd-HHmmss}.db"));
+
+        using var tx = db.Database.BeginTransaction();
+        var cfg = db.Configuracion.Find(1) ?? new Configuracion();
+        var productos = db.Productos.ToList();
+        var primera = productos.Min(p => p.CreadoUtc);
+        var pallet = new Pallet
+        {
+            Id = Guid.NewGuid().ToString("N")[..12],
+            Nombre = "Pallet 1",
+            FechaCompra = DateOnly.FromDateTime(primera.ToLocalTime()),
+            PaisOrigen = "Estados Unidos",
+            Moneda = "MXN",
+            CostoOriginal = cfg.Inversion,
+            TipoCambio = 1m,
+            CostoMxn = cfg.Inversion,
+            InversionTotal = cfg.Inversion,
+            Estatus = "en_venta",
+            Notas = "Creado automáticamente con la inversión de Ajustes al actualizar a la Fase 1. Revisa proveedor, fecha y moneda.",
+        };
+        db.Pallets.Add(pallet);
+        foreach (var p in productos)
+        {
+            var condicion = Catalogos.CondicionDesdeEstado(p.Estado);
+            var lote = new InventarioLote
+            {
+                Id = Guid.NewGuid().ToString("N")[..12],
+                ProductoId = p.Id,
+                PalletId = pallet.Id,
+                Condicion = condicion,
+                Comercializable = Catalogos.ComercializablePorDefecto(condicion),
+                Tratamiento = "",
+                Cantidad = p.Cantidad,
+                FechaIngreso = DateOnly.FromDateTime(p.CreadoUtc.ToLocalTime()),
+            };
+            db.Lotes.Add(lote);
+            if (p.Cantidad > 0)
+                db.Movimientos.Add(new MovimientoInventario { LoteId = lote.Id, Tipo = "inventario_inicial", Cantidad = p.Cantidad, Usuario = "sistema", Motivo = "Saldo inicial al migrar a la Fase 1" });
+            p.FechaIngreso ??= lote.FechaIngreso;
+        }
+        db.SaveChanges();
+        tx.Commit();
+    }
+
+    private static bool ExisteTabla(AppDbContext db, string tabla) => db.Database
+        .SqlQuery<int>($"SELECT COUNT(*) AS \"Value\" FROM sqlite_master WHERE type = 'table' AND name = {tabla}")
+        .AsEnumerable().First() > 0;
+
     private static bool Existe(AppDbContext db, string tabla, string columna) => db.Database
-        .SqlQueryRaw<int>($"SELECT COUNT(*) AS \"Value\" FROM pragma_table_info('{tabla}') WHERE name = '{columna}'")
+        .SqlQuery<int>($"SELECT COUNT(*) AS \"Value\" FROM pragma_table_info({tabla}) WHERE name = {columna}")
         .AsEnumerable().First() > 0;
 
     private static void AgregarColumna(AppDbContext db, string tabla, string columna, string definicion)
     {
         if (!Existe(db, tabla, columna))
-            db.Database.ExecuteSqlRaw($"ALTER TABLE \"{tabla}\" ADD COLUMN \"{columna}\" {definicion}");
+            EjecutarDdl(db, $"ALTER TABLE \"{Id(tabla)}\" ADD COLUMN \"{Id(columna)}\" {definicion}");
     }
+
+    /// <summary>Los nombres de tablas y columnas no se pueden parametrizar en DDL: solo se aceptan identificadores simples definidos en este archivo.</summary>
+    private static string Id(string nombre) =>
+        Regex.IsMatch(nombre, "^[A-Za-z_][A-Za-z0-9_]*$") ? nombre : throw new ArgumentException($"Identificador no válido: {nombre}");
+
+#pragma warning disable EF1002 // DDL con identificadores validados por Id() y definiciones constantes de este archivo.
+    private static void EjecutarDdl(AppDbContext db, string sql) => db.Database.ExecuteSqlRaw(sql);
+#pragma warning restore EF1002
 }

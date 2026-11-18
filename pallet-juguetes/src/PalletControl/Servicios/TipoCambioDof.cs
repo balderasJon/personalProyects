@@ -26,7 +26,7 @@ public class TipoCambioDof(HttpClient http, IConfiguration config, ILogger<TipoC
         await Candado.WaitAsync(ct);
         try
         {
-            var c = await db.Configuracion.FirstAsync(ct);
+            var c = await db.Configuracion.OrderBy(x => x.Id).FirstAsync(ct);
             if (c.TipoCambioFecha == Hoy && c.TipoCambioUsd > 0) { _diaVerificado = Hoy; return; }
             await ConsultarYGuardarAsync(db, ct);
         }
@@ -54,7 +54,7 @@ public class TipoCambioDof(HttpClient http, IConfiguration config, ILogger<TipoC
             var fecha = DateOnly.ParseExact(raiz.GetProperty("date").GetString()!, "yyyy-MM-dd");
             if (valor <= 0 || valor > 1000) throw new InvalidOperationException($"valor fuera de rango: {valor}");
 
-            var c = await db.Configuracion.FirstAsync(ct);
+            var c = await db.Configuracion.OrderBy(x => x.Id).FirstAsync(ct);
             c.TipoCambioUsd = valor;
             c.TipoCambioFecha = Hoy;
             c.TipoCambioFuente = "DOF";

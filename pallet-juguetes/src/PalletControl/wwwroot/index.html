@@ -14,7 +14,7 @@
 <header class="top"><div class="wrap">
   <div class="brandrow">
     <div class="brand"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>Control Pallet de Juguetes</b></div>
-    <div class="toprt"><button class="tcbtn" id="tcBtn" type="button" aria-label="Tipo de cambio del día. Editar">Tipo de cambio…</button><span class="status" id="status">Conectando…</span></div>
+    <div class="toprt"><button class="tcbtn" id="tcBtn" type="button" aria-label="Tipo de cambio del día. Editar">Tipo de cambio…</button><span class="status" id="status">Conectando…</span><button class="userbtn" id="userBtn" type="button" hidden aria-label="Tu cuenta"></button></div>
   </div>
   <nav class="tabs" role="tablist" aria-label="Secciones">
     <button class="tab" role="tab" data-tab="resumen" aria-selected="true">Resumen</button>
@@ -22,6 +22,7 @@
     <button class="tab" role="tab" data-tab="ventas">Ventas<span class="cnt" id="cntApartado" hidden></span></button>
     <button class="tab" role="tab" data-tab="gastos">Gastos</button>
     <button class="tab" role="tab" data-tab="semana">Semana</button>
+    <button class="tab" role="tab" data-tab="analisis">Análisis comercial</button>
     <button class="tab" role="tab" data-tab="ajustes">Ajustes</button>
   </nav>
 </div></header>
@@ -58,7 +59,8 @@
   <div class="filters">
     <input class="inp" id="fBuscar" type="search" placeholder="Buscar por código, código de barras, nombre o categoría" aria-label="Buscar">
     <select class="sel" id="fClase" aria-label="Clase"><option value="">Todas las clases</option><option>A</option><option>B</option><option>C</option></select>
-    <select class="sel" id="fEstado" aria-label="Estado"><option value="">Todo estado</option><option value="nuevo">Nuevo</option><option value="danado">Dañado</option><option value="incompleto">Incompleto</option></select>
+    <select class="sel" id="fCond" aria-label="Condición"><option value="">Toda condición</option><option value="nuevo_sellado">Nuevo sellado</option><option value="nuevo_caja_abierta">Nuevo con caja abierta</option><option value="usado_bueno">Usado en buenas condiciones</option><option value="usado_detalles">Usado con detalles</option><option value="incompleto">Incompleto</option><option value="danado">Dañado</option><option value="no_comercializable">No comercializable</option></select>
+    <select class="sel" id="fPallet" aria-label="Pallet"><option value="">Todos los pallets</option></select>
     <label class="chk"><input type="checkbox" id="fStock"> Solo con piezas disponibles</label>
   </div>
   <div id="invBody"></div>
@@ -93,6 +95,12 @@
   <div id="semBody"></div>
 </section>
 
+<!-- ANÁLISIS COMERCIAL -->
+<section class="view" data-view="analisis" hidden>
+  <nav class="subnav" aria-label="Análisis comercial"><button class="subtab" type="button" aria-current="page">Pallets y costos</button></nav>
+  <div id="anBody"></div>
+</section>
+
 <!-- AJUSTES -->
 <section class="view" data-view="ajustes" hidden>
   <div class="head"><div><p class="eyebrow">Configuración</p><h2>Ajustes</h2></div></div>
@@ -100,7 +108,7 @@
     <form class="card" id="cfgForm">
       <h3>Datos del negocio</h3>
       <div class="form">
-        <div class="f full"><label for="cInv">Inversión inicial (MXN)</label><input class="inp num" id="cInv" type="number" min="0" step="100"><span class="hint">Incluye flete e impuestos de compra.</span></div>
+        <div class="f full"><label for="cInv">Inversión inicial (MXN)</label><input class="inp num" id="cInv" type="number" min="0" step="100"><span class="hint" id="cInvH">Incluye flete e impuestos de compra.</span></div>
         <div class="f full"><label for="cBajo">Aviso de pocas piezas</label><input class="inp num" id="cBajo" type="number" min="0" step="1"><span class="hint">Avisa cuando quedan esta cantidad o menos.</span></div>
         <div class="f full"><label for="cMeta">Meta de venta mensual (MXN)</label><input class="inp num" id="cMeta" type="number" min="0" step="500"><span class="hint">Opcional. Defínanla tras dos semanas de datos.</span></div>
         <div class="f full"><label for="cDesc">Descuento sobre el precio en México (%)</label><input class="inp num" id="cDesc" type="number" min="0" max="90" step="1"><span class="hint">Para sugerir el precio objetivo: precio en México menos este porcentaje. El plan usó 35% como ejemplo; ajústalo con tu experiencia. El tipo de cambio se edita en la leyenda de la barra superior.</span></div>
@@ -122,9 +130,11 @@
 
 </main>
 
+<div class="acceso" id="acceso" hidden></div>
 <div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="panel" id="mPanel"></div></div>
 <div class="toast" id="toast" hidden role="status"></div>
 
 <script src="js/app.js"></script>
+<script src="js/analisis.js"></script>
 </body>
 </html>

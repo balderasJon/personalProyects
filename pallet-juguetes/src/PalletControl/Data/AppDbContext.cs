@@ -1,10 +1,13 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using PalletControl.Models;
 
 namespace PalletControl.Data;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public class AppDbContext(DbContextOptions<AppDbContext> options, IUsuarioActual? usuario = null) : DbContext(options)
 {
+    public string UsuarioActual => usuario?.Nombre ?? "sistema";
     public DbSet<Producto> Productos => Set<Producto>();
     public DbSet<Venta> Ventas => Set<Venta>();
     public DbSet<Gasto> Gastos => Set<Gasto>();
@@ -13,6 +16,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<VersionDatos> Version => Set<VersionDatos>();
     public DbSet<ConsultaCodigoBarras> ConsultasCodigoBarras => Set<ConsultaCodigoBarras>();
     public DbSet<ProductoImagen> Imagenes => Set<ProductoImagen>();
+    public DbSet<Pallet> Pallets => Set<Pallet>();
+    public DbSet<PalletGasto> PalletGastos => Set<PalletGasto>();
+    public DbSet<InventarioLote> Lotes => Set<InventarioLote>();
+    public DbSet<MovimientoInventario> Movimientos => Set<MovimientoInventario>();
+    public DbSet<CosteoCorrida> CosteoCorridas => Set<CosteoCorrida>();
+    public DbSet<CostoLote> CostosLote => Set<CostoLote>();
+    public DbSet<Usuario> Usuarios => Set<Usuario>();
+    public DbSet<Auditoria> Auditoria => Set<Auditoria>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder c)
     {
@@ -39,6 +50,101 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Estado).HasMaxLength(12);
             e.Property(x => x.Notas).HasMaxLength(500);
             e.Property(x => x.Caracteristicas).HasMaxLength(2000);
+            e.Property(x => x.Marca).HasMaxLength(60).HasDefaultValue("");
+            e.Property(x => x.Modelo).HasMaxLength(60).HasDefaultValue("");
+            e.Property(x => x.Subcategoria).HasMaxLength(60).HasDefaultValue("");
+            e.Property(x => x.DescripcionComercial).HasMaxLength(2000).HasDefaultValue("");
+            e.Property(x => x.AccesoriosIncluidos).HasMaxLength(300).HasDefaultValue("");
+            e.Property(x => x.EdadRecomendada).HasMaxLength(40).HasDefaultValue("");
+            e.Property(x => x.EstadoComercial).HasMaxLength(20).HasDefaultValue("en_revision");
+        });
+        b.Entity<Pallet>(e =>
+        {
+            e.ToTable("pallets");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Nombre).HasMaxLength(80).IsRequired();
+            e.HasIndex(x => x.Nombre).IsUnique();
+            e.Property(x => x.Proveedor).HasMaxLength(80);
+            e.Property(x => x.PaisOrigen).HasMaxLength(40);
+            e.Property(x => x.Moneda).HasMaxLength(3);
+            e.Property(x => x.TipoCambioFuente).HasMaxLength(10);
+            e.Property(x => x.Estatus).HasMaxLength(12);
+            e.Property(x => x.MetodoCosteo).HasMaxLength(12);
+            e.Property(x => x.ModoMerma).HasMaxLength(10);
+            e.Property(x => x.Notas).HasMaxLength(500);
+        });
+        b.Entity<PalletGasto>(e =>
+        {
+            e.ToTable("pallet_gastos");
+            e.HasKey(x => x.Id);
+            e.HasOne<Pallet>().WithMany().HasForeignKey(x => x.PalletId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.PalletId);
+            e.Property(x => x.Tipo).HasMaxLength(40);
+            e.Property(x => x.Concepto).HasMaxLength(120);
+        });
+        b.Entity<InventarioLote>(e =>
+        {
+            e.ToTable("inventario_lotes");
+            e.HasKey(x => x.Id);
+            e.HasOne<Producto>().WithMany().HasForeignKey(x => x.ProductoId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Pallet>().WithMany().HasForeignKey(x => x.PalletId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.ProductoId, x.PalletId, x.Condicion }).IsUnique();
+            e.HasIndex(x => x.PalletId);
+            e.Property(x => x.Condicion).HasMaxLength(20);
+            e.Property(x => x.Tratamiento).HasMaxLength(20);
+            e.Property(x => x.Notas).HasMaxLength(300);
+            e.ToTable(t => t.HasCheckConstraint("CK_lotes_cantidad", "\"Cantidad\" >= 0"));
+        });
+        b.Entity<MovimientoInventario>(e =>
+        {
+            e.ToTable("movimientos_inventario");
+            e.HasKey(x => x.Id);
+            e.HasOne<InventarioLote>().WithMany().HasForeignKey(x => x.LoteId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.LoteId);
+            e.Property(x => x.Tipo).HasMaxLength(30);
+            e.Property(x => x.Referencia).HasMaxLength(60);
+            e.Property(x => x.Motivo).HasMaxLength(200);
+            e.Property(x => x.Usuario).HasMaxLength(40);
+        });
+        b.Entity<CosteoCorrida>(e =>
+        {
+            e.ToTable("costeo_corridas");
+            e.HasKey(x => x.Id);
+            e.HasOne<Pallet>().WithMany().HasForeignKey(x => x.PalletId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.PalletId, x.Vigente });
+            e.Property(x => x.Metodo).HasMaxLength(12);
+            e.Property(x => x.ModoMerma).HasMaxLength(10);
+            e.Property(x => x.Usuario).HasMaxLength(40);
+            e.Property(x => x.Huella).HasMaxLength(64);
+            e.Property(x => x.Notas).HasMaxLength(300);
+        });
+        b.Entity<CostoLote>(e =>
+        {
+            e.ToTable("costos_lote");
+            e.HasKey(x => x.Id);
+            e.HasOne<CosteoCorrida>().WithMany().HasForeignKey(x => x.CorridaId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.CorridaId);
+            e.HasIndex(x => x.LoteId);
+            e.Property(x => x.Condicion).HasMaxLength(20);
+        });
+        b.Entity<Usuario>(e =>
+        {
+            e.ToTable("usuarios");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Nombre).HasMaxLength(40).IsRequired().UseCollation("NOCASE");
+            e.HasIndex(x => x.Nombre).IsUnique();
+            e.Property(x => x.NombreCompleto).HasMaxLength(80);
+        });
+        b.Entity<Auditoria>(e =>
+        {
+            e.ToTable("auditoria");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.Entidad, x.EntidadId });
+            e.HasIndex(x => x.FechaUtc);
+            e.Property(x => x.Usuario).HasMaxLength(40);
+            e.Property(x => x.Entidad).HasMaxLength(40);
+            e.Property(x => x.EntidadId).HasMaxLength(40);
+            e.Property(x => x.Accion).HasMaxLength(10);
         });
         b.Entity<ProductoImagen>(e =>
         {
@@ -87,6 +193,52 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Fuente).HasMaxLength(30);
         });
         b.Entity<VersionDatos>(e => { e.ToTable("version_datos"); e.HasKey(x => x.Id); });
+    }
+
+    // ---------- Auditoría: cada alta, cambio o baja de entidades de negocio queda en la bitácora ----------
+    private static readonly HashSet<Type> NoAuditar = [typeof(VersionDatos), typeof(ConsultaCodigoBarras), typeof(Auditoria), typeof(MovimientoInventario), typeof(CostoLote)];
+    private static readonly HashSet<string> CamposPrivados = ["Hash", "Sal", "Iteraciones"];
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        RegistrarAuditoria();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken ct = default)
+    {
+        RegistrarAuditoria();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, ct);
+    }
+
+    private void RegistrarAuditoria()
+    {
+        var ahora = DateTime.UtcNow;
+        foreach (var e in ChangeTracker.Entries().Where(e => !NoAuditar.Contains(e.Entity.GetType())
+                     && e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted).ToList())
+        {
+            var cambios = new Dictionary<string, object?[]>();
+            foreach (var p in e.Properties.Where(p => !CamposPrivados.Contains(p.Metadata.Name)))
+            {
+                if (e.State == EntityState.Added) cambios[p.Metadata.Name] = [null, p.CurrentValue];
+                else if (e.State == EntityState.Deleted) cambios[p.Metadata.Name] = [p.OriginalValue, null];
+                else if (p.IsModified && !Equals(p.OriginalValue, p.CurrentValue) && p.Metadata.Name != "ActualizadoUtc")
+                    cambios[p.Metadata.Name] = [p.OriginalValue, p.CurrentValue];
+            }
+            if (e.State == EntityState.Modified && e.Properties.Any(p => p.Metadata.Name == "Hash" && p.IsModified && !Equals(p.OriginalValue, p.CurrentValue)))
+                cambios["Contrasena"] = ["(oculta)", "(cambiada)"];
+            if (e.State == EntityState.Modified && cambios.Count == 0) continue;
+            var llave = e.Metadata.FindPrimaryKey()!.Properties.Select(p => e.Property(p.Name).CurrentValue?.ToString()).FirstOrDefault() ?? "";
+            Auditoria.Add(new Auditoria
+            {
+                FechaUtc = ahora,
+                Usuario = UsuarioActual,
+                Entidad = e.Metadata.GetTableName() ?? e.Entity.GetType().Name,
+                EntidadId = llave,
+                Accion = e.State switch { EntityState.Added => "alta", EntityState.Deleted => "baja", _ => "cambio" },
+                Cambios = JsonSerializer.Serialize(cambios),
+            });
+        }
     }
 
     /// <summary>Guarda cambios e incrementa la versión global en la misma transacción.</summary>

@@ -1,6 +1,8 @@
 # Control Pallet de Juguetes
 
-Aplicación local para administrar el negocio del pallet de juguetes: inventario, ventas, gastos, indicadores semanales y recuperación de la inversión.
+Aplicación local para administrar el negocio del pallet de juguetes: pallets y costo real de cada pieza, inventario por lotes, ventas, gastos, indicadores semanales y recuperación de la inversión.
+
+> **Documentación del módulo de costos, precios y rentabilidad:** [`docs/`](docs/README.md) — diagnóstico (Fase 0), Fase 1 (pallets y costeo) y bitácora de cambios.
 
 Es la versión instalable del artefacto **Control Pallet de Juguetes**. Usa la misma interfaz y los mismos cálculos, pero guarda los datos en una base SQLite en tu computadora. Está pensada para una sola persona; también puedes abrirla desde el celular en la misma red Wi‑Fi.
 
@@ -10,6 +12,8 @@ Es la versión instalable del artefacto **Control Pallet de Juguetes**. Usa la m
 | Interfaz | HTML, CSS y JavaScript sin dependencias (servida por la misma aplicación) |
 | Datos | Un archivo: `datos/pallet.db` |
 | Puerto | `5080` |
+| Acceso | Usuario y contraseña (el primero se crea en la misma computadora) |
+| Pruebas | `dotnet test PalletControl.sln` (xUnit: unitarias e integración) |
 
 ---
 
@@ -22,7 +26,8 @@ Es la versión instalable del artefacto **Control Pallet de Juguetes**. Usa la m
 | **Ventas** | Tablero Apartado → Pagado → Entregado (y Cancelado), vista de lista, filtro por canal, rendimiento por canal. |
 | **Gastos** | Empaque, traslados, publicidad, comisiones e impuestos; totales por tipo. |
 | **Semana** | Publicaciones, mensajes y horas dedicadas; ventas y dinero de la semana se calculan solos. |
-| **Ajustes** | Inversión, aviso de pocas piezas, meta mensual, % de descuento sobre el precio en México para sugerir el objetivo. Exportación a CSV por hoja y respaldo completo en JSON. |
+| **Análisis comercial › Pallets y costos** | Pallets (moneda, tipo de cambio, gastos adicionales, inversión total), juguetes por lote y condición, costeo **equitativo, proporcional o manual** con cuadre al centavo, simulación, historial de costeos y costo real por pieza. Detalle en [`docs/01-fase1-pallets-y-costeo.md`](docs/01-fase1-pallets-y-costeo.md). |
+| **Ajustes** | Inversión (con pallets, es la suma de sus inversiones), aviso de pocas piezas, meta mensual, % de descuento sobre el precio en México para sugerir el objetivo. Exportación a CSV por hoja y respaldo completo en JSON. |
 
 ### Tipo de cambio del día
 
@@ -144,6 +149,12 @@ docker compose up -d --build
 
 Los datos quedan en la carpeta `./datos` del proyecto.
 
+**Primer usuario en Docker:** por seguridad, el primer usuario solo se crea desde la misma computadora, y dentro de Docker las peticiones no llegan como locales. En el primer arranque agrega la variable `Auth__PermitirConfiguracionRemota=true` (en `docker-compose.yml`, sección `environment`), crea tu usuario y **quítala** después.
+
+### Primer inicio de sesión
+
+Al abrir la aplicación **en la computadora donde corre** (`http://localhost:5080`) se pide crear el usuario. Después, desde esa computadora o desde el celular, se entra con usuario y contraseña. El botón con tu nombre (arriba a la derecha) permite cambiar la contraseña, agregar usuarios y cerrar sesión.
+
 ### Al arrancar
 
 La consola muestra las direcciones:
@@ -173,6 +184,7 @@ La regla se limita al perfil de red **privada**; la red de la casa debe estar ma
 - Base de datos: `datos/pallet.db` (SQLite, un solo archivo).
 - **Respaldo automático:** cada vez que la aplicación arranca se crea, si aún no existe, una copia del día en `datos/respaldos/pallet-AAAA-MM-DD.db`. Se conservan las últimas 14 (configurable en `appsettings.json` → `Respaldos:Conservar`).
 - **Migración a un solo socio:** al abrir por primera vez esta versión con una base anterior, se guarda una copia `datos/respaldos/pallet-antes-de-un-socio-AAAA-MM-DD-HHMMSS.db`, se suman las horas de los dos socios en un solo campo y se eliminan nombres de socios, reparto, responsable de venta y quién pagó cada gasto.
+- **Migración a la Fase 1 (pallets):** al abrir por primera vez esta versión con una base anterior, se guarda `datos/respaldos/pallet-antes-de-fase1-AAAA-MM-DD-HHMMSS.db` y se crea **"Pallet 1"** con la inversión de Ajustes; cada juguete queda en un lote con su condición (nuevo → Nuevo sellado, dañado → Dañado, incompleto → Incompleto). No se borra nada.
 - **Imágenes:** se guardan como archivos en `datos/imagenes`. Los respaldos `.db` y el JSON **no incluyen las fotos**; respalda la carpeta `datos` completa para conservarlas.
 - **Respaldo manual:** Ajustes → *Descargar respaldo* genera un JSON con todos los registros.
 - **Exportar a Excel:** Ajustes → botones CSV por hoja.
@@ -192,8 +204,9 @@ Ventas, gastos y semanas no tienen importación automática; se recapturan.
 
 ## 4. Seguridad: lo que hay que saber
 
-- **No tiene usuario ni contraseña.** Cualquier persona conectada a la misma red que conozca la dirección puede ver y modificar los datos. Úsenla solo en la red de la casa, no en redes públicas, y no abran el puerto 5080 en el router hacia Internet.
-- Funciona por HTTP (sin cifrado), adecuado solo para red local.
+- **Inicio de sesión obligatorio.** Toda la API y las fotos requieren sesión. Contraseñas con PBKDF2-SHA256 (600,000 iteraciones); cookie HttpOnly y SameSite=Strict; bloqueo de 5 minutos tras 5 intentos fallidos; cambiar la contraseña cierra las demás sesiones.
+- **Bitácora:** cada alta, cambio o baja queda en la tabla `auditoria` con usuario, fecha y valores antes y después.
+- Funciona por HTTP (sin cifrado), adecuado solo para red local: no abran el puerto 5080 en el router hacia Internet.
 
 ---
 
@@ -212,9 +225,18 @@ pallet-juguetes/
 │   ├── Servicios/AlmacenImagenes.cs       Guarda y valida las imágenes en datos/imagenes
 │   ├── Servicios/Precios.cs               Promedio por tienda y precio mínimo proporcional
 │   ├── Servicios/Traductor.cs             Traducción al español (MyMemory) y conversión de unidades
+│   ├── Dominio/Calculo/Costeo.cs          Núcleo financiero puro: conversión, inversión y reparto al centavo
+│   ├── Servicios/Inventario.cs            Lotes, kárdex, reclasificación y entrada del costeo
+│   ├── Servicios/Contrasenas.cs           Hash de contraseñas (PBKDF2)
+│   ├── Servicios/Unidades.cs              Libras/onzas → kg, pulgadas → cm
 │   ├── Endpoints/Api.cs        API REST y reglas de negocio
+│   ├── Endpoints/AuthApi.cs    Inicio de sesión y usuarios
+│   ├── Endpoints/PalletsApi.cs Pallets, gastos, lotes y costeo
 │   ├── Endpoints/Dtos.cs       Contratos de entrada
-│   └── wwwroot/                Interfaz (index.html, css/app.css, js/app.js)
+│   └── wwwroot/                Interfaz (index.html, css/app.css, js/app.js, js/analisis.js)
+├── tests/PalletControl.Tests/  Pruebas unitarias (Unitarias/) y de integración (Integracion/)
+├── docs/                       Documentación del módulo de costos y rentabilidad
+├── PalletControl.sln
 ├── Dockerfile
 ├── docker-compose.yml
 ├── iniciar.bat / iniciar.sh
@@ -232,7 +254,7 @@ pallet-juguetes/
 | GET | `/api/codigo-barras/{codigo}` | Busca en el inventario y, si no está, en UPCitemdb; regresa características, imágenes y precios sugeridos |
 | PUT | `/api/tipo-cambio` | Captura manual del tipo de cambio de hoy `{ "valor": 18.71 }` |
 | POST | `/api/tipo-cambio/consultar` | Vuelve a consultar el DOF en dolardof.com |
-| POST | `/api/productos/recalcular-minimos` | Aplica el método proporcional a todos los juguetes con precio en México |
+| POST | `/api/productos/recalcular-minimos` | Mínimo = costo real por pieza (redondeado hacia arriba); sin costeo, estimación proporcional |
 | POST | `/api/traducir` | Traduce texto del inglés al español `{ "texto": "..." }` |
 | POST | `/api/productos/{id}/imagenes` | Sube fotos (multipart) |
 | POST | `/api/productos/{id}/imagenes/upcitemdb` | Descarga las imágenes de UPCitemdb del código de barras del juguete |
@@ -243,6 +265,8 @@ pallet-juguetes/
 | PUT / DELETE | `/api/semanas/{fecha}` | Indicadores semanales (la fecha se ajusta a su lunes) |
 | PUT | `/api/configuracion` | Ajustes del negocio |
 | GET | `/api/respaldo` | Descarga JSON completo |
+
+Las rutas de pallets, lotes, costeo, usuarios y sesión están en [`docs/01-fase1-pallets-y-costeo.md`](docs/01-fase1-pallets-y-costeo.md#61-api-nueva-todas-requieren-sesión-salvo-apiauth). Todas las rutas requieren sesión, salvo `/api/auth/*`.
 
 Los errores de validación regresan `400` o `409` con `{ "mensaje": "..." }` en español.
 

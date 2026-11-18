@@ -5,6 +5,22 @@ var COLS=['productos','ventas','gastos','semanas','config'];
 var D={productos:{},ventas:{},gastos:{},semanas:{},config:{}};
 var CFG_DEF={inversion:49000,stockBajo:1,metaMensual:0,tipoCambioUsd:0,descuentoSugerido:35};
 var IMG={}, TC={hoy:'',error:null};
+// Fase 1: lotes por juguete, pallets, costo vigente por lote y estado del costeo por pallet
+var LOTES={}, PALLETS={}, COSTOS={}, CORRIDAS={}, SESION=null;
+var CONDS=[{codigo:'nuevo_sellado',nombre:'Nuevo sellado',comercializable:true},{codigo:'nuevo_caja_abierta',nombre:'Nuevo con caja abierta',comercializable:true},{codigo:'usado_bueno',nombre:'Usado en buenas condiciones',comercializable:true},{codigo:'usado_detalles',nombre:'Usado con detalles',comercializable:true},{codigo:'incompleto',nombre:'Incompleto',comercializable:false},{codigo:'danado',nombre:'Dañado',comercializable:false},{codigo:'no_comercializable',nombre:'No comercializable',comercializable:false}];
+var EST_COM={en_revision:'En revisión',listo:'Listo para publicar',liquidacion:'En liquidación',retirado:'Retirado'};
+function condNombre(c){var x=CONDS.filter(function(k){return k.codigo===c})[0];return x?x.nombre:c}
+function lotesDe(pid){return LOTES[pid]||[]}
+/** Costo real por pieza: costo vigente de los lotes comercializables ÷ sus piezas. */
+function costoReal(pid){
+  var ls=lotesDe(pid).filter(function(l){return l.comercializable&&l.cantidad>0}),tot=0,pz=0,falta=false,desact=false;
+  ls.forEach(function(l){var c=COSTOS[l.id];if(c&&c.cantidad===l.cantidad){tot+=c.costoTotal;pz+=l.cantidad}else falta=true;
+    var cr=CORRIDAS[l.palletId];if(cr&&cr.desactualizado)desact=true});
+  return {unit:pz>0?tot/pz:NaN,completo:!falta&&pz>0,desactualizado:desact};
+}
+function condicionesDe(pid){var ls=lotesDe(pid).filter(function(l){return l.cantidad>0});
+  if(!ls.length)return lotesDe(pid).length?condNombre(lotesDe(pid)[0].condicion):'—';
+  return ls.length===1?condNombre(ls[0].condicion):ls.map(function(l){return condNombre(l.condicion)+' ('+l.cantidad+')'}).join(', ')}
 var CANALES=['Facebook Marketplace','WhatsApp Business','Grupos de Facebook','Conocidos','Bazar o escuela','Instagram','MercadoLibre','Otro'];
 var ESTADOS_V=['apartado','pagado','entregado','cancelado'];
 var EST_V_TXT={apartado:'Apartado',pagado:'Pagado',entregado:'Entregado',cancelado:'Cancelado'};
@@ -23,6 +39,7 @@ function api(method,url,body){
     .then(function(r){
       if(r.status===204)return null;
       return r.text().then(function(t){var j=null;try{j=t?JSON.parse(t):null}catch(e){}
+        if(r.status===401&&url.indexOf('auth/')!==0){mostrarAcceso();throw {mensaje:'Tu sesión terminó. Inicia sesión de nuevo.',status:401}}
         if(!r.ok){var m=(j&&(j.mensaje||j.title))||('Error '+r.status);throw {mensaje:m,status:r.status}}
         return j});
     },function(){throw {mensaje:'No hay conexión con el servidor. Revisen que la aplicación siga abierta en la computadora principal.'}});
@@ -39,7 +56,10 @@ function cargar(){
     D.config={general:e.configuracion||{}};
     IMG={};(e.imagenes||[]).forEach(function(i){(IMG[i.productoId]=IMG[i.productoId]||[]).push(i)});
     TC=e.tipoCambio||{hoy:today(),error:null};renderTc();
-    if(e.catalogos){if(e.catalogos.canales)CANALES=e.catalogos.canales;if(e.catalogos.tiposGasto)TIPOS_G=e.catalogos.tiposGasto}
+    if(e.catalogos){if(e.catalogos.canales)CANALES=e.catalogos.canales;if(e.catalogos.tiposGasto)TIPOS_G=e.catalogos.tiposGasto;if(e.catalogos.condiciones)CONDS=e.catalogos.condiciones}
+    LOTES={};(e.lotes||[]).forEach(function(l){(LOTES[l.productoId]=LOTES[l.productoId]||[]).push(l)});
+    PALLETS=porId(e.pallets);COSTOS={};CORRIDAS={};
+    if(e.costos){(e.costos.lotes||[]).forEach(function(c){COSTOS[c.loteId]=c});(e.costos.corridas||[]).forEach(function(c){CORRIDAS[c.palletId]=c})}
     mode='ok';setStatus();renderAll();
   },function(err){mode='error';setStatus();throw err});
 }
@@ -57,7 +77,7 @@ function del(col,id){return api('DELETE',RUTA[col]+'/'+id).then(cargar).catch(fa
 // Sincronización entre pestañas o dispositivos: se consulta la versión de los datos cada pocos segundos.
 function vigilar(){
   setInterval(function(){
-    if(document.hidden)return;
+    if(document.hidden||!SESION)return;
     api('GET','version').then(function(r){
       if(mode!=='ok'){mode='ok';setStatus()}
       if(r.version!==version)cargar().catch(function(){});
@@ -156,7 +176,7 @@ function stats(){
 
 /* ================= navegación ================= */
 var TAB='resumen';
-var VALID=['resumen','inventario','ventas','gastos','semana','ajustes'];
+var VALID=['resumen','inventario','ventas','gastos','semana','ajustes','analisis'];
 function go(t){
   if(VALID.indexOf(t)<0)t='resumen';TAB=t;
   document.querySelectorAll('.tab').forEach(function(b){b.setAttribute('aria-selected',b.dataset.tab===t?'true':'false')});
@@ -177,6 +197,7 @@ function renderAll(){
   else if(TAB==='gastos')renderGastos(s);
   else if(TAB==='semana')renderSemana(s);
   else if(TAB==='ajustes')renderAjustes(s);
+  else if(TAB==='analisis'&&window.PCA)window.PCA.render(s);
 }
 function kpi(l,v,n,tone){return '<div class="kpi"><div class="l">'+l+'</div><div class="v'+(tone?' '+tone:'')+'">'+v+'</div><div class="n">'+n+'</div></div>'}
 
@@ -251,7 +272,12 @@ function drawChart(s){
 function compact(v){var a=Math.abs(v);var s=a>=1000?(Math.round(a/100)/10)+'k':Math.round(a)+'';return (v<0?'−$':'$')+s}
 
 /* ---- inventario ---- */
-['fBuscar','fClase','fEstado','fStock'].forEach(function(id){document.getElementById(id).addEventListener('input',function(){renderInv(stats())})});
+function palletsLista(){return Object.keys(PALLETS).map(function(k){return PALLETS[k]}).sort(function(a,b){return a.fechaCompra<b.fechaCompra?1:-1})}
+function fillPallets(id,primero){var el=document.getElementById(id);if(!el)return;var cur=el.value;
+  el.innerHTML='<option value="">'+primero+'</option>'+palletsLista().map(function(p){return '<option value="'+esc(p.id)+'">'+esc(p.nombre)+'</option>'}).join('');el.value=cur}
+function optPallets(cur){return palletsLista().map(function(p){return '<option value="'+esc(p.id)+'"'+(p.id===cur?' selected':'')+'>'+esc(p.nombre)+(p.estatus==='cerrado'?' (cerrado)':'')+'</option>'}).join('')}
+function optConds(cur){return CONDS.map(function(c){return '<option value="'+c.codigo+'"'+(c.codigo===cur?' selected':'')+'>'+esc(c.nombre)+'</option>'}).join('')}
+['fBuscar','fClase','fCond','fPallet','fStock'].forEach(function(id){document.getElementById(id).addEventListener('input',function(){renderInv(stats())})});
 function valorPallet(P,sold){
   var r={piezas:0,disp:0,mxTot:0,mxDisp:0,objTot:0,objDisp:0,sinMx:0,sinMxPz:0,sinObj:0,sinObjPz:0};
   P.forEach(function(p){var q=+p.cantidad||0,d=Math.max(0,q-(sold[p.id]||0)),mxp=+p.precioMexico||0,ob=+p.precioObjetivo||0;
@@ -274,16 +300,17 @@ function renderValor(s){
     kpi('Valor a precio objetivo',money(v.objTot),'Cantidad × precio objetivo · disponible: '+money(v.objDisp))+
     kpi('Inversión',money(inv),isFinite(veces)?'El valor en México es '+nf.format(Math.round(veces*10)/10)+' veces la inversión':'Captura precios en México para compararlo')+
     '</div>'+(faltan.length?'<p class="small muted">No se incluyen en los valores: '+esc(faltan.join(' y '))+'.</p>':'<p class="small muted">Todos los juguetes tienen precio en México y precio objetivo.</p>')+
-    '<div class="factor"><div><p class="small"><b>Precio mínimo proporcional.</b> '+(isFinite(s.factor)
-        ?'Factor = inversión '+money(inv)+' ÷ valor en México '+money(v.mxTot)+' = <b>'+nf4.format(s.factor)+'</b>. Para recuperar la inversión, cada juguete debe venderse en promedio a por lo menos el <b>'+pct(s.factor*100)+'</b> de su precio en México.'+(v.sinMx?' Cambiará al capturar los precios que faltan.':'')
-        :'Captura el precio en México de los juguetes para calcularlo.')+'</p></div>'+
-      '<button class="btn" type="button" id="recalcMin"'+(isFinite(s.factor)?'':' disabled')+'>Recalcular precios mínimos</button></div></div>';
+    '<div class="factor"><div><p class="small"><b>Precio mínimo.</b> '+(function(){
+        var con=s.P.filter(function(p){return isFinite(costoReal(p.id).unit)}).length;
+        return (con?'<b>'+num(con)+' de '+num(s.P.length)+'</b> juguetes tienen costo real (costeo de su pallet); su mínimo será ese costo, redondeado hacia arriba al peso. ':'Aún no hay costeos aplicados: calcula el de cada pallet en Análisis comercial › Pallets y costos. ')+
+          (isFinite(s.factor)&&con<s.P.length?'Los demás usan la estimación anterior: inversión '+money(inv)+' ÷ valor en México '+money(v.mxTot)+' = factor <b>'+nf4.format(s.factor)+'</b>.':'');
+      })()+'</p></div>'+
+      '<button class="btn" type="button" id="recalcMin">Recalcular precios mínimos</button></div></div>';
   var rb=el.querySelector('#recalcMin');
   if(rb)rb.addEventListener('click',function(){
-    var n=s.P.filter(function(p){return +p.precioMexico>0}).length;
-    if(!confirm('Se reemplazará el precio mínimo de '+n+' juguete'+(n>1?'s':'')+' por precio en México × '+nf4.format(s.factor)+'. Los mínimos que capturaste a mano en esos juguetes se perderán. ¿Continuar?'))return;
+    if(!confirm('Se reemplazará el precio mínimo de los juguetes con costo real (o con precio en México, si aún no tienen costeo). Los mínimos que capturaste a mano en esos juguetes se perderán. ¿Continuar?'))return;
     rb.disabled=true;
-    api('POST','productos/recalcular-minimos').then(function(r){return cargar().then(function(){toast(r.actualizados+' mínimo'+(r.actualizados===1?'':'s')+' actualizado'+(r.actualizados===1?'':'s')+(r.sinPrecioMexico?' · '+r.sinPrecioMexico+' sin precio en México':''))})},function(e){rb.disabled=false;toast(e.mensaje)});
+    api('POST','productos/recalcular-minimos').then(function(r){return cargar().then(function(){toast(r.actualizados+' mínimo'+(r.actualizados===1?'':'s')+' actualizado'+(r.actualizados===1?'':'s')+' · '+r.conCostoReal+' con costo real'+(r.sinPrecioMexico?' · '+r.sinPrecioMexico+' sin datos':''))})},function(e){rb.disabled=false;toast(e.mensaje)});
   });
 }
 function renderInv(s){
@@ -291,24 +318,29 @@ function renderInv(s){
   document.getElementById('invSub').textContent=s.P.length?num(s.P.length)+' tipos · '+num(s.piezas)+' piezas · '+num(s.disp)+' disponibles · costo promedio '+money(s.costoPz)+' por pieza':'';
   var body=document.getElementById('invBody');
   if(!s.P.length){body.innerHTML='<div class="empty"><h3>Abran el pallet y cuenten</h3><p class="muted">Registren cada juguete con su cantidad, estado y precios. Si ya tienen la hoja en Excel, cópienla y péguenla aquí.</p><div class="row" style="justify-content:center"><button class="btn" data-act="importar">Importar desde Excel</button><button class="btn primary" data-act="nuevoProducto">+ Agregar juguete</button></div></div>';return}
-  var q=document.getElementById('fBuscar').value.trim().toLowerCase(),fc=document.getElementById('fClase').value,fe=document.getElementById('fEstado').value,fs=document.getElementById('fStock').checked;
+  var q=document.getElementById('fBuscar').value.trim().toLowerCase(),fc=document.getElementById('fClase').value,fe=document.getElementById('fCond').value,fp=document.getElementById('fPallet').value,fs=document.getElementById('fStock').checked;
   var bajo=+s.c.stockBajo||0;
   var P=s.P.filter(function(p){
     var d=(+p.cantidad||0)-(s.sold[p.id]||0);
     if(q&&((p.codigo||'')+' '+(p.codigoBarras||'')+' '+(p.nombre||'')+' '+(p.categoria||'')+' '+(p.caracteristicas||'')).toLowerCase().indexOf(q)<0)return false;
-    if(fc&&p.clase!==fc)return false;if(fe&&p.estado!==fe)return false;if(fs&&d<=0)return false;return true;
+    if(fc&&p.clase!==fc)return false;if(fs&&d<=0)return false;
+    if(fe&&!lotesDe(p.id).some(function(l){return l.condicion===fe&&l.cantidad>0}))return false;
+    if(fp&&!lotesDe(p.id).some(function(l){return l.palletId===fp}))return false;return true;
   }).sort(function(a,b){var ka=(a.clase||'Z'),kb=(b.clase||'Z');if(ka!==kb)return ka<kb?-1:1;return String(a.codigo||'').localeCompare(String(b.codigo||''),'es',{numeric:true})});
-  var tq=0,tv=0,td=0,tmx=0,tob=0;
+  fillPallets('fPallet','Todos los pallets');
+  var tq=0,tv=0,td=0,tmx=0,tob=0,tco=0;
   var rows=P.map(function(p){var qq=+p.cantidad||0,v=s.sold[p.id]||0,d=Math.max(0,qq-v);tq+=qq;tv+=v;td+=d;tmx+=qq*(+p.precioMexico||0);tob+=qq*(+p.precioObjetivo||0);
-    var im=imgPrincipal(p.id);
+    var im=imgPrincipal(p.id),cr=costoReal(p.id);if(isFinite(cr.unit))tco+=qq*cr.unit;
     var dc=d===0?'zero':(d<=bajo?'low':'');
     return '<tr><td class="tdimg">'+(im?'<button class="minib" type="button" data-det="'+p.id+'" aria-label="Ver detalle de '+esc(p.nombre)+'"><img class="mini" src="'+esc(im.url)+'" alt="" loading="lazy"></button>':'<span class="mini vacio" aria-hidden="true"></span>')+'</td><td class="mono">'+esc(p.codigo)+(p.codigoBarras?'<span class="sub">'+esc(p.codigoBarras)+'</span>':'')+'</td><td class="wrap"><button class="lnk nom" type="button" data-det="'+p.id+'">'+esc(p.nombre)+'</button>'+(p.notas?'<span class="sub">'+esc(p.notas)+'</span>':'')+'</td><td>'+esc(p.categoria)+'</td>'+
-      '<td>'+(p.clase?'<span class="pill '+p.clase+'">'+p.clase+'</span>':'')+'</td><td><span class="pill '+(p.estado||'nuevo')+'">'+(EST_P_TXT[p.estado]||'Nuevo')+'</span></td>'+
-      '<td class="r">'+num(qq)+'</td><td class="r">'+num(v)+'</td><td class="r '+dc+'">'+num(d)+'</td><td class="r">'+(+p.precioMexico>0?money(+p.precioMexico):'<span class="zero">—</span>')+'</td><td class="r"><b>'+money(+p.precioObjetivo)+'</b></td>'+
+      '<td>'+(p.clase?'<span class="pill '+p.clase+'">'+p.clase+'</span>':'')+'</td><td class="wrap small">'+esc(condicionesDe(p.id))+'</td>'+
+      '<td class="r">'+num(qq)+'</td><td class="r">'+num(v)+'</td><td class="r '+dc+'">'+num(d)+'</td><td class="r">'+(+p.precioMexico>0?money(+p.precioMexico):'<span class="zero">—</span>')+'</td>'+
+      '<td class="r">'+(isFinite(cr.unit)?money2(cr.unit)+(cr.completo&&!cr.desactualizado?'':' <span class="tag-w" title="Costeo pendiente o desactualizado">!</span>'):'<span class="zero" title="Calcula el costeo del pallet">—</span>')+'</td>'+
+      '<td class="r"><b>'+money(+p.precioObjetivo)+'</b></td>'+
       '<td class="r"><div class="row" style="justify-content:flex-end;flex-wrap:nowrap"><button class="btn sm" data-sell="'+p.id+'"'+(d<=0?' disabled':'')+'>Vender</button><button class="btn sm" data-editp="'+p.id+'">Editar</button></div></td></tr>'}).join('');
-  body.innerHTML=P.length?'<div class="scroll"><table><thead><tr><th><span class="sr">Imagen</span></th><th>Código</th><th>Juguete</th><th>Categoría</th><th>Clase</th><th>Estado</th><th class="r">Cant.</th><th class="r">Vendidas</th><th class="r">Disp.</th><th class="r">P. México</th><th class="r">P. objetivo</th><th></th></tr></thead><tbody>'+rows+
-    '</tbody><tfoot><tr><td colspan="6">'+P.length+' juguete'+(P.length>1?'s':'')+' en la vista</td><td class="r">'+num(tq)+'</td><td class="r">'+num(tv)+'</td><td class="r">'+num(td)+'</td><td colspan="3"></td></tr>'+
-    '<tr class="tot"><td colspan="9">Valor de la vista (cantidad × precio)</td><td class="r">'+money(tmx)+'</td><td class="r">'+money(tob)+'</td><td></td></tr></tfoot></table></div>'
+  body.innerHTML=P.length?'<div class="scroll"><table><thead><tr><th><span class="sr">Imagen</span></th><th>Código</th><th>Juguete</th><th>Categoría</th><th>Clase</th><th>Condición</th><th class="r">Cant.</th><th class="r">Vendidas</th><th class="r">Disp.</th><th class="r">P. México</th><th class="r" title="Costo real por pieza según el costeo vigente del pallet">Costo pieza</th><th class="r">P. objetivo</th><th></th></tr></thead><tbody>'+rows+
+    '</tbody><tfoot><tr><td colspan="6">'+P.length+' juguete'+(P.length>1?'s':'')+' en la vista</td><td class="r">'+num(tq)+'</td><td class="r">'+num(tv)+'</td><td class="r">'+num(td)+'</td><td colspan="4"></td></tr>'+
+    '<tr class="tot"><td colspan="9">Valor de la vista (cantidad × precio)</td><td class="r">'+money(tmx)+'</td><td class="r">'+money(tco)+'</td><td class="r">'+money(tob)+'</td><td></td></tr></tfoot></table></div>'
     :'<div class="empty"><p class="muted">Ningún juguete coincide con los filtros.</p></div>';
 }
 
@@ -387,7 +419,8 @@ var cfgDirty=false;
 ['cInv','cBajo','cMeta','cDesc'].forEach(function(id){document.getElementById(id).addEventListener('input',function(){cfgDirty=true})});
 function renderAjustes(s){
   if(cfgDirty)return;var c=s.c;
-  document.getElementById('cInv').value=c.inversion;
+  var ci=document.getElementById('cInv'),hayP=palletsLista().length>0;ci.value=c.inversion;ci.readOnly=hayP;
+  document.getElementById('cInvH').textContent=hayP?'Es la suma de la inversión de tus pallets; se modifica en Análisis comercial › Pallets y costos.':'Incluye flete e impuestos de compra.';
   document.getElementById('cBajo').value=c.stockBajo;document.getElementById('cMeta').value=c.metaMensual||'';document.getElementById('cDesc').value=c.descuentoSugerido!=null?c.descuentoSugerido:35;
 }
 document.getElementById('cfgForm').addEventListener('submit',function(e){e.preventDefault();
@@ -420,6 +453,31 @@ function productoForm(id,pre){
   pre=pre||{};
   var p=id?D.productos[id]:{codigo:nextCode(),estado:'nuevo',clase:'B',codigoBarras:pre.codigoBarras||''};var cats={};list('productos').forEach(function(x){if(x.categoria)cats[x.categoria]=1});
   var vend=id?vendidasDe(id):0;
+  // Inventario por lotes: un juguete nuevo nace en un pallet y una condición; con varios lotes, la cantidad se maneja en cada lote.
+  var ls=id?lotesDe(id):[],activos=ls.filter(function(l){return l.cantidad>0}),multi=activos.length>1,loteU=activos[0]||ls[0]||null;
+  var pls=palletsLista(),palDef=pre.palletId||(pls.length===1?pls[0].id:'');
+  var bloqueInv=!id
+    ?(pls.length?fld('pPal','Pallet de origen','<select class="sel" id="pPal" name="palletId" required>'+(palDef?'':'<option value="" selected disabled>Elige el pallet</option>')+optPallets(palDef)+'</select>')
+       :'<div class="full"><p class="warnline bad">Registra primero un pallet en <b>Análisis comercial › Pallets y costos</b>; cada juguete pertenece a un pallet.</p></div>')+
+     fld('pCond','Condición','<select class="sel" id="pCond" name="condicion">'+optConds('nuevo_sellado')+'</select>')
+    :multi?'<div class="full"><p class="small muted">Este juguete tiene <b>'+activos.length+' lotes</b> ('+esc(condicionesDe(id))+'). La cantidad y la condición se manejan en cada lote: ficha del juguete › Lotes.</p></div>'
+    :fld('pCond','Condición','<select class="sel" id="pCond" name="condicion">'+optConds(loteU?loteU.condicion:'nuevo_sellado')+'</select>',loteU&&PALLETS[loteU.palletId]?'Pallet: '+esc(PALLETS[loteU.palletId].nombre):null);
+  function dec(v){return v!=null&&v!==''?esc(v):''}
+  var hayCom=id&&(p.marca||p.modelo||p.subcategoria||p.descripcionComercial||p.accesoriosIncluidos||p.edadRecomendada||p.pesoKg||p.largoCm);
+  var bloqueCom='<details class="full com" id="pCom"'+(hayCom?' open':'')+'><summary>Datos comerciales <span class="small muted">(marca, modelo, medidas, edad…)</span></summary><div class="form">'+
+    fld('pMar','Marca','<input class="inp" id="pMar" name="marca" maxlength="60" value="'+esc(p.marca)+'">')+
+    fld('pMod','Modelo','<input class="inp" id="pMod" name="modelo" maxlength="60" value="'+esc(p.modelo)+'">')+
+    fld('pSub','Subcategoría','<input class="inp" id="pSub" name="subcategoria" maxlength="60" value="'+esc(p.subcategoria)+'">')+
+    fld('pEdad','Edad recomendada','<input class="inp" id="pEdad" name="edadRecomendada" maxlength="40" value="'+esc(p.edadRecomendada)+'" placeholder="p. ej. 3+ años">')+
+    fld('pPeso','Peso (kg)','<input class="inp num" id="pPeso" name="pesoKg" type="number" min="0" step="0.001" value="'+dec(p.pesoKg)+'">')+
+    fld('pLar','Largo (cm)','<input class="inp num" id="pLar" name="largoCm" type="number" min="0" step="0.01" value="'+dec(p.largoCm)+'">')+
+    fld('pAnc','Ancho (cm)','<input class="inp num" id="pAnc" name="anchoCm" type="number" min="0" step="0.01" value="'+dec(p.anchoCm)+'">')+
+    fld('pAlt','Alto (cm)','<input class="inp num" id="pAlt" name="altoCm" type="number" min="0" step="0.01" value="'+dec(p.altoCm)+'">')+
+    fld('pAcc','Accesorios incluidos','<input class="inp" id="pAcc" name="accesoriosIncluidos" maxlength="300" value="'+esc(p.accesoriosIncluidos)+'">',null,true)+
+    fld('pDes','Descripción comercial','<textarea class="inp" id="pDes" name="descripcionComercial" maxlength="2000" rows="3" placeholder="Texto para publicar">'+esc(p.descripcionComercial)+'</textarea>',null,true)+
+    fld('pEcom','Estado comercial','<select class="sel" id="pEcom" name="estadoComercial">'+opt(Object.keys(EST_COM),p.estadoComercial||'en_revision',EST_COM)+'</select>')+
+    fld('pFin','Fecha de ingreso','<input class="inp" id="pFin" name="fechaIngreso" type="date" value="'+esc(p.fechaIngreso||(id?'':today()))+'">')+
+    '</div></details>';
   var G={pend:[],upc:[],usarUpc:true};   // fotos por subir e imágenes de UPCitemdb por descargar al guardar
   openModal(head(id?'Editar juguete':'Nuevo juguete')+'<form class="stack" style="display:flex;flex-direction:column;gap:14px"><div class="form">'+
     fld('pCod','Código','<input class="inp mono" id="pCod" name="codigo" required maxlength="20" value="'+esc(p.codigo)+'">')+
@@ -428,8 +486,8 @@ function productoForm(id,pre){
     '<div class="full" id="pBarRes"></div>'+
     fld('pNom','Juguete','<input class="inp" id="pNom" name="nombre" required maxlength="120" value="'+esc(p.nombre)+'" placeholder="Marca y nombre del juguete">',null,true)+
     fld('pCat','Categoría','<input class="inp" id="pCat" name="categoria" list="catList" maxlength="60" value="'+esc(p.categoria)+'" placeholder="Muñecas, autos, didácticos…"><datalist id="catList">'+Object.keys(cats).map(function(c){return '<option value="'+esc(c)+'">'}).join('')+'</datalist>')+
-    fld('pEst','Estado','<select class="sel" id="pEst" name="estado">'+opt(['nuevo','danado','incompleto'],p.estado,EST_P_TXT)+'</select>')+
-    fld('pCan','Cantidad','<input class="inp num" id="pCan" name="cantidad" type="number" min="'+vend+'" step="1" required value="'+esc(p.cantidad!=null?p.cantidad:1)+'">',vend?'Ya hay '+vend+' vendidas o apartadas.':'Piezas de este juguete en el pallet.')+
+    bloqueInv+
+    fld('pCan','Cantidad','<input class="inp num" id="pCan" name="cantidad" type="number" min="'+vend+'" step="1" required value="'+esc(p.cantidad!=null?p.cantidad:1)+'"'+(multi?' readonly':'')+'>',vend?'Ya hay '+vend+' vendidas o apartadas.':'Piezas de este juguete en el pallet.')+
     fld('pMx','Precio en México','<input class="inp num" id="pMx" name="precioMexico" type="number" min="0" step="0.01" value="'+esc(p.precioMexico||'')+'">','<span id="pMxH"></span>')+
     camposTiendas(p)+
     '<div class="full" id="pMxSug"></div>'+
@@ -440,6 +498,7 @@ function productoForm(id,pre){
     '<div class="f full"><span class="lbl2">Imágenes</span><div class="gal" id="pGal"></div>'+
       '<div class="row"><label class="btn sm" for="pFiles" tabindex="0">Subir fotos</label><input type="file" id="pFiles" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden></div>'+
       '<span class="hint">JPG, PNG, WEBP o GIF de hasta 5 MB, hasta 12 por juguete. La marcada con ★ es la principal y se muestra en el inventario.</span></div>'+
+    bloqueCom+
     fld('pNot','Notas','<textarea class="inp" id="pNot" name="notas" maxlength="500" placeholder="Daños, piezas faltantes, dónde está guardado…">'+esc(p.notas)+'</textarea>',null,true)+
     '</div><div id="pWarn"></div>'+footer(!!id)+'</form>',function(el){
       var w=el.querySelector('#pWarn');
@@ -459,10 +518,17 @@ function productoForm(id,pre){
       wireGaleria(el,id,G);
       wireBarras(el,id,chk,pre.resultado,G);
       wireForm(el,function(f){
-        var o={codigo:val(f,'codigo'),codigoBarras:val(f,'codigoBarras'),nombre:val(f,'nombre'),categoria:val(f,'categoria'),clase:f.elements.clase.value,estado:f.elements.estado.value,
+        var o={codigo:val(f,'codigo'),codigoBarras:val(f,'codigoBarras'),nombre:val(f,'nombre'),categoria:val(f,'categoria'),clase:f.elements.clase.value,
           cantidad:Math.max(0,Math.round(+f.elements.cantidad.value||0)),precioLista:+f.elements.precioLista.value||0,precioObjetivo:+f.elements.precioObjetivo.value||0,
           precioMinimo:+f.elements.precioMinimo.value||0,precioMexico:+f.elements.precioMexico.value||0,caracteristicas:val(f,'caracteristicas'),notas:val(f,'notas'),
-          precioLiverpool:+f.elements.precioLiverpool.value||0,precioMercadoLibre:+f.elements.precioMercadoLibre.value||0,precioWalmart:+f.elements.precioWalmart.value||0};
+          precioLiverpool:+f.elements.precioLiverpool.value||0,precioMercadoLibre:+f.elements.precioMercadoLibre.value||0,precioWalmart:+f.elements.precioWalmart.value||0,
+          marca:val(f,'marca'),modelo:val(f,'modelo'),subcategoria:val(f,'subcategoria'),edadRecomendada:val(f,'edadRecomendada'),
+          accesoriosIncluidos:val(f,'accesoriosIncluidos'),descripcionComercial:val(f,'descripcionComercial'),estadoComercial:f.elements.estadoComercial.value,
+          pesoKg:+f.elements.pesoKg.value||0,largoCm:+f.elements.largoCm.value||0,anchoCm:+f.elements.anchoCm.value||0,altoCm:+f.elements.altoCm.value||0,
+          fechaIngreso:f.elements.fechaIngreso.value||null};
+        if(f.elements.palletId)o.palletId=f.elements.palletId.value||null;
+        if(f.elements.condicion)o.condicion=f.elements.condicion.value;
+        if(!id&&!o.palletId){w.innerHTML='<p class="warnline bad">Elige el pallet de origen.</p>';return}
         var dup=list('productos').some(function(x){return x.id!==id&&String(x.codigo).toLowerCase()===o.codigo.toLowerCase()});
         if(dup){w.innerHTML='<p class="warnline bad">Ya existe un juguete con el código '+esc(o.codigo)+'. Usa otro código.</p>';return}
         if(o.cantidad<vend){w.innerHTML='<p class="warnline bad">La cantidad no puede ser menor que las '+vend+' piezas ya vendidas o apartadas.</p>';return}
@@ -490,7 +556,9 @@ function factorProporcional(extra){
   if(extra){var q2=+extra.cantidad||0;piezas+=q2;if(+extra.precioMexico>0){valor+=q2*(+extra.precioMexico);conMx+=q2}}
   return {factor:valor>0&&inv>0?inv/valor:NaN,valor:valor,piezas:piezas,conMx:conMx,inv:inv};
 }
+/** Costo por pieza: el real del costeo del pallet; si aún no hay costeo, la estimación proporcional anterior. */
 function costoDe(p,s){
+  var cr=costoReal(p.id);if(isFinite(cr.unit))return cr.unit;
   if(+p.precioMexico>0&&isFinite(s.factor))return +p.precioMexico*s.factor;
   return NaN;
 }
@@ -555,7 +623,13 @@ function wireMx(el,chk,id){
 /* ---- detalle del juguete con carrusel de fotos ---- */
 function detalleForm(id){
   var p=D.productos[id];if(!p)return;
-  var s=stats(),imgs=imgsDe(id),vend=s.sold[id]||0,disp=Math.max(0,(+p.cantidad||0)-vend),costo=costoDe(p,s),k=0;
+  var s=stats(),imgs=imgsDe(id),vend=s.sold[id]||0,disp=Math.max(0,(+p.cantidad||0)-vend),costo=costoDe(p,s),k=0,cr=costoReal(id);
+  var tablaLotes='<div><div class="pf"><h3>Lotes</h3><button class="btn sm" type="button" data-lote-nuevo="'+esc(id)+'">+ Lote</button></div>'+
+    '<div class="scroll"><table><thead><tr><th>Pallet</th><th>Condición</th><th class="r">Piezas</th><th class="r">Costo pieza</th><th class="r">Costo lote</th><th></th></tr></thead><tbody>'+
+    lotesDe(id).map(function(l){var c=COSTOS[l.id];return '<tr><td>'+esc((PALLETS[l.palletId]||{}).nombre||'')+'</td><td>'+esc(condNombre(l.condicion))+(l.comercializable?'':' <span class="pill danado">'+(l.tratamiento?esc(l.tratamiento.replace('_',' ')):'no comercializable')+'</span>')+'</td>'+
+      '<td class="r">'+num(l.cantidad)+'</td><td class="r">'+(c?money2(c.costoUnitario):'—')+'</td><td class="r">'+(c?money2(c.costoTotal):'—')+'</td>'+
+      '<td class="r"><div class="row" style="justify-content:flex-end;flex-wrap:nowrap"><button class="btn sm" type="button" data-lote-aj="'+esc(l.id)+'">Ajustar</button><button class="btn sm" type="button" data-lote-rc="'+esc(l.id)+'"'+(l.cantidad?'':' disabled')+'>Condición</button><button class="btn sm" type="button" data-lote-ed="'+esc(l.id)+'">Editar</button></div></td></tr>'}).join('')+
+    '</tbody></table></div><p class="small muted"><button class="lnk" type="button" data-lote-mov="'+esc(id)+'">Ver movimientos (kárdex)</button></p></div>';
   function fila(l,v){return v==null||v===''?'':'<div class="dt"><dt>'+l+'</dt><dd>'+v+'</dd></div>'}
   function pm(v){return +v>0?money(+v):'<span class="zero">—</span>'}
   var tiendas=TIENDAS.map(function(t){return '<li>'+t.n+': '+pm(p[t.k])+(p.nombre?' <a href="'+esc(t.url(p.nombre))+'" target="_blank" rel="noopener noreferrer">ver ↗</a>':'')+'</li>'}).join('');
@@ -571,14 +645,20 @@ function detalleForm(id){
     '<dl class="dl">'+
       fila('Código',esc(p.codigo)+(p.codigoBarras?' · <span class="mono">'+esc(p.codigoBarras)+'</span>':''))+
       fila('Categoría',esc(p.categoria)||'<span class="zero">—</span>')+
-      fila('Clase y estado',(p.clase?'<span class="pill '+p.clase+'">'+p.clase+'</span> ':'')+'<span class="pill '+(p.estado||'nuevo')+'">'+(EST_P_TXT[p.estado]||'Nuevo')+'</span>')+
-      fila('Piezas',num(+p.cantidad||0)+' en total · '+num(vend)+' vendidas o apartadas · <b>'+num(disp)+' disponibles</b>')+
+      fila('Clase',(p.clase?'<span class="pill '+p.clase+'">'+p.clase+'</span> ':'')+'<span class="small muted">'+esc(EST_COM[p.estadoComercial]||'')+'</span>')+
+      fila('Marca y modelo',esc([p.marca,p.modelo].filter(Boolean).join(' · ')))+
+      fila('Edad y medidas',esc([p.edadRecomendada,p.pesoKg?num(+p.pesoKg)+' kg':'',p.largoCm?[p.largoCm,p.anchoCm,p.altoCm].map(function(x){return x?num(+x):'?'}).join(' × ')+' cm':''].filter(Boolean).join(' · ')))+
+      fila('Costo real por pieza',isFinite(cr.unit)?'<b>'+money2(cr.unit)+'</b>'+(cr.desactualizado?' <span class="tag-w">costeo desactualizado</span>':cr.completo?'':' <span class="tag-w">hay lotes sin costear</span>'):'<span class="small muted">Pendiente: calcula el costeo del pallet</span>')+
+      fila('Piezas',num(+p.cantidad||0)+' en total · '+num(vend)+' vendidas o apartadas · <b>'+num(disp)+' disponibles</b>'+(function(){var nv=lotesDe(id).filter(function(l){return !l.comercializable}).reduce(function(a,l){return a+l.cantidad},0);return nv?' <span class="small muted">(incluye '+num(nv)+' no vendible'+(nv>1?'s':'')+')</span>':''})())+
       fila('Precio en México','<b>'+pm(p.precioMexico)+'</b><ul class="small sug">'+tiendas+'</ul>')+
       fila('Precio objetivo',pm(p.precioObjetivo))+
-      fila('Precio mínimo',pm(p.precioMinimo)+(isFinite(costo)?' <span class="small muted">· parte de la inversión hoy: '+money(costo)+'</span>':''))+
+      fila('Precio mínimo',pm(p.precioMinimo)+(!isFinite(cr.unit)&&isFinite(costo)?' <span class="small muted">· estimación sin costeo: '+money(costo)+'</span>':''))+
       (+p.precioLista>0?fila('Precio de lista (ref.)',money(+p.precioLista)):'')+
       fila('Valor en México',+p.precioMexico>0?money((+p.cantidad||0)*(+p.precioMexico))+' <span class="small muted">('+num(disp)+' disponibles: '+money(disp*(+p.precioMexico))+')</span>':'')+
     '</dl></div>'+
+    tablaLotes+
+    (p.descripcionComercial?'<div><h3>Descripción comercial</h3><p class="pre small">'+esc(p.descripcionComercial)+'</p></div>':'')+
+    (p.accesoriosIncluidos?'<div><h3>Accesorios incluidos</h3><p class="small">'+esc(p.accesoriosIncluidos)+'</p></div>':'')+
     (p.caracteristicas?'<div><h3>Características</h3><p class="pre small">'+esc(p.caracteristicas)+'</p></div>':'')+
     (p.notas?'<div><h3>Notas</h3><p class="pre small">'+esc(p.notas)+'</p></div>':'')+
     '<div class="pf"><span></span><div class="row"><button class="btn" type="button" data-sell="'+esc(id)+'"'+(disp<=0?' disabled':'')+'>Vender</button><button class="btn primary" type="button" data-editp="'+esc(id)+'">Editar</button></div></div>',
@@ -664,7 +744,9 @@ function wireBarras(el,id,chk,inicial,G){
     if(r.origen==='ninguno'){res.innerHTML='<p class="warnline">'+esc(r.aviso)+'</p>';return}
     var e=r.externo,sg=r.sugerencia||{},tieneMx=+campo('precioMexico').value>0;
     var nombre=e.marca&&e.titulo.toLowerCase().indexOf(e.marca.toLowerCase())<0?e.marca+' '+e.titulo:e.titulo;
-    var datos={nombre:nombre,categoria:e.categoria,caracteristicas:e.caracteristicasEs||e.caracteristicas,precioLista:sg.precioLista};
+    var datos={nombre:nombre,categoria:e.categoria,caracteristicas:e.caracteristicasEs||e.caracteristicas,precioLista:sg.precioLista,
+      marca:e.marca,modelo:e.modelo,pesoKg:e.pesoKg,largoCm:e.largoCm,anchoCm:e.anchoCm,altoCm:e.altoCm};
+    if(e.marca||e.modelo||e.pesoKg||e.largoCm){var dc=el.querySelector('#pCom');if(dc)dc.open=true}
     // Con precio en México capturado, la sugerencia en dólares no reemplaza objetivo ni mínimo.
     if(!tieneMx){datos.precioObjetivo=sg.precioObjetivo}
     var llenos=aplicar(datos,false);el.dispatchEvent(new Event('nombre-cambiado'));
@@ -794,6 +876,7 @@ function parseRows(txt){
 function importForm(){
   openModal(head('Importar desde Excel')+'<form style="display:flex;flex-direction:column;gap:12px">'+
     '<p class="small muted">Copien las filas de su hoja y péguenlas abajo. Columnas en este orden: <b>Código, Juguete, Categoría, Cantidad, Estado, Precio de lista, Precio objetivo, Clase</b> y, opcionales, <b>Código de barras</b> y <b>Precio en México</b>. La fila de títulos se ignora.</p>'+
+    (palletsLista().length?fld('impPal','Pallet de los juguetes nuevos','<select class="sel" id="impPal">'+optPallets(palletsLista().length===1?palletsLista()[0].id:'')+'</select>','Las filas cuyo código ya existe solo actualizan sus datos.'):'<p class="warnline bad">Registra primero un pallet en Análisis comercial › Pallets y costos.</p>')+
     '<textarea class="inp mono" id="impTxt" style="min-height:180px;font-size:.82rem" placeholder="001&#9;Muñeca Bebé Llorón&#9;Muñecas&#9;12&#9;Nuevo&#9;899&#9;600&#9;A"></textarea>'+
     '<div id="impPrev"></div><div class="pf"><span></span><div class="row"><button class="btn" type="button" data-close2>Cancelar</button><button class="btn primary" type="submit" id="impGo" disabled>Importar</button></div></div></form>',function(el){
       var ta=el.querySelector('#impTxt'),pv=el.querySelector('#impPrev'),go=el.querySelector('#impGo'),rows=[];
@@ -804,7 +887,9 @@ function importForm(){
       wireForm(el,function(){
         if(!rows.length)return;go.disabled=true;
         go.textContent='Importando…';
-        api('POST','productos/importar',rows).then(function(r){return cargar().then(function(){closeModal();toast(r.nuevos+' nuevos · '+r.actualizados+' actualizados')})})
+        var ip=el.querySelector('#impPal');
+        api('POST','productos/importar'+(ip&&ip.value?'?palletId='+encodeURIComponent(ip.value):''),rows).then(function(r){return cargar().then(function(){closeModal();
+          toast(r.nuevos+' nuevos · '+r.actualizados+' actualizados'+(r.cantidadNoActualizada&&r.cantidadNoActualizada.length?' · cantidad sin cambiar en '+r.cantidadNoActualizada.join(', ')+' (tienen varios lotes)':''))})})
           .catch(function(e){go.disabled=false;go.textContent='Reintentar';toast((e&&e.mensaje)||'No se pudo importar')});
       });
     });
@@ -814,7 +899,8 @@ function importForm(){
 function csv(rows){return '﻿'+rows.map(function(r){return r.map(function(c){c=c==null?'':String(c);return /[",\n;]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c}).join(',')}).join('\r\n')}
 function exportar(k){
   var s=stats(),rows;
-  if(k==='inventario')rows=[['Código','Juguete','Categoría','Cantidad','Estado','Precio de lista','Precio objetivo','Clase','Código de barras','Precio en México','Precio mínimo','Vendidas','Disponibles','Precio Liverpool','Precio Mercado Libre','Precio Walmart','Características','Notas']].concat(s.P.map(function(p){var v=s.sold[p.id]||0;return [p.codigo,p.nombre,p.categoria,p.cantidad,EST_P_TXT[p.estado]||'Nuevo',p.precioLista,p.precioObjetivo,p.clase,p.codigoBarras?'\u2060'+p.codigoBarras:'',p.precioMexico||'',p.precioMinimo,v,Math.max(0,(+p.cantidad||0)-v),p.precioLiverpool||'',p.precioMercadoLibre||'',p.precioWalmart||'',p.caracteristicas,p.notas]}));
+  if(k==='inventario')rows=[['Código','Juguete','Categoría','Cantidad','Estado','Precio de lista','Precio objetivo','Clase','Código de barras','Precio en México','Precio mínimo','Vendidas','Disponibles','Precio Liverpool','Precio Mercado Libre','Precio Walmart','Características','Notas','Pallets','Condición','Marca','Modelo','Costo real por pieza']].concat(s.P.map(function(p){var v=s.sold[p.id]||0;return [p.codigo,p.nombre,p.categoria,p.cantidad,EST_P_TXT[p.estado]||'Nuevo',p.precioLista,p.precioObjetivo,p.clase,p.codigoBarras?'\u2060'+p.codigoBarras:'',p.precioMexico||'',p.precioMinimo,v,Math.max(0,(+p.cantidad||0)-v),p.precioLiverpool||'',p.precioMercadoLibre||'',p.precioWalmart||'',p.caracteristicas,p.notas,
+    lotesDe(p.id).map(function(l){return (PALLETS[l.palletId]||{}).nombre}).filter(function(x,i,a){return x&&a.indexOf(x)===i}).join(' / '),condicionesDe(p.id),p.marca,p.modelo,(function(){var c=costoReal(p.id);return isFinite(c.unit)?c.unit.toFixed(2):''})()]}));
   else if(k==='ventas')rows=[['Fecha','Fecha de pago','Código','Juguete','Cantidad','Precio','Total','Estado','Canal','Cliente','Notas']].concat(s.V.map(function(v){var p=D.productos[v.productoId]||{};return [v.fecha,v.fechaPago,p.codigo,p.nombre,v.cantidad,v.precio,totalVenta(v),EST_V_TXT[v.estado],v.canal,v.cliente,v.notas]}));
   else if(k==='gastos')rows=[['Fecha','Tipo','Concepto','Monto']].concat(s.G.map(function(g){return [g.fecha,g.tipo,g.concepto,g.monto]}));
   else rows=[['Semana','Publicadas','Mensajes','Horas','Notas']].concat(list('semanas').map(function(w){return [w.semana,w.publicadas,w.mensajes,w.horas,w.notas]}));
@@ -842,12 +928,86 @@ document.addEventListener('click',function(e){
   else if(t.dataset.editg)gastoForm(t.dataset.editg);
   else if(t.dataset.edits)semanaForm(t.dataset.edits);
   else if(t.dataset.exp)exportar(t.dataset.exp);
+  else if(t.id==='userBtn')menuUsuario();
+  else if(window.PCA&&(t.dataset.loteNuevo||t.dataset.loteAj||t.dataset.loteRc||t.dataset.loteEd||t.dataset.loteMov))window.PCA.loteAccion(t.dataset);
 });
 
 var tt=null;function toast(m){var el=document.getElementById('toast');el.textContent=m;el.hidden=false;clearTimeout(tt);tt=setTimeout(function(){el.hidden=true},2600)}
 
+/* ================= acceso ================= */
+var acceso=document.getElementById('acceso');
+function mostrarAcceso(){
+  SESION=null;closeModal();
+  api('GET','auth/estado').then(function(e){
+    if(e.autenticado){SESION=e;acceso.hidden=true;return}
+    var cfgInicial=e.requiereConfiguracion;
+    acceso.hidden=false;
+    acceso.innerHTML='<form class="panel acc" id="accForm" autocomplete="on"><div class="brand"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>Control Pallet de Juguetes</b></div>'+
+      (cfgInicial
+        ?(e.configuracionPermitida
+          ?'<h2>Crea tu usuario</h2><p class="small muted">Es la primera vez que se abre la aplicación. Este usuario protegerá tu información financiera.</p>'+
+            fld('aNom','Tu nombre','<input class="inp" id="aNom" name="nombreCompleto" maxlength="80" autocomplete="name">')+
+            fld('aUsu','Usuario','<input class="inp" id="aUsu" name="usuario" required minlength="3" maxlength="40" autocomplete="username" pattern="[A-Za-z0-9._\\-]+">','Letras, números, punto, guion o guion bajo.')+
+            fld('aCon','Contraseña','<input class="inp" id="aCon" name="contrasena" type="password" required minlength="8" autocomplete="new-password">','Al menos 8 caracteres.')+
+            fld('aCon2','Repite la contraseña','<input class="inp" id="aCon2" type="password" required minlength="8" autocomplete="new-password">')
+          :'<h2>Configuración pendiente</h2><p class="warnline">El primer usuario solo se puede crear desde la computadora donde corre la aplicación. Ábrela ahí en <b>http://localhost:5080</b>.</p>')
+        :'<h2>Inicia sesión</h2>'+
+          fld('aUsu','Usuario','<input class="inp" id="aUsu" name="usuario" required autocomplete="username">')+
+          fld('aCon','Contraseña','<input class="inp" id="aCon" name="contrasena" type="password" required autocomplete="current-password">'))+
+      '<div id="aMsg"></div>'+(cfgInicial&&!e.configuracionPermitida?'':'<button class="btn primary" type="submit">'+(cfgInicial?'Crear usuario y entrar':'Entrar')+'</button>')+'</form>';
+    var f=acceso.querySelector('#accForm'),msg=acceso.querySelector('#aMsg');var u=acceso.querySelector('#aUsu');if(u)u.focus();
+    f.addEventListener('submit',function(ev){ev.preventDefault();
+      var b={usuario:f.elements.usuario.value.trim(),contrasena:f.elements.contrasena.value};
+      if(cfgInicial){if(b.contrasena!==acceso.querySelector('#aCon2').value){msg.innerHTML='<p class="warnline bad">Las contraseñas no coinciden.</p>';return}b.nombreCompleto=f.elements.nombreCompleto.value.trim()}
+      var btn=f.querySelector('button[type=submit]');btn.disabled=true;msg.innerHTML='';
+      api('POST',cfgInicial?'auth/configurar':'auth/entrar',b).then(iniciarSesion,function(er){btn.disabled=false;msg.innerHTML='<p class="warnline bad">'+esc(er.mensaje)+'</p>'});
+    });
+  },function(er){acceso.hidden=false;acceso.innerHTML='<div class="panel acc"><p class="warnline bad">'+esc(er.mensaje)+'</p></div>'});
+}
+function iniciarSesion(){
+  return api('GET','auth/estado').then(function(e){
+    if(!e.autenticado){mostrarAcceso();return}
+    SESION=e;acceso.hidden=true;acceso.innerHTML='';
+    document.getElementById('userBtn').textContent=e.nombreCompleto||e.usuario;document.getElementById('userBtn').hidden=false;
+    return cargar();
+  });
+}
+function menuUsuario(){
+  openModal(head('Tu cuenta')+'<div style="display:flex;flex-direction:column;gap:14px">'+
+    '<p class="small muted">Sesión iniciada como <b>'+esc(SESION?SESION.usuario:'')+'</b>.</p>'+
+    '<form class="card" id="uPass"><h3>Cambiar contraseña</h3><div class="form">'+
+      fld('uAct','Contraseña actual','<input class="inp" id="uAct" name="actual" type="password" required autocomplete="current-password">')+
+      fld('uNue','Nueva contraseña','<input class="inp" id="uNue" name="nueva" type="password" required minlength="8" autocomplete="new-password">','Al menos 8 caracteres. Se cerrarán tus otras sesiones.')+
+    '</div><div class="row"><button class="btn" type="submit">Cambiar</button><span class="small" id="uPassMsg"></span></div></form>'+
+    '<div class="card"><h3>Usuarios</h3><div id="uLista" class="small muted">Cargando…</div>'+
+    '<form id="uNuevo" class="form">'+fld('nUsu','Usuario nuevo','<input class="inp" id="nUsu" name="usuario" required minlength="3" maxlength="40" pattern="[A-Za-z0-9._\\-]+">')+
+      fld('nNom','Nombre','<input class="inp" id="nNom" name="nombreCompleto" maxlength="80">')+
+      fld('nCon','Contraseña','<input class="inp" id="nCon" name="contrasena" type="password" required minlength="8" autocomplete="new-password">')+
+      '<div class="f" style="justify-content:flex-end"><button class="btn" type="submit">Agregar usuario</button></div></form><span class="small" id="uNuevoMsg"></span></div>'+
+    '<div class="pf"><span></span><button class="btn danger" type="button" id="uSalir">Cerrar sesión</button></div></div>',function(el){
+      function lista(){api('GET','usuarios').then(function(us){el.querySelector('#uLista').innerHTML='<ul class="clean">'+us.map(function(u){
+        return '<li><b>'+esc(u.nombre)+'</b> '+esc(u.nombreCompleto||'')+(u.activo?'':' <span class="pill cancelado">inactivo</span>')+
+          (SESION&&u.nombre!==SESION.usuario?' <button class="lnk" type="button" data-uact="'+esc(u.id)+'" data-val="'+(!u.activo)+'">'+(u.activo?'Desactivar':'Activar')+'</button>':'')+'</li>'}).join('')+'</ul>'})}
+      lista();
+      el.querySelector('#uLista').addEventListener('click',function(e){var b=e.target.closest('[data-uact]');if(!b)return;
+        api('POST','usuarios/'+b.dataset.uact+'/activo?activo='+b.dataset.val).then(lista,function(er){toast(er.mensaje)})});
+      el.querySelector('#uPass').addEventListener('submit',function(e){e.preventDefault();var m=el.querySelector('#uPassMsg');
+        api('POST','auth/contrasena',{actual:this.elements.actual.value,nueva:this.elements.nueva.value}).then(function(){m.textContent='Contraseña cambiada.';e.target.reset()},function(er){m.textContent=er.mensaje})});
+      el.querySelector('#uNuevo').addEventListener('submit',function(e){e.preventDefault();var m=el.querySelector('#uNuevoMsg'),fm=this;
+        api('POST','usuarios',{usuario:fm.elements.usuario.value.trim(),nombreCompleto:fm.elements.nombreCompleto.value.trim(),contrasena:fm.elements.contrasena.value})
+          .then(function(){m.textContent='Usuario agregado.';fm.reset();lista()},function(er){m.textContent=er.mensaje})});
+      el.querySelector('#uSalir').addEventListener('click',function(){api('POST','auth/salir').then(function(){closeModal();document.getElementById('userBtn').hidden=true;mostrarAcceso()})});
+    });
+}
+
+/* Funciones compartidas con js/analisis.js (módulo de Análisis comercial). */
+window.PC={api:api,cargar:function(){return cargar()},openModal:openModal,closeModal:closeModal,head:head,fld:fld,opt:opt,footer:footer,wireForm:wireForm,
+  toast:toast,money:money,money2:money2,num:num,pct:pct,esc:esc,fdate:fdate,kpi:kpi,today:today,nf4:nf4,cfg:cfg,TC:function(){return TC},
+  productoForm:productoForm,detalleForm:detalleForm,condNombre:condNombre,optConds:optConds,optPallets:optPallets,palletsLista:palletsLista,
+  datos:function(){return {D:D,LOTES:LOTES,PALLETS:PALLETS,COSTOS:COSTOS,CORRIDAS:CORRIDAS,CONDS:CONDS}}};
+
 /* ================= arranque ================= */
 var start=(location.hash||'').slice(1);if(VALID.indexOf(start)<0){try{start=localStorage.getItem(LKEY+'-tab')||''}catch(e){start=''}}
 go(start||'resumen');setStatus();
-cargar().catch(function(e){toast(e.mensaje)});vigilar();
+iniciarSesion().catch(function(e){if(e&&e.status!==401)toast(e.mensaje)});vigilar();
 })();

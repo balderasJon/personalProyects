@@ -14,6 +14,12 @@ public record ProductoExterno(
     string? Modelo = null, string? Color = null, string? Tamano = null, string? Dimensiones = null, string? Peso = null,
     List<string>? Imagenes = null, string? CaracteristicasEs = null)
 {
+    /// <summary>Peso y medidas convertidos a kg y cm (null si UPCitemdb no los trae o no se reconocen).</summary>
+    public decimal? PesoKg => Unidades.PesoKg(Peso);
+    public decimal? LargoCm => Unidades.MedidasCm(Dimensiones).Largo;
+    public decimal? AnchoCm => Unidades.MedidasCm(Dimensiones).Ancho;
+    public decimal? AltoCm => Unidades.MedidasCm(Dimensiones).Alto;
+
     /// <summary>Texto para el campo Características del juguete.</summary>
     public string Caracteristicas
     {
@@ -185,7 +191,7 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
     private static async Task<Sugerencia> SugerirAsync(AppDbContext db, ProductoExterno e, CancellationToken ct)
     {
         var notas = new List<string>();
-        var cfg = await db.Configuracion.AsNoTracking().FirstAsync(ct);
+        var cfg = await db.Configuracion.AsNoTracking().OrderBy(x => x.Id).FirstAsync(ct);
         decimal? lista = null, objetivo = null, minimo = null;
 
         if (e.PrecioBajo is null && e.PrecioAlto is null)
