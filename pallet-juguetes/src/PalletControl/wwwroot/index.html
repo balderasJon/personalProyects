@@ -43,7 +43,7 @@
 
   <div class="card">
     <div class="pf"><h3 style="margin:0">Precio de cada juguete</h3><button class="lnk" type="button" data-go="inventario">Ver inventario completo</button></div>
-    <p class="small muted">El <b>costo por pieza</b> es lo que te costó cada juguete (tu parte de la inversión). El <b>mínimo</b> es lo menos que debes aceptar: cubre el costo, las comisiones y envíos de la plataforma y un margen mínimo. El <b>sugerido</b> es el precio para publicar. <span class="pill entregado">Real</span> = calculado con el costeo del pallet; <span class="pill apartado">Estimado</span> = aproximado mientras calculas el costeo.</p>
+    <p class="small muted">El <b>costo por pieza</b> es lo que te costó cada juguete (tu parte de la inversión). El <b>mínimo</b> es lo menos que debes aceptar: cubre el costo y un margen mínimo. El <b>sugerido</b> es el precio para publicar. <span class="pill entregado">Real</span> = calculado con el costeo del pallet; <span class="pill apartado">Estimado</span> = aproximado mientras calculas el costeo.</p>
     <div id="iniPrecios"></div>
   </div>
 
@@ -69,7 +69,7 @@
       <dt>Inversión del pallet</dt><dd>Lo que pagaste por el pallet más gastos como flete o importación, en pesos.</dd>
       <dt>Costo por pieza</dt><dd>La parte de la inversión que le toca a cada juguete. Los juguetes de más valor cargan más costo.</dd>
       <dt>Valor de mercado</dt><dd>En cuánto se venden juguetes iguales en tiendas (precio en México o, si no lo tienes, el de EE. UU. convertido a pesos).</dd>
-      <dt>Precio mínimo</dt><dd>Lo menos que puedes aceptar sin perder: cubre el costo, las comisiones y envíos y un margen mínimo del 10 %.</dd>
+      <dt>Precio mínimo</dt><dd>Lo menos que puedes aceptar sin perder: cubre el costo de la pieza y un margen mínimo del 10 %.</dd>
       <dt>Precio sugerido</dt><dd>El precio recomendado para publicar, con un margen del 30 % en la plataforma que más te deja.</dd>
       <dt>Costeo</dt><dd>El cálculo que reparte la inversión entre todos los juguetes del pallet. Hazlo cuando termines de registrarlos; antes, los costos son estimados.</dd>
       <dt>Cobrado / recuperado</dt><dd>Solo cuenta el dinero que ya llegó a tu cuenta, no las ventas apartadas o por cobrar.</dd>
@@ -87,7 +87,9 @@
     <select class="sel" id="fCond" aria-label="Condición"><option value="">Toda condición</option><option value="nuevo_sellado">Nuevo sellado</option><option value="nuevo_caja_abierta">Nuevo con caja abierta</option><option value="usado_bueno">Usado en buenas condiciones</option><option value="usado_detalles">Usado con detalles</option><option value="incompleto">Incompleto</option><option value="danado">Dañado</option><option value="no_comercializable">No comercializable</option></select>
     <select class="sel" id="fPallet" aria-label="Pallet"><option value="">Todos los pallets</option></select>
     <label class="chk"><input type="checkbox" id="fStock"> Solo con piezas disponibles</label>
+    <div class="seg" role="group" aria-label="Vista del inventario"><button type="button" id="invCards" aria-pressed="true">Tarjetas</button><button type="button" id="invTabla" aria-pressed="false">Tabla</button></div>
   </div>
+  <div class="etq-ley" id="invLeyenda"></div>
   <div id="invBody"></div>
 </section>
 
@@ -127,7 +129,7 @@
     <button class="subtab" type="button" data-sub="productos">Análisis de productos</button>
     <button class="subtab" type="button" data-sub="simulador">Simulador de precios</button>
     <button class="subtab" type="button" data-sub="pallets">Pallets y costos</button>
-    <button class="subtab" type="button" data-sub="plataformas">Plataformas y tarifas</button>
+    <button class="subtab" type="button" data-sub="plataformas">Márgenes y fiscal</button>
     <button class="subtab" type="button" data-sub="competencia">Competencia</button>
     <button class="subtab" type="button" data-sub="publicaciones">Publicaciones</button>
     <button class="subtab" type="button" data-sub="real">Rentabilidad real</button>

@@ -2,6 +2,21 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-19 · Inventario en tarjetas con etiquetas; sin tarifas por plataforma
+
+**Cambiado (a petición del usuario)**
+- Se eliminó la sección de **tarifas por plataforma**. La pantalla de Análisis comercial ahora se llama **Márgenes y fiscal** y conserva solo los objetivos de rentabilidad y la situación fiscal.
+- El precio mínimo y el sugerido (al escanear, «Recalcular mínimos», Inicio e Inventario) se calculan siempre como **venta directa**: costo de la pieza + margen. Las tarifas que ya estuvieran capturadas no se borran de la base, pero ya no se usan en esta sugerencia.
+- Se quitó de la guía de Inicio el paso «Captura las tarifas».
+
+**Agregado**
+- Inventario en **tarjetas con foto** (vista inicial) y opción **Tabla** simplificada; la vista elegida se recuerda en el equipo.
+- **Etiquetas de estado** por juguete: Disponible, Quedan N, Agotado, Apartado, En Facebook / WhatsApp / Mercado Libre, Sin publicar, Sin foto, Sin precio, Bajo el mínimo. Arriba, cada etiqueta muestra cuántos juguetes la tienen y un clic filtra por ella.
+- «Valor del pallet» queda plegado en una línea de resumen para dar espacio al inventario.
+- El costo promedio por pieza del encabezado ahora usa el costo de cada juguete (real o estimado), no la inversión entre las piezas registradas.
+
+**Impacto en datos**: ninguno en el esquema. Los precios mínimos guardados no cambian hasta que se use «Recalcular precios mínimos».
+
 ## 2026-11-19 · Preparar publicación (Facebook Marketplace y WhatsApp)
 
 **Agregado**

@@ -14,8 +14,8 @@ public record SugerirPrecioIn(string? ProductoId, string? PalletId, int Cantidad
 /// Precio sugerido y precio mínimo de un juguete (un solo criterio para el escaneo y para «Recalcular mínimos»):
 /// 1) referencia de mercado (precio en México o, si no hay, precios de EE. UU. convertidos);
 /// 2) costo por pieza (real si el pallet ya tiene costeo; si no, estimado con el método proporcional);
-/// 3) motor de precios (Fase 2) con ese costo: mínimo y sugerido en el mejor canal con tarifa,
-///    o en venta directa sin comisiones si no hay tarifas capturadas.
+/// 3) motor de precios (Fase 2) con ese costo: mínimo y sugerido como venta directa sin comisiones
+///    (las tarifas por plataforma se retiraron de la aplicación).
 /// </summary>
 public class SugeridorPrecios(AppDbContext db)
 {
@@ -82,29 +82,24 @@ public class SugeridorPrecios(AppDbContext db)
             LargoCm = i.LargoCm ?? existente?.LargoCm, AnchoCm = i.AnchoCm ?? existente?.AnchoCm, AltoCm = i.AltoCm ?? existente?.AltoCm,
             PrecioMexico = referencia ?? 0m,
         };
-        var r = await rent.ProductoAsync(p, DateOnly.FromDateTime(DateTime.Now), costoManual: costo);
-        var canales = r.Canales.Select(c => new Canal(c.PlataformaId, c.Plataforma, c.Minimo is { } m ? Math.Ceiling(m) : null, c.Sugerido,
-            c.AlSugerido?.Utilidad, c.AlSugerido?.MargenPct, c.Ok, c.Error)).ToList();
-        var mejor = canales.FirstOrDefault(c => c.PlataformaId == r.MejorCanal && c.Ok);
-        if (mejor is null)
+        // Decisión del usuario (2026-11-19): sin tarifas por plataforma. El precio se calcula como venta directa
+        // sin comisiones, con el objetivo de rentabilidad aplicable y la situación fiscal.
+        Canal? mejor = null; var canales = new List<Canal>();
+        parametros ??= await db.Parametros.AsNoTracking().Where(x => x.Activo).ToListAsync();
+        fiscal ??= await db.Fiscal.AsNoTracking().OrderBy(x => x.Id).FirstOrDefaultAsync() ?? new ConfiguracionFiscal();
+        if (Rentabilidad.ParametroPara(parametros, p, "") is { } par)
         {
-            // Sin tarifas capturadas: venta directa sin comisiones con el objetivo aplicable.
-            parametros ??= await db.Parametros.AsNoTracking().Where(x => x.Activo).ToListAsync();
-            fiscal ??= await db.Fiscal.AsNoTracking().OrderBy(x => x.Id).FirstOrDefaultAsync() ?? new ConfiguracionFiscal();
-            if (Rentabilidad.ParametroPara(parametros, p, "") is { } par)
-            {
-                var d = MotorPrecios.Calcular(costo.Value, new ComponentesTarifa(), Rentabilidad.Fiscal(fiscal), Rentabilidad.Objetivo(par));
-                if (d.Ok) mejor = new Canal("", "Venta directa sin comisiones", Math.Ceiling(d.Minimo!.Value), d.Sugerido, d.AlSugerido?.Utilidad, d.AlSugerido?.MargenPct, true, null);
-            }
-            avisos.Add("No hay tarifas de plataformas capturadas: se calculó como venta directa sin comisiones. Captura las tarifas en Plataformas y tarifas para un precio por canal.");
+            var d = MotorPrecios.Calcular(costo.Value, new ComponentesTarifa(), Rentabilidad.Fiscal(fiscal), Rentabilidad.Objetivo(par));
+            if (d.Ok) { mejor = new Canal("", "Venta directa sin comisiones", Math.Ceiling(d.Minimo!.Value), d.Sugerido, d.AlSugerido?.Utilidad, d.AlSugerido?.MargenPct, true, null); canales.Add(mejor); }
         }
+        else avisos.Add("No hay un objetivo de rentabilidad activo: defínelo en Análisis comercial › Márgenes y fiscal.");
         if (mejor is not null && referencia is { } rf)
         {
             if (mejor.Minimo > rf) avisos.Add($"El mínimo (${mejor.Minimo:N0}) es mayor que la referencia de mercado (${rf:N0}): a precio de mercado este juguete no recupera su costo; considera otro canal o liquidarlo.");
             else if (mejor.Sugerido > rf) avisos.Add($"El sugerido (${mejor.Sugerido:N0}) está arriba de la referencia de mercado (${rf:N0}): publícalo entre el mínimo y la referencia.");
         }
         return new Resultado(mejor is not null, referencia, origenRef, costo, origenCosto, est, mejor,
-            canales.Where(c => c.Ok).OrderByDescending(c => c.Utilidad).ToList(), r.FiscalPendiente, avisos);
+            canales, fiscal.Regimen == "pendiente", avisos);
     }
 }
 

@@ -1,4 +1,4 @@
-/* Análisis comercial — Fase 2: Plataformas y tarifas, Análisis de productos y Simulador de precios.
+/* Análisis comercial — Fase 2: Márgenes y fiscal (las tarifas por plataforma se retiraron), Análisis de productos y Simulador de precios.
    Todos los cálculos los hace el servidor (motor de precios). Esta capa solo pide, muestra y captura. */
 (function(){
 'use strict';
@@ -13,7 +13,7 @@ function pill(e){var x=ESTADO[e]||['C',e];return '<span class="pill '+x[0]+'">'+
 function err(e){PC.toast((e&&e.mensaje)||'No se pudo completar la operación.')}
 function pct(v){return v==null?'—':(+v).toLocaleString('es-MX',{maximumFractionDigits:2})+' %'}
 function m(v){return v==null?'—':money2(v)}
-var avisoFiscal='<div class="callout sun small"><b>Régimen fiscal sin definir:</b> los precios no incluyen IVA ni ISR. Defínelo en Plataformas y tarifas › Situación fiscal cuando lo valides con tu contador.</div>';
+var avisoFiscal='<div class="callout sun small"><b>Régimen fiscal sin definir:</b> los precios no incluyen IVA ni ISR. Defínelo en Análisis comercial › Márgenes y fiscal cuando lo valides con tu contador.</div>';
 
 var st={prod:{q:'',categoria:'',palletId:'',estado:'',orden:'codigo',desc:false,pagina:1,tam:25,fecha:''},sim:{},plat:{sel:null},pide:0};
 var cuerpo=null;
@@ -179,19 +179,11 @@ function vistaPlataformas(n){
   Promise.all([PC.api('GET','plataformas'),PC.api('GET','parametros-rentabilidad'),PC.api('GET','fiscal')]).then(function(x){if(n!==st.pide)return;
     plats=x[0].plataformas.map(function(y){return y.plataforma});opciones=x[0].opciones;
     pintaPlataformas(x[0],x[1],x[2]);
-    if(st.plat.sel)verTarifas(st.plat.sel);
   },err);
 }
 function pintaPlataformas(pl,pars,fis){
-  cuerpo.innerHTML='<div class="head"><div><p class="eyebrow">Análisis comercial</p><h2>Plataformas y tarifas</h2>'+
-      '<p class="muted small">Ninguna tarifa viene precargada: captúralas de la página oficial o de tu contrato con cada plataforma. Cada cambio se guarda como una vigencia nueva y las anteriores se conservan.</p></div>'+
-      '<button class="btn" type="button" id="pNueva">+ Plataforma</button></div>'+
-    '<div class="card"><h3>Plataformas</h3><div class="scroll"><table><thead><tr><th>Plataforma</th><th>Tipo</th><th class="r">Tarifas vigentes</th><th>Estado</th><th></th></tr></thead><tbody>'+
-      pl.plataformas.map(function(x){var p=x.plataforma;return '<tr'+(st.plat.sel===p.id?' class="mejor"':'')+'><td><b>'+esc(p.nombre)+'</b></td><td>'+esc(TIPO[p.tipo]||p.tipo)+'</td>'+
-        '<td class="r">'+(x.tarifasVigentes?num(x.tarifasVigentes):'<span class="tag-w">Sin tarifa</span>')+'<span class="sub">'+num(x.tarifasTotal)+' en historial</span></td>'+
-        '<td>'+(p.activa?'<span class="pill entregado">Activa</span>':'<span class="pill C">Inactiva</span>')+'</td>'+
-        '<td class="r"><div class="row" style="justify-content:flex-end;flex-wrap:nowrap"><button class="btn sm" type="button" data-tar="'+esc(p.id)+'">Tarifas</button><button class="btn sm" type="button" data-pla="'+esc(p.id)+'">Editar</button></div></td></tr>'}).join('')+
-    '</tbody></table></div><div id="tarifas"></div></div>'+
+  cuerpo.innerHTML='<div class="head"><div><p class="eyebrow">Análisis comercial</p><h2>Márgenes y fiscal</h2>'+
+      '<p class="muted small">El precio mínimo y el sugerido de cada juguete se calculan como venta directa: costo de la pieza + el margen que definas aquí. No se usan comisiones ni envíos de plataformas.</p></div></div>'+
     '<div class="grid g2"><div class="card"><div class="pf"><h3>Objetivos de rentabilidad</h3><button class="btn sm" type="button" id="parNuevo">+ Objetivo</button></div>'+
       '<p class="small muted">Gana el más específico: juguete y plataforma › juguete › categoría y plataforma › categoría › plataforma › general.</p>'+
       '<div class="scroll"><table><thead><tr><th>Ámbito</th><th>Objetivo</th><th class="r">Mínimo</th><th class="r">Promoción</th><th>Redondeo</th><th></th></tr></thead><tbody>'+
@@ -204,90 +196,12 @@ function pintaPlataformas(pl,pars,fis){
         fld('fTas','Tasa de IVA (%)','<input class="inp num" id="fTas" name="tasaIvaPct" type="number" min="0" max="100" step="0.01" value="'+esc(fis.tasaIvaPct)+'">')+
         '<div class="f full"><label class="chk"><input type="checkbox" name="cobraIva"'+(fis.cobraIva?' checked':'')+'> Cobro IVA en mis ventas (el precio al cliente lo incluye)</label></div>'+
         fld('fNot','Notas','<input class="inp" id="fNot" name="notas" maxlength="500" value="'+esc(fis.notas||'')+'" placeholder="Lo que te indicó tu contador">',null,true)+
-      '</div><p class="small muted">Las retenciones de ISR e IVA que haga cada plataforma se capturan en su tarifa. Esta información no es asesoría fiscal.</p><div class="row"><button class="btn" type="submit">Guardar</button></div></form></div>';
+      '</div><p class="small muted">Esta información no es asesoría fiscal.</p><div class="row"><button class="btn" type="submit">Guardar</button></div></form></div>';
 
-  cuerpo.querySelector('#pNueva').addEventListener('click',function(){plataformaForm(null)});
   cuerpo.querySelector('#parNuevo').addEventListener('click',function(){parametroForm(null)});
-  cuerpo.querySelectorAll('[data-pla]').forEach(function(b){b.addEventListener('click',function(){plataformaForm(plats.filter(function(p){return p.id===b.dataset.pla})[0])})});
-  cuerpo.querySelectorAll('[data-tar]').forEach(function(b){b.addEventListener('click',function(){st.plat.sel=b.dataset.tar;cuerpo.querySelectorAll('tr.mejor').forEach(function(r){r.classList.remove('mejor')});b.closest('tr').classList.add('mejor');verTarifas(b.dataset.tar)})});
   cuerpo.querySelectorAll('[data-par]').forEach(function(b){b.addEventListener('click',function(){parametroForm(pars.filter(function(x){return x.parametro.id===b.dataset.par})[0])})});
   cuerpo.querySelector('#fisF').addEventListener('submit',function(e){e.preventDefault();var f=this;
     PC.api('PUT','fiscal',{regimen:f.elements.regimen.value,cobraIva:f.elements.cobraIva.checked,tasaIvaPct:+f.elements.tasaIvaPct.value||0,notas:f.elements.notas.value}).then(function(){PC.toast('Situación fiscal guardada');render('plataformas',cuerpo)},err)});
-}
-function criterios(t){var c=[];if(t.tipoPublicacion)c.push('Publicación: '+t.tipoPublicacion);if(t.modalidad)c.push('Modalidad: '+t.modalidad);if(t.categoria)c.push('Categoría: '+t.categoria);if(t.medioPago)c.push('Pago: '+t.medioPago);
-  if(t.precioMin!=null||t.precioMax!=null)c.push('Precio '+(t.precioMin!=null?money2(t.precioMin):'0')+'–'+(t.precioMax!=null?money2(t.precioMax):'∞'));
-  if(t.pesoMinKg!=null||t.pesoMaxKg!=null)c.push('Peso '+(t.pesoMinKg||0)+'–'+(t.pesoMaxKg!=null?t.pesoMaxKg:'∞')+' kg');if(t.ladoMaxCm!=null)c.push('Lado ≤ '+t.ladoMaxCm+' cm');
-  return c.length?c.join(' · '):'Aplica a todo'}
-function vigente(t){var h=PC.today();return t.activa&&t.vigenteDesde<=h&&(!t.vigenteHasta||t.vigenteHasta>=h)}
-function verTarifas(pid){
-  var cont=cuerpo.querySelector('#tarifas'),p=plats.filter(function(x){return x.id===pid})[0];if(!cont||!p)return;
-  PC.api('GET','plataformas/'+pid+'/tarifas').then(function(ts){
-    cont.innerHTML='<div class="pf" style="margin-top:12px"><h3>Tarifas de '+esc(p.nombre)+'</h3><button class="btn sm primary" type="button" id="tNueva">+ Tarifa</button></div>'+
-      (ts.length?'<div class="scroll"><table><thead><tr><th>Tarifa</th><th>Aplica a</th><th class="r">Comisión</th><th class="r">Cargos fijos</th><th>Vigencia</th><th>Estado</th><th></th></tr></thead><tbody>'+
-        ts.map(function(t){var fijos=t.cargoFijo+t.costoLogistico+t.envioAbsorbido+t.almacenamiento+t.preparacion+t.empaque+t.publicidadFija;
-          return '<tr><td><b>'+esc(t.nombre)+'</b>'+(t.predeterminada?' <span class="pill B">Predeterminada</span>':'')+'</td><td class="wrap small">'+esc(criterios(t))+'</td>'+
-            '<td class="r">'+pct(t.comisionPct)+(t.comisionMedioPagoPct?'<span class="sub">+ '+pct(t.comisionMedioPagoPct)+' pago</span>':'')+'</td><td class="r">'+money2(fijos)+'</td>'+
-            '<td>'+esc(PC.fdate(t.vigenteDesde))+' – '+(t.vigenteHasta?esc(PC.fdate(t.vigenteHasta)):'sin fin')+'</td>'+
-            '<td>'+(vigente(t)?'<span class="pill entregado">Vigente</span>':t.activa?'<span class="pill C">Fuera de vigencia</span>':'<span class="pill C">Inactiva</span>')+'</td>'+
-            '<td class="r"><div class="row" style="justify-content:flex-end;flex-wrap:nowrap"><button class="btn sm" type="button" data-tvig="'+esc(t.id)+'">Nueva vigencia</button><button class="btn sm" type="button" data-ted="'+esc(t.id)+'">Editar</button></div></td></tr>'}).join('')+
-        '</tbody></table></div>':'<p class="small muted">Sin tarifas. Mientras no captures una, este canal no tendrá precios calculados.</p>');
-    cont.querySelector('#tNueva').addEventListener('click',function(){tarifaForm(p,null,'nueva')});
-    cont.querySelectorAll('[data-ted]').forEach(function(b){b.addEventListener('click',function(){tarifaForm(p,ts.filter(function(t){return t.id===b.dataset.ted})[0],'editar')})});
-    cont.querySelectorAll('[data-tvig]').forEach(function(b){b.addEventListener('click',function(){tarifaForm(p,ts.filter(function(t){return t.id===b.dataset.tvig})[0],'vigencia')})});
-  },err);
-}
-function plataformaForm(p){var nuevo=!p;p=p||{nombre:'',tipo:'marketplace',activa:true};
-  PC.openModal(head(nuevo?'Nueva plataforma':'Editar plataforma')+'<form style="display:flex;flex-direction:column;gap:14px"><div class="form">'+
-    fld('plaN','Nombre','<input class="inp" id="plaN" name="nombre" required maxlength="60" value="'+esc(p.nombre)+'">')+
-    fld('plaT','Tipo','<select class="sel" id="plaT" name="tipo">'+PC.opt(Object.keys(TIPO),p.tipo,TIPO)+'</select>')+
-    '<div class="f full"><label class="chk"><input type="checkbox" name="activa"'+(p.activa?' checked':'')+'> Activa (aparece en el análisis)</label></div>'+
-    fld('plaO','Notas','<input class="inp" id="plaO" name="notas" maxlength="300" value="'+esc(p.notas||'')+'">',null,true)+
-    '</div><div id="plaM"></div>'+PC.footer(false)+'</form>',function(el){var f=el.querySelector('form');
-    PC.wireForm(el,function(){var b={nombre:f.elements.nombre.value,tipo:f.elements.tipo.value,activa:f.elements.activa.checked,notas:f.elements.notas.value};
-      (nuevo?PC.api('POST','plataformas',b):PC.api('PUT','plataformas/'+p.id,b)).then(function(){PC.closeModal();PC.toast('Plataforma guardada');plats=null;render('plataformas',cuerpo)},
-        function(e){el.querySelector('#plaM').innerHTML='<p class="warnline bad">'+esc(e.mensaje)+'</p>'})})});
-}
-function tarifaForm(p,t,modo){
-  var base=t||{vigenteDesde:PC.today(),activa:true,predeterminada:true};
-  var titulo=modo==='nueva'?'Nueva tarifa · '+esc(p.nombre):modo==='vigencia'?'Nueva vigencia · '+esc(base.nombre):'Editar tarifa · '+esc(base.nombre);
-  function n(k,label,hint,step,pctc){return fld('tf_'+k,label,'<input class="inp num" id="tf_'+k+'" name="'+k+'" type="number" min="0"'+(pctc?' max="100"':'')+' step="'+(step||'0.01')+'" value="'+(base[k]!=null&&base[k]!==0?base[k]:'')+'" placeholder="0">',hint)}
-  function tx(k,label,ph,list){return fld('tf_'+k,label,'<input class="inp" id="tf_'+k+'" name="'+k+'" maxlength="60" value="'+esc(base[k]||'')+'" placeholder="'+ph+'"'+(list?' list="'+list+'"':'')+'>')}
-  var desde=modo==='vigencia'?'':base.vigenteDesde;
-  PC.openModal(head(titulo)+'<form style="display:flex;flex-direction:column;gap:14px">'+
-    (modo==='vigencia'?'<p class="small muted">La tarifa actual se cerrará el día anterior a la nueva fecha y conservará sus montos en el historial. Ajusta los valores que cambian.</p>':
-      '<p class="small muted">Captura los valores de la página oficial de la plataforma. Los porcentajes se escriben como 15 = 15 %.</p>')+
-    '<div class="form">'+fld('tf_nombre','Nombre de la tarifa','<input class="inp" id="tf_nombre" name="nombre" required maxlength="80" value="'+esc(base.nombre||'')+'" placeholder="p. ej. Clásica · envío por vendedor">',null,true)+
-      fld('tf_desde','Vigente desde','<input class="inp" id="tf_desde" name="vigenteDesde" type="date" required value="'+esc(desde)+'">')+
-      (modo==='vigencia'?'':fld('tf_hasta','Vigente hasta','<input class="inp" id="tf_hasta" name="vigenteHasta" type="date" value="'+esc(base.vigenteHasta||'')+'">','Vacío = sin fecha de fin'))+
-      '<div class="f full"><label class="chk"><input type="checkbox" name="predeterminada"'+(base.predeterminada?' checked':'')+'> Predeterminada (se usa en el análisis cuando no eliges tipo de publicación ni modalidad)</label>'+
-        '<label class="chk"><input type="checkbox" name="activa"'+(base.activa!==false?' checked':'')+'> Activa</label></div></div>'+
-    '<details class="com"'+(t&&(t.tipoPublicacion||t.modalidad||t.categoria||t.medioPago||t.precioMin!=null||t.precioMax!=null||t.pesoMinKg!=null||t.pesoMaxKg!=null||t.ladoMaxCm!=null)?' open':'')+'><summary>¿A qué ventas aplica? <span class="small muted">(vacío = a todas)</span></summary><div class="form">'+
-      tx('tipoPublicacion','Tipo de publicación','Clásica, Premium…','dlT')+tx('modalidad','Modalidad logística','Full, envío propio, entrega local…','dlM')+
-      tx('categoria','Categoría','Igual que en tus juguetes')+tx('medioPago','Medio de pago','Efectivo, transferencia, terminal…','dlP')+
-      n('precioMin','Precio desde ($)')+n('precioMax','Precio hasta ($)')+n('pesoMinKg','Peso desde (kg)',null,'0.001')+n('pesoMaxKg','Peso hasta (kg)',null,'0.001')+n('ladoMaxCm','Lado mayor hasta (cm)')+
-      '<datalist id="dlT">'+opciones.tiposPublicacion.map(function(v){return '<option value="'+esc(v)+'">'}).join('')+'</datalist><datalist id="dlM">'+opciones.modalidades.map(function(v){return '<option value="'+esc(v)+'">'}).join('')+'</datalist><datalist id="dlP">'+opciones.mediosPago.map(function(v){return '<option value="'+esc(v)+'">'}).join('')+'</datalist>'+
-    '</div></details>'+
-    '<div class="card"><h3>Lo que cobra la plataforma</h3><div class="form">'+n('comisionPct','Comisión (%)','Sobre el precio de venta',null,true)+n('comisionMedioPagoPct','Comisión por medio de pago (%)','Terminal, pasarela…',null,true)+
-      n('cargoFijo','Cargo fijo por venta ($)')+n('costoLogistico','Costo logístico ($)','Envío, fulfillment o traslado')+n('envioAbsorbido','Envío que absorbes ($)')+n('almacenamiento','Almacenamiento por pieza ($)')+'</div></div>'+
-    '<div class="card"><h3>Tus gastos por venta</h3><div class="form">'+n('preparacion','Preparación ($)')+n('empaque','Empaque ($)')+n('publicidadPct','Publicidad (% del precio)',null,null,true)+n('publicidadFija','Publicidad fija por venta ($)')+
-      n('reservaDevolucionesPct','Reserva por devoluciones (%)','Colchón por devoluciones y reclamaciones',null,true)+'</div></div>'+
-    '<div class="card"><h3>Retenciones de impuestos</h3><p class="small muted">No son gastos: son anticipos de impuestos. Dependen de tu régimen; confírmalas con tu contador.</p><div class="form">'+
-      n('retencionIsrPct','Retención de ISR (%)','Sobre el precio sin IVA',null,true)+n('retencionIvaPct','Retención de IVA (% del IVA)',null,null,true)+'</div></div>'+
-    fld('tf_notas','Notas y fuente','<input class="inp" id="tf_notas" name="notas" maxlength="500" value="'+esc(base.notas||'')+'" placeholder="Dónde consultaste la tarifa">',null,true)+
-    '<div id="tfM"></div><div class="pf"><div>'+(modo==='editar'?'<button class="btn danger" type="button" id="tfDel">Eliminar</button>':'')+'</div><div class="row"><button class="btn" type="button" data-close2>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div></form>',
-  function(el){var f=el.querySelector('form'),msg=el.querySelector('#tfM');
-    PC.wireForm(el,function(){
-      var b={plataformaId:p.id,nombre:f.elements.nombre.value,vigenteDesde:f.elements.vigenteDesde.value||null,vigenteHasta:f.elements.vigenteHasta?(f.elements.vigenteHasta.value||null):null,
-        predeterminada:f.elements.predeterminada.checked,activa:f.elements.activa.checked,notas:f.elements.notas.value};
-      ['tipoPublicacion','modalidad','categoria','medioPago'].forEach(function(k){b[k]=f.elements[k].value.trim()||null});
-      ['precioMin','precioMax','pesoMinKg','pesoMaxKg','ladoMaxCm'].forEach(function(k){var v=f.elements[k].value;b[k]=v===''?null:+v});
-      ['comisionPct','comisionMedioPagoPct','cargoFijo','costoLogistico','envioAbsorbido','almacenamiento','preparacion','empaque','publicidadPct','publicidadFija','reservaDevolucionesPct','retencionIsrPct','retencionIvaPct'].forEach(function(k){b[k]=+f.elements[k].value||0});
-      var req=modo==='nueva'?PC.api('POST','tarifas',b):modo==='vigencia'?PC.api('POST','tarifas/'+t.id+'/nueva-vigencia',b):PC.api('PUT','tarifas/'+t.id,b);
-      req.then(function(){PC.closeModal();PC.toast('Tarifa guardada');plats=null;render('plataformas',cuerpo)},function(e){msg.innerHTML='<p class="warnline bad">'+esc(e.mensaje)+'</p>'});
-    });
-    var d=el.querySelector('#tfDel');if(d)d.addEventListener('click',function(){if(!d.classList.contains('armed')){d.classList.add('armed');d.textContent='Confirmar: eliminar';return}
-      PC.api('DELETE','tarifas/'+t.id).then(function(){PC.closeModal();PC.toast('Tarifa eliminada');render('plataformas',cuerpo)},function(e){msg.innerHTML='<p class="warnline bad">'+esc(e.mensaje)+'</p>'})});
-  });
 }
 function parametroForm(x){
   var p=x?x.parametro:{esquema:'margen',valor:30,margenMinimoPct:10,descuentoPromocionalPct:0,redondeo:'terminacion9',activo:true},general=x&&x.ambito==='general';
