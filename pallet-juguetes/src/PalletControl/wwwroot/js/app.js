@@ -451,7 +451,7 @@ function renderInv(s){
       '<td class="r">'+(x.ok?money2(x.costo)+(x.origenCosto==='real'?'':' <span class="tag-w" title="Costo estimado: calcula el costeo del pallet para el real">est.</span>'):'<span class="zero" title="'+esc(x.falta||'Falta información')+'">—</span>')+'</td>'+
       '<td class="r">'+(x.ok?money(x.minimo):'<span class="zero">—</span>')+'</td>'+
       '<td class="r"><b>'+money(+p.precioObjetivo)+'</b></td>'+
-      '<td class="r"><div class="row" style="justify-content:flex-end;flex-wrap:nowrap"><button class="btn sm" data-sell="'+p.id+'"'+(d<=0?' disabled':'')+'>Vender</button><button class="btn sm" data-editp="'+p.id+'">Editar</button></div></td></tr>'}).join('');
+      '<td class="r"><div class="row" style="justify-content:flex-end;flex-wrap:nowrap"><button class="btn sm" data-publicar="'+p.id+'"'+(d<=0?' disabled':'')+' title="Texto e imágenes listos para Facebook Marketplace y WhatsApp">Publicar</button><button class="btn sm" data-sell="'+p.id+'"'+(d<=0?' disabled':'')+'>Vender</button><button class="btn sm" data-editp="'+p.id+'">Editar</button></div></td></tr>'}).join('');
   body.innerHTML=P.length?'<div class="scroll"><table><thead><tr><th><span class="sr">Imagen</span></th><th>Código</th><th>Juguete</th><th>Categoría</th><th>Clase</th><th>Condición</th><th class="r">Cant.</th><th class="r">Vendidas</th><th class="r">Disp.</th><th class="r">P. México</th><th class="r" title="Tu parte de la inversión por pieza: real con el costeo del pallet; «est.» = estimado">Costo pieza</th><th class="r" title="Lo menos que debes aceptar (costo + comisiones y envíos + margen mínimo)">Mínimo</th><th class="r">P. objetivo</th><th></th></tr></thead><tbody>'+rows+
     '</tbody><tfoot><tr><td colspan="6">'+P.length+' juguete'+(P.length>1?'s':'')+' en la vista</td><td class="r">'+num(tq)+'</td><td class="r">'+num(tv)+'</td><td class="r">'+num(td)+'</td><td colspan="5"></td></tr>'+
     '<tr class="tot"><td colspan="9">Valor de la vista (cantidad × precio)</td><td class="r">'+money(tmx)+'</td><td class="r">'+money(tco)+'</td><td></td><td class="r">'+money(tob)+'</td><td></td></tr></tfoot></table></div>'
@@ -802,7 +802,7 @@ function detalleForm(id){
     (p.accesoriosIncluidos?'<div><h3>Accesorios incluidos</h3><p class="small">'+esc(p.accesoriosIncluidos)+'</p></div>':'')+
     (p.caracteristicas?'<div><h3>Características</h3><p class="pre small">'+esc(p.caracteristicas)+'</p></div>':'')+
     (p.notas?'<div><h3>Notas</h3><p class="pre small">'+esc(p.notas)+'</p></div>':'')+
-    '<div class="pf"><span></span><div class="row"><button class="btn" type="button" data-sell="'+esc(id)+'"'+(disp<=0?' disabled':'')+'>Vender</button><button class="btn primary" type="button" data-editp="'+esc(id)+'">Editar</button></div></div>',
+    '<div class="pf"><span></span><div class="row"><button class="btn" type="button" data-publicar="'+esc(id)+'"'+(disp<=0?' disabled':'')+'>Preparar publicación</button><button class="btn" type="button" data-sell="'+esc(id)+'"'+(disp<=0?' disabled':'')+'>Vender</button><button class="btn primary" type="button" data-editp="'+esc(id)+'">Editar</button></div></div>',
   function(el){
     var car=el.querySelector('#car'),fotos=el.querySelectorAll('.car-vp img'),dots=el.querySelectorAll('.car-dots button'),cnt=el.querySelector('#carN');
     function ver(n){if(!fotos.length)return;k=(n+fotos.length)%fotos.length;
@@ -1037,6 +1037,7 @@ document.addEventListener('click',function(e){
   else if(act==='escanear')escanearForm();
   else if(t.id==='tcBtn')tcForm();
   else if(t.dataset.go)go(t.dataset.go);
+  else if(t.dataset.publicar){if(window.PCPub)window.PCPub.abrir(t.dataset.publicar)}
   else if(t.dataset.editp)productoForm(t.dataset.editp);
   else if(t.dataset.det)detalleForm(t.dataset.det);
   else if(t.dataset.sell)ventaForm(null,t.dataset.sell);
@@ -1122,7 +1123,8 @@ function menuUsuario(){
 window.PC={api:api,go:go,cargar:function(){return cargar()},openModal:openModal,closeModal:closeModal,head:head,fld:fld,opt:opt,footer:footer,wireForm:wireForm,
   toast:toast,money:money,money2:money2,num:num,pct:pct,esc:esc,fdate:fdate,kpi:kpi,today:today,nf4:nf4,cfg:cfg,TC:function(){return TC},
   productoForm:productoForm,detalleForm:detalleForm,condNombre:condNombre,optConds:optConds,optPallets:optPallets,palletsLista:palletsLista,
-  datos:function(){return {D:D,LOTES:LOTES,PALLETS:PALLETS,COSTOS:COSTOS,CORRIDAS:CORRIDAS,CONDS:CONDS,RES:RES,VDET:VDET,PUBS:PUBS,PLATS:PLATS}},
+  datos:function(){return {D:D,LOTES:LOTES,PALLETS:PALLETS,COSTOS:COSTOS,CORRIDAS:CORRIDAS,CONDS:CONDS,RES:RES,VDET:VDET,PUBS:PUBS,PLATS:PLATS,PRECIOS:PRECIOS}},
+  imgsDe:imgsDe,lotesDe:lotesDe,
   stats:stats,vendidasDe:vendidasDe,pname:pname,folio:folio,canalDe:canalDe,cobrada:cobrada,totalVenta:totalVenta,netas:netas,costoDe:costoDe,
   ESTADOS_V:ESTADOS_V,EST_V_TXT:EST_V_TXT,CANALES:function(){return CANALES},val:val};
 

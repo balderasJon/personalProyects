@@ -2,6 +2,20 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-19 · Preparar publicación (Facebook Marketplace y WhatsApp)
+
+**Agregado**
+- Botón **Preparar publicación** en la ficha del juguete y **Publicar** en cada renglón del Inventario.
+- Arma, con los datos del juguete: título, precio (tu precio objetivo o el sugerido; el mínimo solo se muestra como referencia y no se publica), condición del lote con más piezas, descripción (marca, modelo, características, accesorios, edad, medidas, peso, zona de entrega, formas de pago y cierre).
+- Imagen cuadrada 1080×1080 para Marketplace e imagen vertical 1080×1920 para historia de WhatsApp, con la foto principal, nombre, condición y precio; descarga de las fotos del juguete; botón «Compartir» cuando el navegador lo permite.
+- Zona de entrega, formas de pago y cierre se recuerdan en el equipo (navegador).
+- «Ya lo publiqué: registrar» crea la publicación (plataforma, precio, existencias) para que la aplicación avise si se vende por otro canal.
+- Aviso si el precio queda debajo del mínimo o si el juguete no tiene fotos.
+
+**Por qué es manual**: Facebook Marketplace (publicaciones personales) y los estados de WhatsApp no ofrecen una API para publicar desde otra aplicación; se copia y pega.
+
+**Impacto en datos**: ninguno en el esquema; solo se agregan registros de publicación cuando el usuario lo confirma.
+
 ## 2026-11-19 · Inicio guiado para quien empieza a vender
 
 **Agregado**

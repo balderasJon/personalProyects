@@ -44,7 +44,7 @@ public static class Api
                 .Select(d => new { d.VentaId, d.ProductoId, d.LoteId, d.PalletId, d.Cantidad, d.Devueltas }),
             ventaResultados = await VentasApi.ResultadosAsync(db),
             publicaciones = await db.Publicaciones.AsNoTracking().Where(p => p.Estatus != "eliminado").ToListAsync(),
-            plataformas = await db.Plataformas.AsNoTracking().OrderBy(p => p.Orden).ThenBy(p => p.Nombre).Select(p => new { p.Id, p.Nombre, p.Activa }).ToListAsync(),
+            plataformas = await db.Plataformas.AsNoTracking().OrderBy(p => p.Orden).ThenBy(p => p.Nombre).Select(p => new { p.Id, p.Codigo, p.Nombre, p.Activa }).ToListAsync(),
             gastos = await db.Gastos.AsNoTracking().ToListAsync(),
             semanas = await db.Semanas.AsNoTracking().ToListAsync(),
             pallets = await db.Pallets.AsNoTracking().OrderBy(p => p.FechaCompra).ToListAsync(),
