@@ -72,7 +72,7 @@ Decisiones aplicadas (sección 11 del diagnóstico): inventario **por lotes**, *
 | RN-13 | La cantidad total de un juguete no puede quedar por debajo de lo vendido o apartado. |
 | RN-14 | Con un solo lote, la cantidad y la condición se editan desde la ficha del juguete (se registra un ajuste). Con varios lotes, se editan en cada lote. |
 | RN-15 | La inversión global (Ajustes y Resumen) es la suma de las inversiones de los pallets. |
-| RN-16 | **Precio mínimo** (botón "Recalcular precios mínimos"): el costo real por pieza redondeado hacia arriba al peso; sin costeo, la estimación proporcional anterior. El cálculo con comisiones y márgenes llega en la Fase 2. |
+| RN-16 | **Precio mínimo** (botón "Recalcular precios mínimos"): *actualizado el 19-nov-2026:* el mínimo del mejor canal (costo real o estimado + comisiones y envíos + margen mínimo), el mismo criterio de la sugerencia al escanear. Regla original: el costo real por pieza redondeado hacia arriba al peso; sin costeo, la estimación proporcional anterior. El cálculo con comisiones y márgenes llega en la Fase 2. |
 
 ## 5. Modelo de datos (entidades nuevas y ampliadas)
 

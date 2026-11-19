@@ -51,7 +51,7 @@ En Inventario, el recuadro **Valor del pallet** muestra:
 | Valor en México | Σ cantidad × precio en México (y lo mismo solo con las piezas disponibles) |
 | Valor a precio objetivo | Σ cantidad × precio objetivo (y solo con las disponibles) |
 | Inversión | La de Ajustes, y cuántas veces la cubre el valor en México |
-| Factor proporcional | Inversión ÷ valor en México; con el botón *Recalcular precios mínimos* |
+| Factor proporcional | Inversión ÷ valor en México (indicador del pallet) |
 
 Los juguetes sin precio en México o sin precio objetivo no suman y se indica cuántos son. Al pie de la tabla aparece además el valor de lo que se ve con los filtros aplicados.
 
@@ -106,19 +106,11 @@ Si el mínimo queda arriba de la referencia de mercado, la aplicación avisa que
 
 **Precios por tienda.** Cada tienda tiene un botón *Buscar ↗* que abre su búsqueda con el nombre del juguete en otra pestaña; capturas el precio que ves. La aplicación no consulta esas tiendas por su cuenta: Liverpool y Walmart no ofrecen una API pública de precios, y la búsqueda de Mercado Libre por API exige registrar una aplicación con token (sin él responde 403).
 
-**Precio mínimo proporcional.** La inversión se reparte entre los juguetes según su valor en México:
+**Precio mínimo.** Es el **mínimo del mejor canal**, el mismo criterio de la sugerencia al escanear: el precio que cubre el costo de la pieza (real si el pallet ya tiene costeo; si no, estimado con su valor de mercado), las comisiones y envíos de la plataforma y tu margen mínimo (10 %). Sin tarifas capturadas se calcula como venta directa sin comisiones.
 
-```
-factor = inversión ÷ Σ (cantidad × precio en México)
-precio mínimo de un juguete = su precio en México × factor   (redondeado a pesos)
-```
-
-Así cada juguete carga la parte de la inversión que le corresponde por su valor: uno de $1,000 en México carga 10 veces más que uno de $100. Si el factor es mayor que 1, el valor del pallet en tiendas mexicanas no alcanza a cubrir la inversión (la pantalla lo indica).
-
-- Los juguetes sin precio en México no entran al cálculo ni reciben mínimo; mientras falten, el factor sale más alto de lo real.
-- El factor cambia cada vez que capturas precios o cantidades. En Inventario → *Valor del pallet* → **Recalcular precios mínimos** se actualizan todos los mínimos (reemplaza los capturados a mano en juguetes con precio en México; pide confirmación).
+- En Inventario → *Valor del pallet* → **Recalcular precios mínimos** se actualizan todos los mínimos con ese criterio (reemplaza los capturados a mano; pide confirmación). Los juguetes sin precio en México, sin valor de referencia y sin costeo conservan su mínimo y se listan en el aviso.
 - Si el precio objetivo queda por debajo del mínimo, el formulario lo advierte.
-- Las alertas de venta "por debajo de su parte de la inversión" usan este mismo cálculo.
+- El *factor proporcional* (inversión ÷ valor en México) se sigue mostrando como indicador del pallet y para las alertas de venta "por debajo de su parte de la inversión".
 
 Solo se llenan los campos vacíos o los que llenó una sugerencia y no has editado; *Reemplazar todos los campos* o *Usar estos precios* sobrescriben.
 
@@ -283,7 +275,8 @@ pallet-juguetes/
 | GET | `/api/codigo-barras/{codigo}` | Busca en el inventario y, si no está, en UPCitemdb; regresa características, imágenes y precios sugeridos |
 | PUT | `/api/tipo-cambio` | Captura manual del tipo de cambio de hoy `{ "valor": 18.71 }` |
 | POST | `/api/tipo-cambio/consultar` | Vuelve a consultar el DOF en dolardof.com |
-| POST | `/api/productos/recalcular-minimos` | Mínimo = costo real por pieza (redondeado hacia arriba); sin costeo, estimación proporcional |
+| POST | `/api/productos/recalcular-minimos` | Mínimo del mejor canal para todos los juguetes (mismo criterio que la sugerencia al escanear) |
+| POST | `/api/productos/sugerir-precio` | Precio sugerido y mínimo de un juguete con su explicación |
 | POST | `/api/traducir` | Traduce texto del inglés al español `{ "texto": "..." }` |
 | POST | `/api/productos/{id}/imagenes` | Sube fotos (multipart) |
 | POST | `/api/productos/{id}/imagenes/upcitemdb` | Descarga las imágenes de UPCitemdb del código de barras del juguete |

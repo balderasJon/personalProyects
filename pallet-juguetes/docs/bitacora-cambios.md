@@ -2,6 +2,16 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-19 · «Recalcular mínimos» con el criterio del mejor canal
+
+**Cambiado**
+- **Recalcular precios mínimos** usa el mismo cálculo que la sugerencia al escanear: mínimo del mejor canal (costo real o estimado + comisiones y envíos + margen mínimo; venta directa sin tarifas). Antes: mínimo = costo real (sin comisiones ni margen) o la estimación proporcional con el precio en México.
+- Los juguetes sin datos suficientes conservan su mínimo y se listan en el aviso.
+- El cálculo vive en un solo servicio (`SugeridorPrecios`) para el escaneo y el recálculo.
+
+**Datos**
+- Sin cambios de estructura. Al presionar el botón se reemplazan los mínimos actuales (pide confirmación).
+
 ## 2026-11-18 · Precio sugerido y mínimo al escanear
 
 **Agregado**

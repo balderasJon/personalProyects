@@ -58,32 +58,7 @@ public static class Api
         });
         });
 
-        // ---------- Precio mínimo: método proporcional ----------
-        // Recalcula y guarda el mínimo de todos los juguetes con precio en México.
-        api.MapPost("/productos/recalcular-minimos", (AppDbContext db) => Bloqueado(async () =>
-        {
-            // Fase 1: si el juguete tiene costo real (costeo vigente de su pallet), el mínimo es ese costo,
-            // redondeado hacia arriba al peso para no vender por debajo. Si no, se usa el factor proporcional global anterior.
-            var c = await db.Configuracion.OrderBy(x => x.Id).FirstAsync();
-            var ps = await db.Productos.ToListAsync();
-            var vigentes = await db.CosteoCorridas.Where(x => x.Vigente).Select(x => x.Id).ToListAsync();
-            var costos = (await db.CostosLote.Where(x => vigentes.Contains(x.CorridaId) && x.Comercializable && x.Cantidad > 0).ToListAsync())
-                .GroupBy(x => x.ProductoId).ToDictionary(g => g.Key, g => g.Sum(x => x.CostoTotal) / g.Sum(x => x.Cantidad));
-            var f = Precios.Factor(c.Inversion, ps);
-            if (costos.Count == 0 && f is null)
-                return Mal("Calcula el costeo de un pallet o captura el precio en México para calcular los mínimos.");
-            int n = 0, conCosto = 0;
-            foreach (var p in ps)
-            {
-                decimal? m = costos.TryGetValue(p.Id, out var cu) ? Math.Ceiling(cu)
-                           : f is { } ff && p.PrecioMexico > 0 ? Precios.Minimo(p.PrecioMexico, ff) : null;
-                if (costos.ContainsKey(p.Id)) conCosto++;
-                if (m is { } mm && mm != p.PrecioMinimo) { p.PrecioMinimo = mm; p.ActualizadoUtc = DateTime.UtcNow; n++; }
-            }
-            await db.GuardarAsync();
-            return Results.Ok(new { actualizados = n, conCostoReal = conCosto, factor = f is null ? (decimal?)null : Math.Round(f.Value, 4),
-                sinPrecioMexico = ps.Count(p => p.PrecioMexico <= 0 && !costos.ContainsKey(p.Id)) });
-        }));
+        // ---------- Precio mínimo: Endpoints/SugerenciaPrecioApi.cs (mismo criterio que la sugerencia al escanear) ----------
 
         // ---------- Traducción al español (MyMemory) ----------
         api.MapPost("/traducir", async (TraducirIn i, Traductor t, CancellationToken ct) =>

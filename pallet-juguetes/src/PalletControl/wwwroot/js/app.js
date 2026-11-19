@@ -321,15 +321,17 @@ function renderValor(s){
     '</div>'+(faltan.length?'<p class="small muted">No se incluyen en los valores: '+esc(faltan.join(' y '))+'.</p>':'<p class="small muted">Todos los juguetes tienen precio en México y precio objetivo.</p>')+
     '<div class="factor"><div><p class="small"><b>Precio mínimo.</b> '+(function(){
         var con=s.P.filter(function(p){return isFinite(costoReal(p.id).unit)}).length;
-        return (con?'<b>'+num(con)+' de '+num(s.P.length)+'</b> juguetes tienen costo real (costeo de su pallet); su mínimo será ese costo, redondeado hacia arriba al peso. ':'Aún no hay costeos aplicados: calcula el de cada pallet en Análisis comercial › Pallets y costos. ')+
-          (isFinite(s.factor)&&con<s.P.length?'Los demás usan la estimación anterior: inversión '+money(inv)+' ÷ valor en México '+money(v.mxTot)+' = factor <b>'+nf4.format(s.factor)+'</b>.':'');
+        return 'Es el mínimo del mejor canal: cubre el costo de la pieza, las comisiones y envíos de la plataforma y tu margen mínimo (igual que la sugerencia al escanear). '+
+          (con?'<b>'+num(con)+' de '+num(s.P.length)+'</b> juguetes tienen costo real (costeo de su pallet); los demás usan un costo estimado con su valor de mercado.':'Aún no hay costeos aplicados: se usa un costo estimado con el valor de mercado de cada juguete. Calcula el costeo de cada pallet en Análisis comercial › Pallets y costos.');
       })()+'</p></div>'+
       '<button class="btn" type="button" id="recalcMin">Recalcular precios mínimos</button></div></div>';
   var rb=el.querySelector('#recalcMin');
   if(rb)rb.addEventListener('click',function(){
-    if(!confirm('Se reemplazará el precio mínimo de los juguetes con costo real (o con precio en México, si aún no tienen costeo). Los mínimos que capturaste a mano en esos juguetes se perderán. ¿Continuar?'))return;
+    if(!confirm('Se reemplazará el precio mínimo de todos los juguetes con el mismo criterio de la sugerencia al escanear: el mínimo del mejor canal (costo de la pieza, real o estimado, + comisiones y envíos + margen mínimo). Los mínimos que capturaste a mano se perderán; los juguetes sin datos suficientes conservan el suyo. ¿Continuar?'))return;
     rb.disabled=true;
-    api('POST','productos/recalcular-minimos').then(function(r){return cargar().then(function(){toast(r.actualizados+' mínimo'+(r.actualizados===1?'':'s')+' actualizado'+(r.actualizados===1?'':'s')+' · '+r.conCostoReal+' con costo real'+(r.sinPrecioMexico?' · '+r.sinPrecioMexico+' sin datos':''))})},function(e){rb.disabled=false;toast(e.mensaje)});
+    api('POST','productos/recalcular-minimos').then(function(r){return cargar().then(function(){
+      toast(r.actualizados+' mínimo'+(r.actualizados===1?'':'s')+' actualizado'+(r.actualizados===1?'':'s')+' · '+r.conCostoReal+' con costo real · '+r.conCostoEstimado+' con costo estimado'+
+        (r.sinDatos?' · '+r.sinDatos+' sin datos suficientes (captura el precio en México o escanea su código): '+r.sinDatosCodigos.join(', '):''))})},function(e){toast((e&&e.mensaje)||'No se pudo recalcular')}).then(function(){rb.disabled=false});
   });
 }
 function renderInv(s){

@@ -49,6 +49,18 @@ public class SugerenciaPrecioTests : IClassFixture<AppFactory>
         Assert.Equal(154m, r.Dec("precioMinimo"));
         Assert.Equal(219m, r.Dec("precioObjetivo"));
 
+        // «Recalcular mínimos» usa el mismo criterio: juguete A (referencia $600) → costo 1,000 × 600 ÷ 5,000 = $120;
+        //  mínimo en ML (120 + 25 + 10) ÷ 0.75 = 206.67 → $207. Un juguete sin referencia ni costeo conserva su mínimo.
+        // (en otro pallet: un juguete sin valor impediría el costeo proporcional de su pallet)
+        var pal2 = (await (await c.PostAsJsonAsync("/api/pallets", new { nombre = "SG2", moneda = "MXN", costoOriginal = 100m, tipoCambio = 1m })).Json(201)).Str("id");
+        await (await c.PostAsJsonAsync("/api/productos", new { codigo = "SG-X", nombre = "Sin datos", cantidad = 1, palletId = pal2, precioMinimo = 50m })).Json(201);
+        var rc = await (await c.PostAsync("/api/productos/recalcular-minimos", null)).Json();
+        Assert.Equal(1, rc.GetProperty("conCostoEstimado").GetInt32());
+        Assert.Equal(1, rc.GetProperty("sinDatos").GetInt32());
+        var est = (await (await c.GetAsync("/api/estado")).Json()).GetProperty("productos").EnumerateArray().ToList();
+        Assert.Equal(207m, est.Single(x => x.Str("codigo") == "SG-A").Dec("precioMinimo"));
+        Assert.Equal(50m, est.Single(x => x.Str("codigo") == "SG-X").Dec("precioMinimo"));
+
         // 3) Guardado y con costeo proporcional del pallet: el valor de referencia entra al reparto y el costo pasa a ser real ($400)
         var b = (await (await c.PostAsJsonAsync("/api/productos", new { codigo = "SG-B", nombre = "B", cantidad = 1, palletId = pal, valorReferencia = 400m, valorReferenciaOrigen = "upcitemdb" })).Json(201)).Str("id");
         await (await c.PostAsJsonAsync($"/api/pallets/{pal}/costeo/aplicar", new { metodo = "proporcional" })).Json();
