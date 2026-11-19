@@ -21,7 +21,7 @@ Es la versión instalable del artefacto **Control Pallet de Juguetes**. Usa la m
 
 | Sección | Funciones |
 |---|---|
-| **Resumen** | Cuánto falta por recuperar de la inversión, gráfica semanal acumulada, ventas cobradas, gastos, utilidad neta, % vendido, precio promedio real, valor del inventario y utilidad por hora. Lista de pendientes (apartados sin cobrar, piezas dañadas, ventas debajo del costo, semana sin registrar). |
+| **Inicio** | **Guía paso a paso** (qué sigue: registrar pallet, valor de mercado, juguetes, tarifas, costeo, publicar, vender y cobrar), **tu pallet en números** (juguetes y piezas, inversión, costo promedio por pieza, valor de mercado y avance de registro, recuperado, ganancia; filtro por pallet), **precio de cada juguete** (costo por pieza real o estimado, mínimo y sugerido; botón para usar el sugerido en los que no tienen precio), recuperación de la inversión con gráfica, pendientes y un glosario de términos |
 | **Inventario** | Resumen **Valor del pallet** (piezas, valor en México, valor a precio objetivo, inversión y factor del mínimo proporcional). Clic en el nombre o la foto de un juguete abre su **detalle con carrusel de fotos**. Alta, edición y baja de juguetes con código, **código de barras**, clase A/B/C, estado, cantidad, **precio en México**, precios objetivo, mínimo y de lista, **características** e **imágenes**. Escaneo con lector USB/Bluetooth, filtros y búsqueda. Importación pegando filas desde Excel. |
 | **Ventas** | Tablero Apartado → Pagado → Entregado (y Cancelado), vista de lista, filtro por canal, rendimiento por canal. |
 | **Gastos** | Empaque, traslados, publicidad, comisiones e impuestos; totales por tipo. |
@@ -277,6 +277,8 @@ pallet-juguetes/
 | POST | `/api/tipo-cambio/consultar` | Vuelve a consultar el DOF en dolardof.com |
 | POST | `/api/productos/recalcular-minimos` | Mínimo del mejor canal para todos los juguetes (mismo criterio que la sugerencia al escanear) |
 | POST | `/api/productos/sugerir-precio` | Precio sugerido y mínimo de un juguete con su explicación |
+| GET | `/api/productos/precios` | Costo por pieza, mínimo y sugerido de todos los juguetes |
+| POST | `/api/productos/aplicar-sugeridos` | Pone el precio sugerido y el mínimo en los juguetes sin precio objetivo |
 | POST | `/api/traducir` | Traduce texto del inglés al español `{ "texto": "..." }` |
 | POST | `/api/productos/{id}/imagenes` | Sube fotos (multipart) |
 | POST | `/api/productos/{id}/imagenes/upcitemdb` | Descarga las imágenes de UPCitemdb del código de barras del juguete |

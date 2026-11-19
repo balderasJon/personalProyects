@@ -61,6 +61,17 @@ public class SugerenciaPrecioTests : IClassFixture<AppFactory>
         Assert.Equal(207m, est.Single(x => x.Str("codigo") == "SG-A").Dec("precioMinimo"));
         Assert.Equal(50m, est.Single(x => x.Str("codigo") == "SG-X").Dec("precioMinimo"));
 
+        // Precios de todos los juguetes (Inicio / Inventario) y «usar el precio sugerido» en los que no tienen precio
+        var precios = await (await c.GetAsync("/api/productos/precios")).Json();
+        var pa = precios.GetProperty("productos").EnumerateArray().Single(x => x.Str("productoId") == est.Single(y => y.Str("codigo") == "SG-A").Str("id"));
+        Assert.Equal(207m, pa.Dec("minimo"));
+        Assert.Equal("estimado", pa.Str("origenCosto"));
+        Assert.Equal(1, precios.GetProperty("tarifasCapturadas").GetInt32());
+        var ap = await (await c.PostAsync("/api/productos/aplicar-sugeridos", null)).Json();
+        Assert.Equal(1, ap.GetProperty("actualizados").GetInt32());   // SG-A; SG-X no tiene datos
+        var a2 = (await (await c.GetAsync("/api/estado")).Json()).GetProperty("productos").EnumerateArray().Single(x => x.Str("codigo") == "SG-A");
+        Assert.Equal(pa.Dec("sugerido"), a2.Dec("precioObjetivo"));
+
         // 3) Guardado y con costeo proporcional del pallet: el valor de referencia entra al reparto y el costo pasa a ser real ($400)
         var b = (await (await c.PostAsJsonAsync("/api/productos", new { codigo = "SG-B", nombre = "B", cantidad = 1, palletId = pal, valorReferencia = 400m, valorReferenciaOrigen = "upcitemdb" })).Json(201)).Str("id");
         await (await c.PostAsJsonAsync($"/api/pallets/{pal}/costeo/aplicar", new { metodo = "proporcional" })).Json();

@@ -17,7 +17,7 @@
     <div class="toprt"><button class="tcbtn" id="tcBtn" type="button" aria-label="Tipo de cambio del día. Editar">Tipo de cambio…</button><span class="status" id="status">Conectando…</span><button class="userbtn" id="userBtn" type="button" hidden aria-label="Tu cuenta"></button></div>
   </div>
   <nav class="tabs" role="tablist" aria-label="Secciones">
-    <button class="tab" role="tab" data-tab="resumen" aria-selected="true">Resumen</button>
+    <button class="tab" role="tab" data-tab="resumen" aria-selected="true">Inicio</button>
     <button class="tab" role="tab" data-tab="inventario">Inventario</button>
     <button class="tab" role="tab" data-tab="ventas">Ventas<span class="cnt" id="cntApartado" hidden></span></button>
     <button class="tab" role="tab" data-tab="gastos">Gastos</button>
@@ -29,10 +29,25 @@
 
 <main class="wrap">
 
-<!-- RESUMEN -->
+<!-- INICIO -->
 <section class="view" data-view="resumen">
-  <div class="head"><div><p class="eyebrow" id="hoyTxt"></p><h2>¿Cuánto llevamos recuperado?</h2></div>
-    <div class="row"><button class="btn" data-act="nuevoGasto">+ Gasto</button><button class="btn primary" data-act="nuevaVenta">+ Venta</button></div></div>
+  <div class="head"><div><p class="eyebrow" id="hoyTxt"></p><h2>Tu negocio hoy</h2>
+      <p class="muted small">Aquí ves de un vistazo cuántos juguetes tienes, cuánto invertiste, cuánto te cuesta cada uno y en cuánto venderlo.</p></div>
+    <div class="row"><button class="btn" data-act="escanear">Escanear juguete</button><button class="btn" data-act="nuevoGasto">+ Gasto</button><button class="btn primary" data-act="nuevaVenta">+ Venta</button></div></div>
+
+  <div id="guia"></div>
+
+  <h3 class="dash-h">Tu pallet en números</h3>
+  <div class="row" id="iniPalWrap" hidden><label class="small muted" for="iniPal">Ver:</label><select class="sel" id="iniPal" style="max-width:260px"></select></div>
+  <div class="grid g3" id="iniNum"></div>
+
+  <div class="card">
+    <div class="pf"><h3 style="margin:0">Precio de cada juguete</h3><button class="lnk" type="button" data-go="inventario">Ver inventario completo</button></div>
+    <p class="small muted">El <b>costo por pieza</b> es lo que te costó cada juguete (tu parte de la inversión). El <b>mínimo</b> es lo menos que debes aceptar: cubre el costo, las comisiones y envíos de la plataforma y un margen mínimo. El <b>sugerido</b> es el precio para publicar. <span class="pill entregado">Real</span> = calculado con el costeo del pallet; <span class="pill apartado">Estimado</span> = aproximado mientras calculas el costeo.</p>
+    <div id="iniPrecios"></div>
+  </div>
+
+  <h3 class="dash-h">¿Cómo vas recuperando tu inversión?</h3>
   <div class="hero">
     <div style="display:flex;flex-direction:column;gap:8px">
       <span class="lbl">Falta por recuperar</span>
@@ -41,7 +56,7 @@
       <div><div class="meter"><i id="hMeter" style="width:0"></i></div>
         <div class="meter-l"><span>Recuperado: <b id="hRec">$0</b></span><span>Meta: <b id="hInv">$0</b></span></div></div>
     </div>
-    <div style="min-width:0"><p class="small muted" style="margin-bottom:4px">Dinero acumulado por semana (cobrado menos gastos, desde −inversión)</p><div id="chart"></div></div>
+    <div style="min-width:0"><p class="small muted" style="margin-bottom:4px">Dinero acumulado por semana (lo cobrado menos los gastos, empezando en −inversión). Cuando la línea cruza el cero, ya recuperaste lo invertido.</p><div id="chart"></div></div>
   </div>
   <div class="grid g4" id="kpis"></div>
   <div class="grid g2">
@@ -49,6 +64,16 @@
     <div class="card"><h3>Inventario por clase</h3><div class="scroll" style="border:0"><table id="tblClase"></table></div>
       <p class="small muted">A: se publica primero y se cuida el precio. B: después de los A. C: combos y paquetes.</p></div>
   </div>
+  <details class="card glosario"><summary><b>¿Qué significa cada término?</b></summary>
+    <dl class="small">
+      <dt>Inversión del pallet</dt><dd>Lo que pagaste por el pallet más gastos como flete o importación, en pesos.</dd>
+      <dt>Costo por pieza</dt><dd>La parte de la inversión que le toca a cada juguete. Los juguetes de más valor cargan más costo.</dd>
+      <dt>Valor de mercado</dt><dd>En cuánto se venden juguetes iguales en tiendas (precio en México o, si no lo tienes, el de EE. UU. convertido a pesos).</dd>
+      <dt>Precio mínimo</dt><dd>Lo menos que puedes aceptar sin perder: cubre el costo, las comisiones y envíos y un margen mínimo del 10 %.</dd>
+      <dt>Precio sugerido</dt><dd>El precio recomendado para publicar, con un margen del 30 % en la plataforma que más te deja.</dd>
+      <dt>Costeo</dt><dd>El cálculo que reparte la inversión entre todos los juguetes del pallet. Hazlo cuando termines de registrarlos; antes, los costos son estimados.</dd>
+      <dt>Cobrado / recuperado</dt><dd>Solo cuenta el dinero que ya llegó a tu cuenta, no las ventas apartadas o por cobrar.</dd>
+    </dl></details>
 </section>
 
 <!-- INVENTARIO -->

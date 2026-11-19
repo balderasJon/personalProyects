@@ -2,6 +2,23 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-19 · Inicio guiado para quien empieza a vender
+
+**Agregado**
+- La pestaña «Resumen» ahora es **Inicio**:
+  - **Guía paso a paso** con el siguiente paso destacado y un botón que lleva a cada pantalla.
+  - **Tu pallet en números**: juguetes y piezas, inversión, costo promedio por pieza (real o estimado), valor de mercado con avance de registro contra el manifiesto, recuperado y ganancia; filtro por pallet.
+  - **Precio de cada juguete**: costo por pieza, mínimo, sugerido y tu precio.
+  - **Glosario** de términos.
+- Botón «Usar el precio sugerido» para los juguetes sin precio de venta (`POST /api/productos/aplicar-sugeridos`).
+- Inventario: columna **Mínimo**; el costo por pieza muestra el real o el estimado («est.»).
+- `GET /api/productos/precios`: costo, mínimo y sugerido de todos los juguetes con el mismo cálculo del escaneo.
+
+**Cambiado**
+- Se quitaron de Inicio indicadores que confundían al empezar: utilidad neta negativa por la inversión aún no recuperada y precio promedio con el costo anterior.
+- El aviso de «sin precio en México» se reemplazó por «sin datos para calcular su precio» (el precio ya se calcula también con el código de barras).
+- Sin pallet registrado no se muestra una inversión de ejemplo.
+
 ## 2026-11-19 · «Recalcular mínimos» con el criterio del mejor canal
 
 **Cambiado**

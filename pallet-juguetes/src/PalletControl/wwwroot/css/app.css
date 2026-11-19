@@ -301,3 +301,19 @@ table.dtab tr:last-child td{border-bottom:0}
 .comp-img{width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
 .dash-h{margin-top:10px}
 .grid .card.wide{grid-column:1/-1}
+
+/* ---- Inicio guiado ---- */
+.guia{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.guia .sig{background:var(--accent-soft);border-radius:10px;padding:12px 14px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.guia .sig b{font-size:1.02rem}
+.pasos{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:8px}
+.pasos li{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:10px;background:var(--surface-2);font-size:.88rem}
+.pasos .n{flex:none;width:24px;height:24px;border-radius:999px;display:grid;place-items:center;font-weight:700;font-size:.8rem;background:var(--surface);border:1px solid var(--line)}
+.pasos li.ok .n{background:var(--good);color:#fff;border-color:var(--good)}
+.pasos li.act{outline:2px solid var(--accent);background:var(--surface)}
+.pasos li.ok{color:var(--fg-2)}
+.glosario summary{cursor:pointer}
+.glosario dl{display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr);gap:6px 14px;margin:10px 0 0}
+.glosario dt{font-weight:700} .glosario dd{margin:0;color:var(--fg-2)}
+@media(max-width:520px){.glosario dl{grid-template-columns:1fr}.glosario dd{margin-bottom:6px}}
+.g3{grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr))}

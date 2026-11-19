@@ -127,6 +127,44 @@ public static class SugerenciaPrecioApi
             });
         }).RequireAuthorization();
 
+        // Costo por pieza, mínimo y sugerido de todos los juguetes (solo lectura), para Inicio e Inventario.
+        app.MapGet("/api/productos/precios", async (AppDbContext db) =>
+        {
+            var sug = new SugeridorPrecios(db);
+            var ps = await db.Productos.AsNoTracking().OrderBy(p => p.Codigo).ToListAsync();
+            var lista = new List<object>();
+            foreach (var p in ps)
+            {
+                var r = await sug.SugerirAsync(new SugerirPrecioIn(p.Id, null, Math.Max(1, p.Cantidad), p.PrecioMexico, p.ValorReferencia,
+                    p.Categoria, p.PesoKg, p.LargoCm, p.AnchoCm, p.AltoCm), p);
+                lista.Add(new
+                {
+                    productoId = p.Id, ok = r.Ok, costo = r.Costo, origenCosto = r.OrigenCosto, referencia = r.Referencia, origenReferencia = r.OrigenReferencia,
+                    minimo = r.PrecioMinimo, sugerido = r.PrecioObjetivo, canal = r.Canal?.Plataforma,
+                    falta = r.Ok ? null : r.Avisos.FirstOrDefault(),
+                });
+            }
+            var tarifas = await db.Tarifas.AsNoTracking().CountAsync(t => t.Activa);
+            return Results.Ok(new { productos = lista, tarifasCapturadas = tarifas });
+        }).RequireAuthorization();
+
+        // Pone el precio sugerido (y el mínimo) en los juguetes que aún no tienen precio objetivo. No toca los que ya tienen precio.
+        app.MapPost("/api/productos/aplicar-sugeridos", (AppDbContext db) => Api.Bloqueado(async () =>
+        {
+            var sug = new SugeridorPrecios(db);
+            var ps = await db.Productos.Where(p => p.PrecioObjetivo <= 0).ToListAsync();
+            var n = 0;
+            foreach (var p in ps)
+            {
+                var r = await sug.SugerirAsync(new SugerirPrecioIn(p.Id, null, Math.Max(1, p.Cantidad), p.PrecioMexico, p.ValorReferencia,
+                    p.Categoria, p.PesoKg, p.LargoCm, p.AnchoCm, p.AltoCm), p);
+                if (!r.Ok || r.PrecioObjetivo is not { } obj) continue;
+                p.PrecioObjetivo = obj; p.PrecioMinimo = r.PrecioMinimo ?? p.PrecioMinimo; p.ActualizadoUtc = DateTime.UtcNow; n++;
+            }
+            await db.GuardarAsync();
+            return Results.Ok(new { actualizados = n, sinDatos = ps.Count - n });
+        })).RequireAuthorization();
+
         // Recalcula el precio mínimo de todos los juguetes con el mismo criterio del escaneo: mínimo del mejor canal
         // (costo real o estimado + comisiones y envíos + margen mínimo). Sin datos suficientes, el mínimo actual no se toca.
         app.MapPost("/api/productos/recalcular-minimos", (AppDbContext db) => Api.Bloqueado(async () =>
