@@ -2,6 +2,17 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-20 · Simulador de precios sencillo
+
+**Cambiado (a petición del usuario)**
+- El simulador ya no pide plataforma, categoría, peso, tipo de publicación, modalidad, medio de pago ni fecha de tarifa.
+- Ahora solo se elige el **juguete**, el **precio** a probar (por omisión, el sugerido) y las **piezas**. Muestra en grande si **ganas o pierdes** y cuánto, la ganancia por pieza y el margen.
+- Indicadores: costo por pieza (real o estimado), precio mínimo, precio sugerido y precio de equilibrio (= costo).
+- Tabla de comparación: tu precio, sugerido, mínimo y precio de mercado de referencia, con lo que ganas o pierdes en cada uno.
+- Ganancia = precio − costo por pieza, antes de impuestos y de los gastos de la venta.
+
+**Impacto en datos**: ninguno.
+
 ## 2026-11-19 · Inventario en tarjetas con etiquetas; sin tarifas por plataforma
 
 **Cambiado (a petición del usuario)**

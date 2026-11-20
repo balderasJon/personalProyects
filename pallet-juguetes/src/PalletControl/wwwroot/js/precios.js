@@ -2,7 +2,7 @@
    Todos los cálculos los hace el servidor (motor de precios). Esta capa solo pide, muestra y captura. */
 (function(){
 'use strict';
-var PC=window.PC,esc=PC.esc,money2=PC.money2,num=PC.num,kpi=PC.kpi,fld=PC.fld,head=PC.head;
+var PC=window.PC,esc=PC.esc,money=PC.money,money2=PC.money2,num=PC.num,kpi=PC.kpi,fld=PC.fld,head=PC.head;
 var ESTADO={rentable:['entregado','Rentable'],margen_bajo:['apartado','Margen bajo'],bajo_minimo:['apartado','Bajo el mínimo'],perdida:['danado','Pérdida'],
   no_rentable:['danado','No rentable'],sin_costo:['C','Sin costo'],sin_tarifa:['C','Sin tarifa'],sin_objetivo:['C','Sin objetivo']};
 var ESQ={margen:'Margen sobre precio',markup:'Markup sobre costo',utilidad_fija:'Utilidad fija ($)'};
@@ -124,54 +124,56 @@ function fichaRentabilidad(id,el){
 
 /* ================= Simulador ================= */
 var plats=null,opciones={tiposPublicacion:[],modalidades:[],mediosPago:[]};
-function cargarPlats(){return plats?Promise.resolve(plats):PC.api('GET','plataformas').then(function(r){plats=r.plataformas.map(function(x){return x.plataforma});opciones=r.opciones;return plats})}
+/* Simulador sencillo: solo el juguete. ¿En cuánto venderlo y si gano o pierdo?
+   Usa el costo por pieza (real con el costeo del pallet o estimado) y el mínimo y sugerido de la aplicación
+   (venta directa: costo + margen). No usa tarifas de plataformas, peso, categoría ni tipo de publicación. */
 function vistaSimulador(n){
-  cargarPlats().then(function(){if(n!==st.pide)return;
-    var s=st.sim,D=PC.datos().D,prods=Object.keys(D.productos).map(function(k){return D.productos[k]}).sort(function(a,b){return String(a.codigo).localeCompare(String(b.codigo),'es',{numeric:true})});
-    function dl(id,arr){return '<datalist id="'+id+'">'+(arr||[]).map(function(v){return '<option value="'+esc(v)+'">'}).join('')+'</datalist>'}
-    cuerpo.innerHTML='<div class="head"><div><p class="eyebrow">Análisis comercial</p><h2>Simulador de precios</h2><p class="muted small">Prueba un precio en un canal y ve cuánto te cobra la plataforma, cuánto recibes y cuánto ganas.</p></div></div>'+
-      '<form class="card" id="simF"><div class="form">'+
-        fld('sProd','Juguete','<select class="sel" id="sProd" name="productoId"><option value="">— Sin juguete: capturar costo —</option>'+prods.map(function(p){return '<option value="'+esc(p.id)+'"'+(p.id===s.productoId?' selected':'')+'>'+esc(p.codigo+' · '+p.nombre)+'</option>'}).join('')+'</select>')+
-        fld('sPlat','Plataforma','<select class="sel" id="sPlat" name="plataformaId" required>'+plats.filter(function(p){return p.activa}).map(function(p){return '<option value="'+esc(p.id)+'"'+(p.id===s.plataformaId?' selected':'')+'>'+esc(p.nombre)+'</option>'}).join('')+'</select>')+
-        fld('sCos','Costo por pieza','<input class="inp num" id="sCos" name="costo" type="number" min="0" step="0.01" value="'+esc(s.costo||'')+'" placeholder="Vacío = costo real">','Con juguete elegido, vacío usa su costo real.')+
-        fld('sPre','Precio a probar','<input class="inp num" id="sPre" name="precio" type="number" min="0" step="1" value="'+esc(s.precio||'')+'" placeholder="Vacío = sugerido">')+
-        fld('sCat','Categoría (sin juguete)','<input class="inp" id="sCat" name="categoria" maxlength="60" value="'+esc(s.categoria||'')+'">')+
-        fld('sPes','Peso kg (opcional)','<input class="inp num" id="sPes" name="pesoKg" type="number" min="0" step="0.001" value="'+esc(s.pesoKg||'')+'">')+
-        fld('sTip','Tipo de publicación','<input class="inp" id="sTip" name="tipoPublicacion" list="dlTip" value="'+esc(s.tipoPublicacion||'')+'" placeholder="Predeterminada">'+dl('dlTip',opciones.tiposPublicacion))+
-        fld('sMod','Modalidad logística','<input class="inp" id="sMod" name="modalidad" list="dlMod" value="'+esc(s.modalidad||'')+'" placeholder="Predeterminada">'+dl('dlMod',opciones.modalidades))+
-        fld('sMed','Medio de pago','<input class="inp" id="sMed" name="medioPago" list="dlMed" value="'+esc(s.medioPago||'')+'" placeholder="Cualquiera">'+dl('dlMed',opciones.mediosPago))+
-        fld('sFec','Fecha de la tarifa','<input class="inp" id="sFec" name="fecha" type="date" value="'+esc(s.fecha||PC.today())+'">')+
-      '</div><div class="row"><button class="btn primary" type="submit">Calcular</button></div></form><div id="simR"></div>';
-    var f=cuerpo.querySelector('#simF');
-    f.addEventListener('submit',function(e){e.preventDefault();
-      var b={};['productoId','plataformaId','categoria','tipoPublicacion','modalidad','medioPago','fecha'].forEach(function(k){var v=f.elements[k].value.trim();if(v)b[k]=v});
-      ['costo','precio','pesoKg'].forEach(function(k){var v=f.elements[k].value;if(v!=='')b[k]=+v});
-      st.sim=Object.assign({},b);
-      PC.api('POST','rentabilidad/simular',b).then(pintaSimulacion,function(er){cuerpo.querySelector('#simR').innerHTML='<p class="warnline bad">'+esc(er.mensaje)+'</p>'});
-    });
-    if(s.productoId)f.requestSubmit();
-  },err);
+  var s=st.sim,D=PC.datos().D,PR=PC.datos().PRECIOS||{};
+  var prods=Object.keys(D.productos).map(function(k){return Object.assign({id:k},D.productos[k])}).sort(function(a,b){return String(a.codigo).localeCompare(String(b.codigo),'es',{numeric:true})});
+  if(!prods.length){cuerpo.innerHTML='<div class="head"><div><p class="eyebrow">Análisis comercial</p><h2>Simulador de precios</h2></div></div><div class="empty"><p class="muted">Registra juguetes para simular su precio.</p></div>';return}
+  if(!s.productoId||!D.productos[s.productoId])s.productoId=prods[0].id;
+  if(!Object.keys(PR).length){cuerpo.innerHTML='<p class="small muted">Calculando precios…</p>';setTimeout(function(){if(n===st.pide)vistaSimulador(n)},700);return}
+  cuerpo.innerHTML='<div class="head"><div><p class="eyebrow">Análisis comercial</p><h2>Simulador de precios</h2><p class="muted small">Elige un juguete y prueba un precio: te dice en cuánto venderlo y si ganas o pierdes dinero.</p></div></div>'+
+    '<form class="card" id="simF"><div class="form">'+
+      fld('sProd','Juguete','<select class="sel" id="sProd" name="productoId">'+prods.map(function(p){return '<option value="'+esc(p.id)+'"'+(p.id===s.productoId?' selected':'')+'>'+esc(p.codigo+' · '+p.nombre)+'</option>'}).join('')+'</select>',null,true)+
+      fld('sPre','¿En cuánto lo venderías? (por pieza)','<input class="inp num" id="sPre" name="precio" type="number" min="0" step="1" inputmode="decimal">','Vacío = precio sugerido.')+
+      fld('sCan','Piezas','<input class="inp num" id="sCan" name="cantidad" type="number" min="1" step="1" value="'+esc(s.cantidad||1)+'">')+
+    '</div></form><div id="simR"></div>';
+  var f=cuerpo.querySelector('#simF'),sel=f.elements.productoId,pre=f.elements.precio,can=f.elements.cantidad;
+  function datos(){var p=D.productos[sel.value]||{},x=PR[sel.value]||{};return {p:p,x:x}}
+  function porDefecto(){var d=datos();pre.value=s.precio&&s.productoId===sel.value?s.precio:(d.x.ok&&d.x.sugerido?d.x.sugerido:(+d.p.precioObjetivo||''))}
+  function calcular(){s.productoId=sel.value;s.precio=pre.value;s.cantidad=can.value;pintaSimulacion(datos(),+pre.value||0,Math.max(1,Math.floor(+can.value||1)))}
+  sel.addEventListener('change',function(){s.precio='';porDefecto();calcular()});
+  [pre,can].forEach(function(e){e.addEventListener('input',calcular)});
+  f.addEventListener('submit',function(e){e.preventDefault();calcular()});
+  porDefecto();calcular();
 }
-function pintaSimulacion(r){
-  var c=r.canal,el=cuerpo.querySelector('#simR'),ap=r.alPrecio;
-  if(!c.ok){el.innerHTML=(r.resultado.fiscalPendiente?avisoFiscal:'')+'<p class="warnline bad">'+esc(c.error)+'</p>';return}
-  var d=ap&&ap.desglose?ap.desglose:c.alSugerido,al=ap&&ap.alertas?ap.alertas:c.alertas;
-  function fila(l,v,cls,nota){return '<tr><td>'+l+(nota?'<span class="sub">'+nota+'</span>':'')+'</td><td class="r '+(cls||'')+'">'+v+'</td></tr>'}
-  el.innerHTML=(r.resultado.fiscalPendiente?avisoFiscal:'')+
-    '<div class="grid g4">'+kpi('Mínimo',m(c.minimo),'Margen mínimo; nunca se sugiere menos')+kpi('Sugerido',m(c.sugerido),'Objetivo '+m(c.objetivo)+' redondeado')+
-      kpi('Promocional',m(c.promocional),c.promocionalLimitado?'Limitado al mínimo':'Con el descuento promocional')+kpi('Equilibrio',m(c.equilibrio),'Ni ganas ni pierdes')+'</div>'+
-    (ap&&ap.error?'<p class="warnline">'+esc(ap.error)+'</p>':'')+
-    '<div class="grid g2"><div class="card"><h3>Vendiendo a '+money2(d.precio)+'</h3><table class="dtab"><tbody>'+
-      fila('Precio de venta',money2(d.precio))+(d.ivaTrasladado?fila('IVA trasladado',money2(d.ivaTrasladado),'','No es ingreso: se entera al SAT'):'')+
-      fila('Ingreso sin IVA',money2(d.ingresoSinIva))+fila('Comisiones',' − '+money2(d.comision),'','Plataforma y medio de pago')+
-      fila('Cargos de la plataforma',' − '+money2(d.cargosPlataforma),'','Fijo, logística, envío y almacenamiento')+fila('Tus gastos',' − '+money2(d.gastosPropios),'','Preparación, empaque, publicidad y reserva por devoluciones')+
-      fila('Costo del juguete',' − '+money2(d.costo))+fila('<b>Utilidad neta estimada</b>','<b>'+money2(d.utilidad)+'</b>',d.utilidad<0?'tone-bad':'tone-good')+
-      fila('Margen',pct(d.margenPct))+fila('ROI',d.roiPct!=null?pct(d.roiPct):'—','','Utilidad ÷ costo')+'</tbody></table></div>'+
-    '<div class="card"><h3>Dinero que recibes</h3><table class="dtab"><tbody>'+fila('Precio de venta',money2(d.precio))+fila('Comisiones y cargos de la plataforma',' − '+money2(d.comision+d.cargosPlataforma))+
-      fila('Retención de ISR',' − '+money2(d.retencionIsr),'','Anticipo de impuesto, no gasto')+fila('Retención de IVA',' − '+money2(d.retencionIva),'','Anticipo de impuesto, no gasto')+
-      fila('<b>Depósito estimado de la plataforma</b>','<b>'+money2(d.depositoPlataforma)+'</b>')+'</tbody></table>'+
-      '<p class="small muted">Tarifa: '+esc(ap&&ap.tarifa?ap.tarifa:(c.tarifa||{}).nombre||'')+' · objetivo '+esc((c.parametro||{}).ambito||'')+'.</p></div></div>'+
-    (al&&al.length?'<div class="card"><h3>Alertas</h3><ul class="clean small">'+al.map(function(x){return '<li class="'+(x.nivel==='error'?'tone-bad':'')+'">'+esc(x.mensaje)+'</li>'}).join('')+'</ul></div>':'<p class="small tone-good">Sin alertas a este precio.</p>');
+function pintaSimulacion(d,precio,piezas){
+  var el=cuerpo.querySelector('#simR'),p=d.p,x=d.x;
+  if(!x.ok){el.innerHTML='<p class="warnline">'+esc(x.falta||'Falta información para calcular el costo de este juguete.')+' Captura su precio en México o escanea su código de barras.</p>';return}
+  var costo=+x.costo,real=x.origenCosto==='real',ref=+x.referencia||0,tu=+p.precioObjetivo||0;
+  function gan(pr){return Math.round((pr-costo)*100)/100}
+  function mg(pr){return pr>0?(pr-costo)/pr*100:null}
+  if(!(precio>0)){el.innerHTML='<p class="warnline">Escribe un precio para simular.</p>';return}
+  var g=gan(precio),tot=Math.round(g*piezas*100)/100,veredicto,tono;
+  if(g<0){veredicto='Pierdes '+money2(-tot);tono='bad'}
+  else if(g===0){veredicto='Ni ganas ni pierdes';tono='warn'}
+  else if(precio<x.minimo){veredicto='Ganas '+money2(tot)+', pero menos de tu margen mínimo';tono='warn'}
+  else{veredicto='Ganas '+money2(tot);tono='good'}
+  var col={good:['var(--good-soft)','var(--good)'],warn:['var(--sun-soft)','var(--sun)'],bad:['var(--bad-soft)','var(--bad)']}[tono];
+  var filas=[['Tu precio',tu],['Precio sugerido',x.sugerido],['Precio mínimo',x.minimo],['Precio de mercado (referencia)',ref]].filter(function(r){return r[1]>0});
+  el.innerHTML=
+    '<div class="card" style="background:'+col[0]+';border-color:transparent"><p class="small" style="margin:0;color:'+col[1]+'"><b>'+(piezas>1?'Vendiendo '+piezas+' piezas a '+money2(precio)+' cada una':'Vendiendo a '+money2(precio))+'</b></p>'+
+      '<p style="margin:0;font-family:var(--f-display);font-weight:800;font-size:2rem;color:'+col[1]+'">'+esc(veredicto)+'</p>'+
+      '<p class="small" style="margin:0">'+(g>=0?'Ganancia':'Pérdida')+' por pieza: <b>'+money2(Math.abs(g))+'</b>'+(mg(precio)!=null?' · margen '+pct(mg(precio)):'')+'</p></div>'+
+    '<div class="grid g4">'+
+      kpi('Costo por pieza',money2(costo),real?'Real: del costeo del pallet':'Estimado: calcula el costeo del pallet para el real')+
+      kpi('Precio mínimo',money(x.minimo),'Lo menos que debes aceptar (margen '+pct(mg(x.minimo))+')')+
+      kpi('Precio sugerido',money(x.sugerido),'El precio para publicar (margen '+pct(mg(x.sugerido))+')')+
+      kpi('Precio de equilibrio',money2(costo),'A este precio ni ganas ni pierdes')+'</div>'+
+    '<div class="card"><h3>Comparación por pieza</h3><div class="scroll"><table><thead><tr><th>Precio</th><th class="r">Monto</th><th class="r">Ganas o pierdes</th><th class="r">Margen</th></tr></thead><tbody>'+
+      filas.map(function(r){var gg=gan(r[1]);return '<tr><td>'+esc(r[0])+'</td><td class="r">'+money2(r[1])+'</td><td class="r '+(gg<0?'tone-bad':'tone-good')+'">'+(gg<0?'− ':'+ ')+money2(Math.abs(gg))+'</td><td class="r">'+pct(mg(r[1]))+'</td></tr>'}).join('')+
+    '</tbody></table></div><p class="small muted">Ganancia = precio − costo por pieza, antes de impuestos y de los gastos que registres en la venta (envío, empaque). No se usan comisiones ni tarifas de plataformas.</p></div>';
 }
 
 /* ================= Plataformas, tarifas, objetivos y fiscal ================= */
