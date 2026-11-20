@@ -2,6 +2,13 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-20 · Se quita «Descuento sobre el precio en México»
+
+**Quitado (a petición del usuario)**
+- El campo de Ajustes «Descuento sobre el precio en México (%)» ya no se usaba en ningún cálculo: el precio objetivo y el mínimo salen del costo por pieza más el margen (Márgenes y fiscal). Se quita de la pantalla para no confundir.
+
+**Impacto en datos**: ninguno; la columna `configuracion.DescuentoSugerido` se conserva sin uso.
+
 ## 2026-11-20 · Más tiendas en la búsqueda de precios
 
 **Agregado**

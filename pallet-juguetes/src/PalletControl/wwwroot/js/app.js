@@ -583,16 +583,16 @@ function renderSemana(s){
 
 /* ---- ajustes ---- */
 var cfgDirty=false;
-['cInv','cBajo','cMeta','cDesc'].forEach(function(id){document.getElementById(id).addEventListener('input',function(){cfgDirty=true})});
+['cInv','cBajo','cMeta'].forEach(function(id){document.getElementById(id).addEventListener('input',function(){cfgDirty=true})});
 function renderAjustes(s){
   if(cfgDirty)return;var c=s.c;
   var ci=document.getElementById('cInv'),hayP=palletsLista().length>0;ci.value=c.inversion;ci.readOnly=hayP;
   document.getElementById('cInvH').textContent=hayP?'Es la suma de la inversión de tus pallets; se modifica en Análisis comercial › Pallets y costos.':'Incluye flete e impuestos de compra.';
-  document.getElementById('cBajo').value=c.stockBajo;document.getElementById('cMeta').value=c.metaMensual||'';document.getElementById('cDesc').value=c.descuentoSugerido!=null?c.descuentoSugerido:35;
+  document.getElementById('cBajo').value=c.stockBajo;document.getElementById('cMeta').value=c.metaMensual||'';
 }
 document.getElementById('cfgForm').addEventListener('submit',function(e){e.preventDefault();
   var c={inversion:Math.max(0,+document.getElementById('cInv').value||0),
-    stockBajo:Math.max(0,+document.getElementById('cBajo').value||0),metaMensual:Math.max(0,+document.getElementById('cMeta').value||0),descuentoSugerido:Math.min(90,Math.max(0,Math.round(+document.getElementById('cDesc').value||0)))};
+    stockBajo:Math.max(0,+document.getElementById('cBajo').value||0),metaMensual:Math.max(0,+document.getElementById('cMeta').value||0)};
   put('config','general',c).then(function(){cfgDirty=false;toast('Ajustes guardados')},function(){});
 });
 
