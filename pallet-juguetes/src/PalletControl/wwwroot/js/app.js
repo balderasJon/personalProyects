@@ -228,7 +228,7 @@ function pasosGuia(s){
   var pal=palletsLista(),conLotes=palletsConLotes();
   var costeoOk=conLotes.length>0&&conLotes.every(function(id){var c=CORRIDAS[id];return c&&!c.desactualizado});
   return [
-    {k:'pallet',ok:pal.length>0,t:'Registra tu pallet',d:'Captura cuánto pagaste (y en qué moneda). Es tu inversión: lo que tienes que recuperar.',b:'Registrar pallet'},
+    {k:'pallet',ok:pal.length>0,t:'Registra tu pallet',d:'Captura cuánto pagaste por él (en pesos o en dólares). Es tu inversión: lo que tienes que recuperar.',b:'Registrar pallet'},
     {k:'mercado',ok:pal.some(function(p){return +p.valorMercadoEstimado>0}),opc:true,t:'Captura el valor de mercado del pallet',d:'El «retail value» del manifiesto del proveedor. Con él, el precio sugerido de cada juguete es confiable desde el primero que escanees.',b:'Capturar valor'},
     {k:'juguetes',ok:s.P.length>0,t:'Registra tus juguetes',d:'Escanea el código de barras de cada caja: la aplicación llena el nombre, las fotos y te sugiere precio y mínimo.',b:'Escanear juguete'},
     {k:'costeo',ok:costeoOk,t:'Calcula el costeo del pallet',d:'Cuando termines de registrar los juguetes: reparte la inversión entre todos y el costo de cada uno pasa de estimado a real.',b:'Calcular costeo'},
@@ -243,13 +243,13 @@ function irGuia(k){
 }
 function renderGuia(s){
   var el=document.getElementById('guia');if(!el)return;
-  var P=pasosGuia(s),hechos=P.filter(function(x){return x.ok}).length,sig=P.filter(function(x){return !x.ok&&!x.opc})[0]||P.filter(function(x){return !x.ok})[0];
+  var P=pasosGuia(s),obl=P.filter(function(x){return !x.opc}),hechos=obl.filter(function(x){return x.ok}).length,sig=obl.filter(function(x){return !x.ok})[0];
   var oculto=false;try{oculto=localStorage.getItem(LKEY+'-guia')==='oculta'}catch(e){}
   if(!sig&&oculto){el.innerHTML='';return}
-  el.innerHTML='<div class="guia"><div class="pf"><h3 style="margin:0">Guía paso a paso · '+hechos+' de '+P.length+'</h3>'+(sig?'':'<button class="lnk" type="button" id="guiaOcultar">Ocultar guía</button>')+'</div>'+
+  el.innerHTML='<div class="guia"><div class="pf"><h3 style="margin:0">Guía paso a paso · '+hechos+' de '+obl.length+'</h3>'+(sig?'':'<button class="lnk" type="button" id="guiaOcultar">Ocultar guía</button>')+'</div>'+
     (sig?'<div class="sig"><div><span class="small muted">Siguiente paso</span><br><b>'+esc(sig.t)+'</b><br><span class="small">'+esc(sig.d)+'</span></div><button class="btn primary" type="button" data-guia="'+sig.k+'">'+esc(sig.b)+'</button></div>'
       :'<div class="sig"><div><b>¡Todo listo!</b><br><span class="small">Sigue registrando ventas y cobros. Revisa los pendientes de abajo cada día.</span></div></div>')+
-    '<ol class="pasos">'+P.map(function(x,i){return '<li class="'+(x.ok?'ok':'')+(sig&&x.k===sig.k?' act':'')+'"><span class="n">'+(x.ok?'✓':(i+1))+'</span><div><b>'+esc(x.t)+'</b>'+(x.opc?' <span class="small muted">(recomendado)</span>':'')+
+    '<ol class="pasos">'+P.map(function(x,i){return '<li class="'+(x.ok?'ok':'')+(sig&&x.k===sig.k?' act':'')+'"><span class="n">'+(x.ok?'✓':(i+1))+'</span><div><b>'+esc(x.t)+'</b>'+(x.opc?' <span class="small muted">(opcional: solo si tienes manifiesto)</span>':'')+
       (x.ok?'':'<br><button class="lnk small" type="button" data-guia="'+x.k+'">'+esc(x.b)+'</button>')+'</div></li>'}).join('')+'</ol></div>';
   el.querySelectorAll('[data-guia]').forEach(function(b){b.addEventListener('click',function(){irGuia(b.dataset.guia)})});
   var oc=el.querySelector('#guiaOcultar');if(oc)oc.addEventListener('click',function(){try{localStorage.setItem(LKEY+'-guia','oculta')}catch(e){}renderGuia(s)});

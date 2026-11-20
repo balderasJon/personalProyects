@@ -157,18 +157,18 @@ function pintaResultado(r){
 function palletForm(p){
   var nuevo=!p,tc=PC.cfg(),hoy=PC.TC().hoy||PC.today();
   var tcDef=p&&p.moneda==='USD'?p.tipoCambio:(tc.tipoCambioUsd||''),fuenteDef=p&&p.moneda==='USD'?(p.tipoCambioFuente||'Manual'):(tc.tipoCambioFuente==='DOF'&&tc.tipoCambioFecha===hoy?'DOF':'Manual');
-  p=p||{nombre:'Pallet '+(((st.lista||[]).length)+1),fechaCompra:PC.today(),paisOrigen:'Estados Unidos',moneda:'USD',costoOriginal:'',estatus:'recepcion',metodoCosteo:'proporcional',modoMerma:'absorber'};
+  p=p||{nombre:'Pallet '+(((st.lista||[]).length)+1),fechaCompra:PC.today(),paisOrigen:'',moneda:'MXN',costoOriginal:'',estatus:'recepcion',metodoCosteo:'proporcional',modoMerma:'absorber'};
   PC.openModal(head(nuevo?'Nuevo pallet':'Editar pallet')+'<form style="display:flex;flex-direction:column;gap:14px"><div class="form">'+
     fld('plNom','Nombre o descripción','<input class="inp" id="plNom" name="nombre" required maxlength="80" value="'+esc(p.nombre)+'">',null,true)+
     fld('plPro','Proveedor','<input class="inp" id="plPro" name="proveedor" maxlength="80" value="'+esc(p.proveedor||'')+'">')+
     fld('plFec','Fecha de compra','<input class="inp" id="plFec" name="fechaCompra" type="date" required value="'+esc(p.fechaCompra)+'">')+
     fld('plPai','País de origen','<input class="inp" id="plPai" name="paisOrigen" maxlength="40" value="'+esc(p.paisOrigen||'')+'">')+
-    fld('plMon','Moneda de compra','<select class="sel" id="plMon" name="moneda">'+PC.opt(['USD','MXN'],p.moneda,{USD:'Dólares (USD)',MXN:'Pesos (MXN)'})+'</select>')+
-    fld('plCos','Costo de compra','<input class="inp num" id="plCos" name="costoOriginal" type="number" min="0" step="0.01" required value="'+esc(p.costoOriginal)+'">','Ya incluye la importación; no la sumes de nuevo.')+
+    fld('plMon','Moneda de compra','<select class="sel" id="plMon" name="moneda">'+PC.opt(['MXN','USD'],p.moneda,{MXN:'Pesos (MXN)',USD:'Dólares (USD)'})+'</select>')+
+    fld('plCos','Costo de compra','<input class="inp num" id="plCos" name="costoOriginal" type="number" min="0" step="0.01" required value="'+esc(p.costoOriginal)+'">','Lo que pagaste en total por el pallet. Si ya incluye flete o importación, no los sumes de nuevo.')+
     '<div class="f" id="plTcF">'+'<label for="plTc">Tipo de cambio aplicado</label><input class="inp num" id="plTc" name="tipoCambio" type="number" min="0.0001" step="0.0001" value="'+esc(tcDef)+'">'+
       '<select class="sel" name="tipoCambioFuente" aria-label="Fuente del tipo de cambio">'+PC.opt(['DOF','Manual'],fuenteDef,{DOF:'DOF',Manual:'Capturado a mano'})+'</select><span class="hint">Pesos por dólar. El valor sugerido es el del día.</span></div>'+
     '<div class="full"><p class="small" id="plPrev"></p></div>'+
-    fld('plVm','Valor de mercado estimado (opcional)','<input class="inp num" id="plVm" name="valorMercadoEstimado" type="number" min="0" step="0.01" value="'+esc(p.valorMercadoEstimado||'')+'">','Valor comercial total del pallet en la moneda de compra (el «retail value» del manifiesto del proveedor). Con él, el precio sugerido al escanear cada juguete es estable desde el primero.',true)+
+    fld('plVm','Valor de mercado estimado (opcional)','<input class="inp num" id="plVm" name="valorMercadoEstimado" type="number" min="0" step="0.01" value="'+esc(p.valorMercadoEstimado||'')+'">','Solo si tu proveedor te dio un manifiesto con el «retail value»; captúralo en la moneda de compra. Si no lo tienes, déjalo vacío: el costo de cada juguete se estima con lo que vayas registrando y queda exacto al calcular el costeo.',true)+
     fld('plEst','Estatus','<select class="sel" id="plEst" name="estatus">'+PC.opt(Object.keys(EST),p.estatus,EST)+'</select>')+
     fld('plMet','Método de costeo predeterminado','<select class="sel" id="plMet" name="metodoCosteo">'+PC.opt(Object.keys(MET),p.metodoCosteo,MET)+'</select>')+
     fld('plMod','Piezas no vendibles','<select class="sel" id="plMod" name="modoMerma">'+PC.opt(Object.keys(MERMA),p.modoMerma,MERMA)+'</select>',null,true)+

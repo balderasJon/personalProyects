@@ -2,6 +2,17 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-20 · Pallets en pesos y sin manifiesto
+
+**Cambiado (a petición del usuario: el pallet se compró en pesos y no hay manifiesto)**
+- «Nuevo pallet» viene en **Pesos (MXN)** por omisión; el tipo de cambio solo aparece al elegir dólares. País de origen vacío por omisión.
+- Ayudas del formulario: el costo es lo que pagaste en total; el valor de mercado se captura solo si hay manifiesto (si no, se deja vacío).
+- Guía de Inicio: el paso del valor de mercado es opcional («solo si tienes manifiesto»), no cuenta en el avance y ya no aparece como «siguiente paso»; con los demás pasos hechos muestra «¡Todo listo!».
+
+**Para corregir un pallet capturado en dólares**: Análisis comercial › Pallets y costos › (pallet) › Editar pallet › Moneda: Pesos (MXN) › Guardar. El costeo queda «Desactualizado»: vuelve a aplicarlo y usa «Recalcular precios mínimos».
+
+**Impacto en datos**: ninguno automático; los pallets existentes no se modifican.
+
 ## 2026-11-20 · Sin inicio de sesión
 
 **Cambiado (a petición del usuario)**
