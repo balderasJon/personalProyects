@@ -2,6 +2,17 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-20 · Código de barras con la cámara del celular
+
+**Agregado**
+- Botón **Cámara** junto al campo del código en «Escanear código» y en el alta del juguete: abre la app de cámara del celular (`<input type="file" capture="environment">`), lee el código de la foto y lo busca como si se hubiera escaneado.
+- Por qué con foto y no con video en vivo: la aplicación se abre en el celular por `http://192.168.x.x` (sin HTTPS) y ahí los navegadores no permiten la cámara en vivo (`getUserMedia` exige conexión segura). La cámara del celular sí se puede abrir en cualquier conexión.
+- Lectura: `BarcodeDetector` del navegador si existe (Chrome en Android); si no (iPhone), ZXing 0.21.3 incluido en `wwwroot/vendor/zxing` con su licencia Apache-2.0; se carga solo al usarlo y no necesita internet. Prueba girando la foto y con varios tamaños.
+- Si la foto no tiene un código legible, avisa y pide repetirla o escribir los números.
+- La fila del código se acomoda en dos líneas en pantallas angostas.
+
+**Impacto en datos**: ninguno.
+
 ## 2026-11-20 · Pallets en pesos y sin manifiesto
 
 **Cambiado (a petición del usuario: el pallet se compró en pesos y no hay manifiesto)**

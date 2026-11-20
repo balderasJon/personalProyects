@@ -649,7 +649,7 @@ function productoForm(id,pre){
   openModal(head(id?'Editar juguete':'Nuevo juguete')+'<form class="stack" style="display:flex;flex-direction:column;gap:14px"><div class="form">'+
     fld('pCod','Código','<input class="inp mono" id="pCod" name="codigo" required maxlength="20" value="'+esc(p.codigo)+'">')+
     fld('pCla','Clase','<select class="sel" id="pCla" name="clase">'+opt(['A','B','C'],p.clase,{A:'A · Muy buscado o caro',B:'B · Demanda normal',C:'C · Barato, para combos'})+'</select>')+
-    fld('pBar','Código de barras','<div class="bc"><input class="inp mono" id="pBar" name="codigoBarras" maxlength="20" inputmode="numeric" autocomplete="off" value="'+esc(p.codigoBarras)+'" placeholder="Escanea o escribe el código"><button class="btn" type="button" id="pBarBtn">Buscar</button></div>','Con el lector: escanea aquí y se busca solo. A mano: escribe el código y presiona Enter.',true)+
+    fld('pBar','Código de barras','<div class="bc"><input class="inp mono" id="pBar" name="codigoBarras" maxlength="20" inputmode="numeric" autocomplete="off" value="'+esc(p.codigoBarras)+'" placeholder="Escanea o escribe el código"><button class="btn" type="button" id="pBarBtn">Buscar</button>'+(window.PCCam?PCCam.boton():'')+'</div>','Con el lector: escanea aquí y se busca solo. Con el celular: «Cámara» y toma la foto del código. A mano: escribe el código y presiona Enter.',true)+
     '<div class="full" id="pBarRes"></div>'+
     fld('pNom','Juguete','<input class="inp" id="pNom" name="nombre" required maxlength="120" value="'+esc(p.nombre)+'" placeholder="Marca y nombre del juguete">',null,true)+
     fld('pCat','Categoría','<input class="inp" id="pCat" name="categoria" list="catList" maxlength="60" value="'+esc(p.categoria)+'" placeholder="Muñecas, autos, didácticos…"><datalist id="catList">'+Object.keys(cats).map(function(c){return '<option value="'+esc(c)+'">'}).join('')+'</datalist>')+
@@ -920,6 +920,7 @@ function buscarBarras(code){return api('GET','codigo-barras/'+encodeURIComponent
 function fdt(iso){try{return new Date(iso).toLocaleString('es-MX',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch(e){return ''}}
 function wireBarras(el,id,chk,inicial,G){
   var inp=el.querySelector('#pBar'),btn=el.querySelector('#pBarBtn'),res=el.querySelector('#pBarRes');
+  if(window.PCCam&&res)PCCam.conectar(el.querySelector('.bc'),function(c){inp.value=c;btn.click()},function(h){res.innerHTML=h});
   function campo(n){return el.querySelector('[name="'+n+'"]')}
   function aplicar(datos,forzar){
     var llenos=[];
@@ -972,10 +973,11 @@ function wireBarras(el,id,chk,inicial,G){
 }
 function escanearForm(){
   openModal(head('Escanear código de barras')+'<form style="display:flex;flex-direction:column;gap:12px">'+
-    '<p class="small muted">Escaneen la caja con el lector. Si el juguete ya está en el inventario se abre para aumentar su cantidad; si no, se busca en UPCitemdb y se abre el alta con los datos encontrados.</p>'+
-    '<input class="inp mono" id="scCode" inputmode="numeric" autocomplete="off" maxlength="20" placeholder="Código de barras" style="font-size:1.2rem">'+
+    '<p class="small muted">Escaneen la caja con el lector o, en el celular, con <b>Cámara</b> (toma la foto del código). Si el juguete ya está en el inventario se abre para aumentar su cantidad; si no, se busca en UPCitemdb y se abre el alta con los datos encontrados.</p>'+
+    '<div class="bc"><input class="inp mono" id="scCode" inputmode="numeric" autocomplete="off" maxlength="20" placeholder="Código de barras" style="font-size:1.2rem">'+(window.PCCam?PCCam.boton():'')+'</div>'+
     '<div id="scRes"></div><div class="pf"><span></span><div class="row"><button class="btn" type="button" data-close2>Cancelar</button><button class="btn primary" type="submit" id="scGo">Buscar</button></div></div></form>',function(el){
       var inp=el.querySelector('#scCode'),r=el.querySelector('#scRes'),go=el.querySelector('#scGo');
+      if(window.PCCam)PCCam.conectar(el,function(c){inp.value=c;go.disabled=false;el.querySelector('form').requestSubmit()},function(h){r.innerHTML=h});
       wireForm(el,function(){
         var code=inp.value.trim();if(!code)return;go.disabled=true;r.innerHTML='<p class="small muted">Buscando…</p>';
         buscarBarras(code).then(function(res){
