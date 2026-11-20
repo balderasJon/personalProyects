@@ -163,9 +163,11 @@ Los datos quedan en la carpeta `./datos` del proyecto.
 
 **Primer usuario en Docker:** por seguridad, el primer usuario solo se crea desde la misma computadora, y dentro de Docker las peticiones no llegan como locales. En el primer arranque agrega la variable `Auth__PermitirConfiguracionRemota=true` (en `docker-compose.yml`, sección `environment`), crea tu usuario y **quítala** después.
 
-### Primer inicio de sesión
+### Sin inicio de sesión
 
-Al abrir la aplicación **en la computadora donde corre** (`http://localhost:5080`) se pide crear el usuario. Después, desde esa computadora o desde el celular, se entra con usuario y contraseña. El botón con tu nombre (arriba a la derecha) permite cambiar la contraseña, agregar usuarios y cerrar sesión.
+La aplicación **no pide usuario ni contraseña**: al abrirla entra directo a Inicio, en la computadora o en el celular (decisión del usuario, 2026-11-20). Los cambios quedan en la bitácora a nombre de «local».
+
+Para volver a pedir usuario y contraseña, en `appsettings.json` cambia `"Auth": { "Requerido": false }` a `true` y reinicia: la primera vez se crea el usuario desde la computadora donde corre (`http://localhost:5080`).
 
 ### Al arrancar
 
@@ -217,7 +219,8 @@ Ventas, gastos y semanas no tienen importación automática; se recapturan.
 
 ## 4. Seguridad: lo que hay que saber
 
-- **Inicio de sesión obligatorio.** Toda la API y las fotos requieren sesión. Contraseñas con PBKDF2-SHA256 (600,000 iteraciones); cookie HttpOnly y SameSite=Strict; bloqueo de 5 minutos tras 5 intentos fallidos; cambiar la contraseña cierra las demás sesiones.
+- **Sin inicio de sesión (configuración actual).** Cualquier persona conectada al mismo Wi‑Fi que conozca la dirección puede abrir la aplicación, ver los datos financieros y modificarlos. Úsala solo en una red de confianza (no en Wi‑Fi público ni de invitados) y no compartas la dirección.
+- **Inicio de sesión opcional** (`Auth:Requerido = true`): toda la API y las fotos requieren sesión. Contraseñas con PBKDF2-SHA256 (600,000 iteraciones); cookie HttpOnly y SameSite=Strict; bloqueo de 5 minutos tras 5 intentos fallidos; cambiar la contraseña cierra las demás sesiones.
 - **Bitácora:** cada alta, cambio o baja queda en la tabla `auditoria` con usuario, fecha y valores antes y después.
 - Funciona por HTTP (sin cifrado), adecuado solo para red local: no abran el puerto 5080 en el router hacia Internet.
 

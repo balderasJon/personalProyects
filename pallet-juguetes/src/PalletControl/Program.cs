@@ -123,6 +123,22 @@ app.UseStaticFiles(new StaticFileOptions
     OnPrepareResponse = c => c.Context.Response.Headers.CacheControl = "no-cache"
 });
 app.UseAuthentication();
+// Sin inicio de sesión (decisión del usuario, 2026-11-20): con Auth:Requerido = false cada petición entra como el
+// usuario local, sin pedir contraseña. Para volver a pedirla, pon "Auth": { "Requerido": true } en appsettings.json.
+if (!app.Configuration.GetValue("Auth:Requerido", false))
+{
+    var local = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+    [
+        new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, "local"),
+        new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, "local"),
+        new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.GivenName, "Usuario local"),
+    ], "SinLogin"));
+    app.Use(async (ctx, next) =>
+    {
+        if (ctx.User.Identity?.IsAuthenticated != true) ctx.User = local;
+        await next();
+    });
+}
 app.UseAuthorization();
 // Las fotos también requieren sesión.
 app.Use(async (ctx, next) =>

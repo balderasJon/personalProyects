@@ -31,6 +31,7 @@ public static class AuthApi
             var hay = await db.Usuarios.AnyAsync();
             return Results.Ok(new
             {
+                sinLogin = !cfg.GetValue("Auth:Requerido", false),
                 autenticado = ctx.User.Identity?.IsAuthenticated == true,
                 usuario = ctx.User.FindFirstValue(ClaimTypes.Name),
                 nombreCompleto = ctx.User.FindFirstValue(ClaimTypes.GivenName),

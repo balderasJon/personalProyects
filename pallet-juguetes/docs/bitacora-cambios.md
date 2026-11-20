@@ -2,6 +2,18 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-20 · Sin inicio de sesión
+
+**Cambiado (a petición del usuario)**
+- La aplicación ya no pide usuario ni contraseña: abre directo en Inicio, en la computadora y en el celular. Se oculta el botón de cuenta.
+- Cada petición entra como el usuario «local» (así aparece en la bitácora de auditoría y en el historial de costeos).
+- Interruptor en `appsettings.json` → `Auth:Requerido` (predeterminado `false`). Con `true` vuelve el inicio de sesión tal como estaba.
+- Prueba nueva del modo sin inicio de sesión; las pruebas de seguridad se ejecutan con el inicio de sesión activado.
+
+**Riesgo aceptado**: cualquier persona en la misma red Wi‑Fi puede abrir la aplicación y modificar los datos.
+
+**Impacto en datos**: ninguno. Los usuarios que ya existían se conservan en la base por si se reactiva el inicio de sesión.
+
 ## 2026-11-20 · Simulador de precios sencillo
 
 **Cambiado (a petición del usuario)**

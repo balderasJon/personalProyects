@@ -9,6 +9,8 @@ namespace PalletControl.Tests.Integracion;
 /// <summary>Levanta la aplicación real con una base SQLite temporal y sin servicios externos.</summary>
 public class AppFactory : WebApplicationFactory<Program>
 {
+    /// <summary>Las pruebas de seguridad conservan el inicio de sesión; <see cref="SinLoginFactory"/> lo desactiva.</summary>
+    protected virtual bool Requerido => true;
     public string Carpeta { get; } = Path.Combine(Path.GetTempPath(), "pallet-pruebas-" + Guid.NewGuid().ToString("N")[..8]);
 
     protected override void ConfigureWebHost(IWebHostBuilder b)
@@ -16,6 +18,7 @@ public class AppFactory : WebApplicationFactory<Program>
         Directory.CreateDirectory(Carpeta);
         b.UseSetting("ConnectionStrings:Pallet", $"Data Source={Path.Combine(Carpeta, "pallet.db")}");
         b.UseSetting("Auth:PermitirConfiguracionRemota", "true");
+        b.UseSetting("Auth:Requerido", Requerido ? "true" : "false");
         b.UseSetting("Respaldos:Conservar", "0");
         // Sin internet en las pruebas: las URL externas apuntan a un puerto cerrado.
         b.UseSetting("TipoCambio:UrlDolarDof", "http://127.0.0.1:9/");

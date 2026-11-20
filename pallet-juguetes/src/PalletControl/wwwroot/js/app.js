@@ -1137,7 +1137,7 @@ function iniciarSesion(){
   return api('GET','auth/estado').then(function(e){
     if(!e.autenticado){mostrarAcceso();return}
     SESION=e;acceso.hidden=true;acceso.innerHTML='';
-    document.getElementById('userBtn').textContent=e.nombreCompleto||e.usuario;document.getElementById('userBtn').hidden=false;
+    document.getElementById('userBtn').textContent=e.nombreCompleto||e.usuario;document.getElementById('userBtn').hidden=!!e.sinLogin;
     return cargar();
   });
 }
