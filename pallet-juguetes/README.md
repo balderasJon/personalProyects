@@ -30,7 +30,7 @@ Es la versión instalable del artefacto **Control Pallet de Juguetes**. Usa la m
 | **Análisis comercial › Simulador de precios** | Solo el juguete: escribe un precio y cuántas piezas, y te dice si **ganas o pierdes** y cuánto, con su costo, mínimo, sugerido y precio de equilibrio. Sin tarifas de plataforma, peso, categoría ni tipo de publicación. |
 | **Análisis comercial › Márgenes y fiscal** | Objetivos de rentabilidad por ámbito y situación fiscal. Las tarifas por plataforma se retiraron: el mínimo y el sugerido se calculan como venta directa (costo + margen). |
 | **Análisis comercial › Pallets y costos** | Pallets (moneda, tipo de cambio, gastos adicionales, inversión total), juguetes por lote y condición, costeo **equitativo, proporcional o manual** con cuadre al centavo, simulación, historial de costeos y costo real por pieza. Detalle en [`docs/01-fase1-pallets-y-costeo.md`](docs/01-fase1-pallets-y-costeo.md). |
-| **Ajustes** | Inversión (con pallets, es la suma de sus inversiones), aviso de pocas piezas, meta mensual, % de descuento sobre el precio en México para sugerir el objetivo. Exportación a CSV por hoja y respaldo completo en JSON. |
+| **Ajustes** | Inversión (con pallets, es la suma de sus inversiones), aviso de pocas piezas, meta mensual. Exportación a CSV por hoja y respaldo completo en JSON. |
 
 ### Tipo de cambio del día
 
