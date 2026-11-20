@@ -163,6 +163,7 @@ app.MapVentas();
 app.MapComercial();
 app.MapIntegraciones();
 app.MapSugerenciaPrecio();
+app.MapBorrado();
 
 app.Lifetime.ApplicationStarted.Register(() =>
 {

@@ -2,6 +2,16 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-20 · Botón «Borrar todos los datos»
+
+**Agregado (a petición del usuario, para quitar datos de prueba)**
+- Ajustes › **Borrar todos los datos…**: ventana que dice cuántos pallets, juguetes y ventas se borrarán, ofrece descargar el respaldo JSON y exige escribir **BORRAR**.
+- `POST /api/datos/borrar-todo` (`{ confirmacion: "BORRAR" }`): copia la base con `VACUUM INTO` a `datos/respaldos/pallet-antes-de-borrar-<fecha>.db`, borra en una transacción los datos capturados y mueve las fotos a `datos/respaldos/imagenes-antes-de-borrar-<fecha>`. Deja un registro en la bitácora.
+- Se conservan: configuración (Ajustes), plataformas, objetivos generales y por categoría, situación fiscal, tarifas, usuarios y caché de códigos de barras.
+- Prueba automática: sin la palabra no borra; con ella borra, deja respaldo, conserva la configuración y permite capturar de nuevo.
+
+**Impacto en datos**: solo cuando el usuario lo confirma.
+
 ## 2026-11-20 · Se quita «Descuento sobre el precio en México»
 
 **Quitado (a petición del usuario)**

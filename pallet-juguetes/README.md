@@ -219,6 +219,12 @@ Ventas, gastos y semanas no tienen importación automática; se recapturan.
 
 ---
 
+### Borrar todos los datos (empezar de cero)
+
+**Ajustes › Borrar todos los datos…** quita los datos capturados (por ejemplo, los de prueba): pallets, juguetes con sus fotos, lotes y costeos, ventas, gastos, semanas, publicaciones, competencia, integraciones y la bitácora. Se conservan Ajustes, márgenes, situación fiscal, plataformas, usuarios y la caché de códigos de barras. Pide escribir **BORRAR** y, antes de borrar, guarda `datos/respaldos/pallet-antes-de-borrar-AAAA-MM-DD-HHMMSS.db` y mueve las fotos a `datos/respaldos/imagenes-antes-de-borrar-…`. Si ya no las necesitas, borra esas copias a mano (los respaldos diarios automáticos anteriores también contienen los datos de prueba).
+
+---
+
 ## 4. Seguridad: lo que hay que saber
 
 - **Sin inicio de sesión (configuración actual).** Cualquier persona conectada al mismo Wi‑Fi que conozca la dirección puede abrir la aplicación, ver los datos financieros y modificarlos. Úsala solo en una red de confianza (no en Wi‑Fi público ni de invitados) y no compartas la dirección.

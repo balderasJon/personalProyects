@@ -995,6 +995,27 @@ function escanearForm(){
     });
 }
 
+/* ---- borrar todos los datos (Ajustes) ---- */
+function borrarTodoForm(){
+  var s=stats(),nP=palletsLista().length,nV=s.V.length;
+  openModal(head('Borrar todos los datos')+'<form style="display:flex;flex-direction:column;gap:14px">'+
+    '<p class="warnline bad">Se borrarán <b>'+num(nP)+' pallet'+(nP===1?'':'s')+'</b>, <b>'+num(s.P.length)+' juguete'+(s.P.length===1?'':'s')+'</b> con sus fotos, lotes y costeos, <b>'+num(nV)+' venta'+(nV===1?'':'s')+'</b>, gastos, semanas, publicaciones, competencia y la bitácora.</p>'+
+    '<p class="small">Se conservan: Ajustes, márgenes y situación fiscal, plataformas y los códigos de barras ya consultados (para no gastar consultas otra vez).</p>'+
+    '<p class="small"><b>1.</b> Si quieres guardar una copia fuera de esta computadora, descárgala primero: <a class="btn sm" href="/api/respaldo" download>Descargar respaldo</a></p>'+
+    '<p class="small"><b>2.</b> La aplicación también guarda una copia de la base y de las fotos en la carpeta <span class="mono">datos/respaldos</span> antes de borrar.</p>'+
+    fld('btConf','<b>3.</b> Para confirmar escribe BORRAR','<input class="inp mono" id="btConf" autocomplete="off" autocapitalize="characters" placeholder="BORRAR">',null,true)+
+    '<div id="btMsg"></div><div class="pf"><span></span><div class="row"><button class="btn" type="button" data-close2>Cancelar</button><button class="btn danger" type="submit" id="btGo" disabled>Borrar todo</button></div></div></form>',function(el){
+      var inp=el.querySelector('#btConf'),bGo=el.querySelector('#btGo'),msg=el.querySelector('#btMsg');
+      inp.addEventListener('input',function(){bGo.disabled=inp.value.trim()!=='BORRAR'});
+      wireForm(el,function(){if(inp.value.trim()!=='BORRAR')return;bGo.disabled=true;msg.innerHTML='<p class="small muted">Borrando…</p>';
+        api('POST','datos/borrar-todo',{confirmacion:inp.value.trim()}).then(function(r){
+          closeModal();return cargar().then(function(){go('resumen');toast('Listo: se borraron los datos ('+num(r.fotos)+' foto'+(r.fotos===1?'':'s')+'). La copia quedó en '+r.respaldo)})},
+          function(e){bGo.disabled=false;msg.innerHTML='<p class="warnline bad">'+esc((e&&e.mensaje)||'No se pudo borrar.')+'</p>'});
+      });
+      setTimeout(function(){inp.focus()},50);
+    });
+}
+
 /* Formulario y ficha de la venta: js/ventas.js (Fase 3). */
 function ventaForm(id,pid){if(window.PCV)window.PCV.ventaForm(id,pid)}
 function advance(id,to){if(!D.ventas[id])return;
@@ -1083,6 +1104,7 @@ document.addEventListener('click',function(e){
   var t=e.target.closest('button');if(!t)return;
   var act=t.dataset.act;
   if(act==='nuevoProducto')productoForm();
+  else if(act==='borrarTodo')borrarTodoForm();
   else if(act==='nuevaVenta'){if(!list('productos').length){toast('Primero agreguen juguetes al inventario');go('inventario')}else ventaForm()}
   else if(act==='nuevoGasto')gastoForm();
   else if(act==='nuevaSemana')semanaForm(D.semanas[monday(today())]?monday(today()):null);
