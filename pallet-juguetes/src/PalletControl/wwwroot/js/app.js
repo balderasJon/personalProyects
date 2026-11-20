@@ -701,6 +701,7 @@ function productoForm(id,pre){
           precioObjetivo:+f.elements.precioObjetivo.value||0,
           precioMinimo:+f.elements.precioMinimo.value||0,precioMexico:+f.elements.precioMexico.value||0,caracteristicas:val(f,'caracteristicas'),notas:val(f,'notas'),
           precioLiverpool:+f.elements.precioLiverpool.value||0,precioMercadoLibre:+f.elements.precioMercadoLibre.value||0,precioWalmart:+f.elements.precioWalmart.value||0,
+          precioJuguetron:+f.elements.precioJuguetron.value||0,precioJuguetibici:+f.elements.precioJuguetibici.value||0,precioAmazon:+f.elements.precioAmazon.value||0,
           marca:val(f,'marca'),modelo:val(f,'modelo'),subcategoria:val(f,'subcategoria'),edadRecomendada:val(f,'edadRecomendada'),
           accesoriosIncluidos:val(f,'accesoriosIncluidos'),descripcionComercial:val(f,'descripcionComercial'),estadoComercial:f.elements.estadoComercial.value,
           pesoKg:+f.elements.pesoKg.value||0,largoCm:+f.elements.largoCm.value||0,anchoCm:+f.elements.anchoCm.value||0,altoCm:+f.elements.altoCm.value||0,
@@ -745,14 +746,19 @@ function costoDe(p,s){
 var TIENDAS=[
   {k:'precioLiverpool',id:'pLv',n:'Liverpool',url:function(q){return 'https://www.liverpool.com.mx/tienda?s='+encodeURIComponent(q)}},
   {k:'precioMercadoLibre',id:'pMl',n:'Mercado Libre',url:function(q){return 'https://listado.mercadolibre.com.mx/'+encodeURIComponent(q.trim().replace(/\s+/g,'-'))}},
-  {k:'precioWalmart',id:'pWm',n:'Walmart',url:function(q){return 'https://www.walmart.com.mx/search?q='+encodeURIComponent(q)}}
+  {k:'precioWalmart',id:'pWm',n:'Walmart',url:function(q){return 'https://www.walmart.com.mx/search?q='+encodeURIComponent(q)}},
+  // Juguetron (VTEX): búsqueda verificada el 2026-11-20 con /<término>?_q=<término>&map=ft
+  {k:'precioJuguetron',id:'pJt',n:'Juguetron',url:function(q){var t=encodeURIComponent(q.trim());return 'https://www.juguetron.mx/'+t+'?_q='+t+'&map=ft'}},
+  // Juguetibici no tiene tienda en línea propia verificada (su catálogo está en Rappi): se busca en Google.
+  {k:'precioJuguetibici',id:'pJb',n:'Juguetibici',via:'Google',url:function(q){return 'https://www.google.com/search?q='+encodeURIComponent('Juguetibici '+q.trim())}},
+  {k:'precioAmazon',id:'pAz',n:'Amazon México',url:function(q){return 'https://www.amazon.com.mx/s?k='+encodeURIComponent(q.trim())}}
 ];
 function promedioTiendas(vals){var v=vals.filter(function(x){return x>0});return v.length?Math.round(v.reduce(function(a,b){return a+b},0)/v.length*100)/100:null}
 function camposTiendas(p){
   return '<div class="f full"><span class="lbl2">Precio en tiendas de México</span><div class="tiendas">'+
     TIENDAS.map(function(t){return '<div class="tienda"><label for="'+t.id+'">'+t.n+'</label><div class="bc"><input class="inp num" id="'+t.id+'" name="'+t.k+'" type="number" min="0" step="1" value="'+esc(p[t.k]||'')+'" placeholder="$">'+
-      '<a class="btn sm" id="'+t.id+'L" href="#" target="_blank" rel="noopener noreferrer" title="Buscar en '+t.n+' (se abre en otra pestaña)">Buscar ↗</a></div></div>'}).join('')+
-    '</div><span class="hint">“Buscar” abre la tienda con el nombre del juguete. Captura el precio que veas; el Precio en México es el promedio de las tiendas capturadas.</span></div>';
+      '<a class="btn sm" id="'+t.id+'L" href="#" target="_blank" rel="noopener noreferrer" title="'+(t.via?'Buscar '+t.n+' en '+t.via:'Buscar en '+t.n)+' (se abre en otra pestaña)">'+(t.via?'En '+t.via:'Buscar')+' ↗</a></div></div>'}).join('')+
+    '</div><span class="hint">“Buscar” abre la tienda con el nombre del juguete (Juguetibici se busca en Google porque no tiene tienda en línea propia). Captura el precio que veas; el Precio en México es el promedio de las tiendas capturadas.</span></div>';
 }
 function wireMx(el,chk,id,G){
   var mxI=el.querySelector('#pMx'),box=el.querySelector('#pMxSug'),ob=el.querySelector('#pObj'),mn=el.querySelector('#pMin'),cant=el.querySelector('#pCan'),nom=el.querySelector('#pNom');
@@ -1063,7 +1069,7 @@ function importForm(){
 function csv(rows){return '﻿'+rows.map(function(r){return r.map(function(c){c=c==null?'':String(c);return /[",\n;]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c}).join(',')}).join('\r\n')}
 function exportar(k){
   var s=stats(),rows;
-  if(k==='inventario')rows=[['Código','Juguete','Categoría','Cantidad','Estado','Precio de lista','Precio objetivo','Clase','Código de barras','Precio en México','Precio mínimo','Vendidas','Disponibles','Precio Liverpool','Precio Mercado Libre','Precio Walmart','Características','Notas','Pallets','Condición','Marca','Modelo','Costo real por pieza','Precio de lista en USD','Tipo de cambio del precio de lista']].concat(s.P.map(function(p){var v=s.sold[p.id]||0;return [p.codigo,p.nombre,p.categoria,p.cantidad,EST_P_TXT[p.estado]||'Nuevo',p.precioLista,p.precioObjetivo,p.clase,p.codigoBarras?'\u2060'+p.codigoBarras:'',p.precioMexico||'',p.precioMinimo,v,Math.max(0,(+p.cantidad||0)-v),p.precioLiverpool||'',p.precioMercadoLibre||'',p.precioWalmart||'',p.caracteristicas,p.notas,
+  if(k==='inventario')rows=[['Código','Juguete','Categoría','Cantidad','Estado','Precio de lista','Precio objetivo','Clase','Código de barras','Precio en México','Precio mínimo','Vendidas','Disponibles','Precio Liverpool','Precio Mercado Libre','Precio Walmart','Precio Juguetron','Precio Juguetibici','Precio Amazon México','Características','Notas','Pallets','Condición','Marca','Modelo','Costo real por pieza','Precio de lista en USD','Tipo de cambio del precio de lista']].concat(s.P.map(function(p){var v=s.sold[p.id]||0;return [p.codigo,p.nombre,p.categoria,p.cantidad,EST_P_TXT[p.estado]||'Nuevo',p.precioLista,p.precioObjetivo,p.clase,p.codigoBarras?'\u2060'+p.codigoBarras:'',p.precioMexico||'',p.precioMinimo,v,Math.max(0,(+p.cantidad||0)-v),p.precioLiverpool||'',p.precioMercadoLibre||'',p.precioWalmart||'',p.precioJuguetron||'',p.precioJuguetibici||'',p.precioAmazon||'',p.caracteristicas,p.notas,
     lotesDe(p.id).map(function(l){return (PALLETS[l.palletId]||{}).nombre}).filter(function(x,i,a){return x&&a.indexOf(x)===i}).join(' / '),condicionesDe(p.id),p.marca,p.modelo,(function(){var c=costoReal(p.id);return isFinite(c.unit)?c.unit.toFixed(2):''})(),p.precioListaUsd||'',p.precioListaTipoCambio||'']}));
   else if(k==='ventas')rows=[['Folio','Fecha','Fecha de pago','Código','Juguete','Cantidad','Devueltas','Precio','Descuento','Total','Estado','Canal','Cliente','Notas','Importe cobrado','Fecha de cobro','Gastos de la venta','Costo histórico','Utilidad real','Origen del costo']].concat(s.V.map(function(v){var p=D.productos[v.productoId]||{},r=res(v);return [folio(v),v.fecha,v.fechaPago,p.codigo,p.nombre,v.cantidad,v.cantidadDevuelta||0,v.precio,v.descuento||0,totalVenta(v),EST_V_TXT[v.estado],canalDe(v),v.cliente,v.notas,v.importeCobrado==null?'':v.importeCobrado,v.fechaCobro||'',r.gastosTotales,r.costoVendido,r.utilidad,v.costoOrigen]}));
   else if(k==='gastos')rows=[['Fecha','Tipo','Concepto','Monto']].concat(s.G.map(function(g){return [g.fecha,g.tipo,g.concepto,g.monto]}));

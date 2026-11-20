@@ -93,7 +93,7 @@ También se puede escanear o escribir el código en el campo *Código de barras*
 
 | Campo | Regla |
 |---|---|
-| Precio en México | Promedio de los precios capturados en **Liverpool, Mercado Libre y Walmart** (los que tengan valor). Sin precios por tienda, se puede capturar a mano |
+| Precio en México | Promedio de los precios capturados en **Liverpool, Mercado Libre, Walmart, Juguetron, Juguetibici y Amazon México** (los que tengan valor). Sin precios por tienda, se puede capturar a mano |
 | Precio objetivo | **Precio sugerido** del mejor canal (ver «Precio sugerido al escanear») |
 | Precio mínimo | **Mínimo** del mejor canal: el precio que cubre el costo de la pieza, las comisiones y envíos de la plataforma y tu margen mínimo (10 %) |
 | Precio de lista (referencia) | Precio más alto registrado en UPCitemdb (USD) × tipo de cambio del día. Se llena con el monto en dólares (selector **USD**) y se guarda convertido a pesos |
@@ -108,7 +108,7 @@ Si el mínimo queda arriba de la referencia de mercado, la aplicación avisa que
 
 **Moneda de los precios.** Todos los precios se guardan en **pesos mexicanos**. El precio de lista se puede capturar en dólares con el selector **MXN / USD**: se convierte con el tipo de cambio del día (redondeado al peso) y se guardan también el monto en dólares y el tipo de cambio usado, que aparecen en la ficha del juguete y en el CSV. Si después cambia el tipo de cambio, la referencia no se recalcula sola; se recalcula solo si cambias el monto en dólares. Sin tipo de cambio del día no se acepta un precio en dólares. El precio mínimo, el objetivo, el precio en México y los precios por tienda son siempre en pesos.
 
-**Precios por tienda.** Cada tienda tiene un botón *Buscar ↗* que abre su búsqueda con el nombre del juguete en otra pestaña; capturas el precio que ves. La aplicación no consulta esas tiendas por su cuenta: Liverpool y Walmart no ofrecen una API pública de precios, y la búsqueda de Mercado Libre por API exige registrar una aplicación con token (sin él responde 403).
+**Precios por tienda.** Cada tienda tiene un botón *Buscar ↗* que abre su búsqueda con el nombre del juguete en otra pestaña (Juguetibici no tiene tienda en línea propia verificada: su botón *En Google ↗* busca «Juguetibici + nombre» en Google); capturas el precio que ves. La aplicación no consulta esas tiendas por su cuenta: Liverpool y Walmart no ofrecen una API pública de precios, y la búsqueda de Mercado Libre por API exige registrar una aplicación con token (sin él responde 403).
 
 **Precio mínimo.** Es el **mínimo del mejor canal**, el mismo criterio de la sugerencia al escanear: el precio que cubre el costo de la pieza (real si el pallet ya tiene costeo; si no, estimado con su valor de mercado), las comisiones y envíos de la plataforma y tu margen mínimo (10 %). Sin tarifas capturadas se calcula como venta directa sin comisiones.
 

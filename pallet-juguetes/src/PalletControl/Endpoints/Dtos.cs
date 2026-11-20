@@ -13,7 +13,9 @@ public record ProductoIn(string? Codigo, string? CodigoBarras, string? Nombre, s
     // Precio de lista en dólares: si es > 0 se convierte con el tipo de cambio del día; 0 = capturado en pesos; null = cliente anterior.
     decimal? PrecioListaUsd = null,
     // Valor de referencia por pieza en pesos (de la sugerencia por código de barras). null = conservar; 0 = borrar.
-    decimal? ValorReferencia = null, string? ValorReferenciaOrigen = null);
+    decimal? ValorReferencia = null, string? ValorReferenciaOrigen = null,
+    // Más tiendas (2026-11-20). null = conservar el valor actual.
+    decimal? PrecioJuguetron = null, decimal? PrecioJuguetibici = null, decimal? PrecioAmazon = null);
 
 public record GastoIn(string? Tipo, decimal Monto, DateOnly? Fecha, string? Concepto);
 

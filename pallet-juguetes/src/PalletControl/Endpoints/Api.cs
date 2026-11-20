@@ -338,7 +338,8 @@ public static class Api
         if (i.PrecioListaUsd < 0) return "El precio de lista en dólares no puede ser negativo.";
         if (i.ValorReferencia < 0) return "El valor de referencia no puede ser negativo.";
         if (i.PrecioLista < 0 || i.PrecioObjetivo < 0 || i.PrecioMinimo < 0 || i.PrecioMexico < 0
-            || i.PrecioLiverpool < 0 || i.PrecioMercadoLibre < 0 || i.PrecioWalmart < 0) return "Los precios no pueden ser negativos.";
+            || i.PrecioLiverpool < 0 || i.PrecioMercadoLibre < 0 || i.PrecioWalmart < 0
+            || i.PrecioJuguetron < 0 || i.PrecioJuguetibici < 0 || i.PrecioAmazon < 0) return "Los precios no pueden ser negativos.";
         if (i.Clase is not null && !Catalogos.Clases.Contains(i.Clase)) return "La clase debe ser A, B o C.";
         if (i.Estado is not null && !Catalogos.EstadosProducto.Contains(i.Estado)) return "Estado de juguete no válido.";
         if (i.Condicion is not null && !Catalogos.CondicionValida(i.Condicion)) return "Condición no válida.";
@@ -382,8 +383,11 @@ public static class Api
         p.PrecioLiverpool = Math.Max(0, i.PrecioLiverpool);
         p.PrecioMercadoLibre = Math.Max(0, i.PrecioMercadoLibre);
         p.PrecioWalmart = Math.Max(0, i.PrecioWalmart);
+        if (i.PrecioJuguetron is { } pj) p.PrecioJuguetron = Math.Max(0, pj);
+        if (i.PrecioJuguetibici is { } pb) p.PrecioJuguetibici = Math.Max(0, pb);
+        if (i.PrecioAmazon is { } pa) p.PrecioAmazon = Math.Max(0, pa);
         // Con precios por tienda, el precio en México es su promedio; sin ellos, el capturado a mano.
-        p.PrecioMexico = Precios.PromedioTiendas(p.PrecioLiverpool, p.PrecioMercadoLibre, p.PrecioWalmart) ?? i.PrecioMexico;
+        p.PrecioMexico = Precios.PromedioTiendas(Precios.DeTiendas(p)) ?? i.PrecioMexico;
         if (i.ValorReferencia is { } vr)
         {
             p.ValorReferencia = vr > 0 ? Dominio.Calculo.Dinero.Centavos(vr) : null;
@@ -518,14 +522,15 @@ public static class Api
                 var vend = await Vendidas(db, p.Id, null);
                 var notas = p.Notas; var min = p.PrecioMinimo; var barrasPrevio = p.CodigoBarras;
                 var caract = p.Caracteristicas; var mx = p.PrecioMexico;
-                var (lv, ml, wm) = (p.PrecioLiverpool, p.PrecioMercadoLibre, p.PrecioWalmart);
+                var tiendas = Precios.DeTiendas(p);
                 var fc = f with { Cantidad = Math.Max(f.Cantidad, vend) };
                 Aplicar(p, fc);
                 if (!await AplicarInventarioAsync(db, p, fc, false, palletId, estricto: false)) omitidos.Add(p.Codigo);
                 p.Notas = notas; p.PrecioMinimo = min; p.Caracteristicas = caract;
                 if (p.PrecioMexico == 0) p.PrecioMexico = mx;
-                (p.PrecioLiverpool, p.PrecioMercadoLibre, p.PrecioWalmart) = (lv, ml, wm);
-                p.PrecioMexico = Precios.PromedioTiendas(lv, ml, wm) ?? p.PrecioMexico;
+                (p.PrecioLiverpool, p.PrecioMercadoLibre, p.PrecioWalmart, p.PrecioJuguetron, p.PrecioJuguetibici, p.PrecioAmazon) =
+                    (tiendas[0], tiendas[1], tiendas[2], tiendas[3], tiendas[4], tiendas[5]);
+                p.PrecioMexico = Precios.PromedioTiendas(tiendas) ?? p.PrecioMexico;
                 if (p.CodigoBarras.Length == 0) p.CodigoBarras = barrasPrevio;
                 actualizados++;
             }

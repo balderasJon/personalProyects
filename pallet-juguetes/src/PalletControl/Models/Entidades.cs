@@ -35,6 +35,9 @@ public class Producto
     public decimal PrecioLiverpool { get; set; }
     public decimal PrecioMercadoLibre { get; set; }
     public decimal PrecioWalmart { get; set; }
+    public decimal PrecioJuguetron { get; set; }
+    public decimal PrecioJuguetibici { get; set; }
+    public decimal PrecioAmazon { get; set; }
     /// <summary>Descripción y datos técnicos (marca, modelo, color, medidas, peso...).</summary>
     public string Caracteristicas { get; set; } = "";
     public string Notas { get; set; } = "";

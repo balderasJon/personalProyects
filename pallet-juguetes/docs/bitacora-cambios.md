@@ -2,6 +2,16 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-20 · Más tiendas en la búsqueda de precios
+
+**Agregado**
+- Tiendas nuevas en «Precio en tiendas de México»: **Juguetron**, **Juguetibici** y **Amazon México**, cada una con su campo de precio. El precio en México es el promedio de las seis tiendas que tengan precio.
+- Búsquedas verificadas el 2026-11-20 en navegador: Juguetron `https://www.juguetron.mx/<término>?_q=<término>&map=ft` (resultados con precios) y Amazon México `https://www.amazon.com.mx/s?k=<término>`.
+- Juguetibici: no se encontró tienda en línea propia (su catálogo en línea aparece en Rappi); por decisión del usuario su botón busca «Juguetibici + nombre» en Google.
+- Exportación a Excel (CSV) del inventario con las tres columnas nuevas. Prueba automática del promedio.
+
+**Impacto en datos**: migración no destructiva; columnas `PrecioJuguetron`, `PrecioJuguetibici` y `PrecioAmazon` en `productos` con valor 0. El precio en México de los juguetes existentes no cambia hasta que se editen. Un cliente que no envíe estos campos no los borra.
+
 ## 2026-11-20 · Código de barras con la cámara del celular
 
 **Agregado**
