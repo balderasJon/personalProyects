@@ -347,3 +347,6 @@ button.etq{cursor:pointer;min-height:28px} button.etq[aria-pressed="true"]{outli
 .valorp>summary::-webkit-details-marker{display:none}
 .valorp>summary::before{content:"▸";color:var(--accent);margin-right:6px;transition:transform .15s}
 .valorp[open]>summary::before{transform:rotate(90deg)}
+.valorp{display:block}
+.valorp[open]>summary{margin-bottom:10px}
+.valorp[open]>*+*:not(summary){margin-top:10px}
