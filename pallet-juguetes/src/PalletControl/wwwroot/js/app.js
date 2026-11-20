@@ -979,7 +979,7 @@ function wireBarras(el,id,chk,inicial,G){
 }
 function escanearForm(){
   openModal(head('Escanear código de barras')+'<form style="display:flex;flex-direction:column;gap:12px">'+
-    '<p class="small muted">Escaneen la caja con el lector o, en el celular, con <b>Cámara</b> (toma la foto del código). Si el juguete ya está en el inventario se abre para aumentar su cantidad; si no, se busca en UPCitemdb y se abre el alta con los datos encontrados.</p>'+
+    '<p class="small muted">Escaneen la caja con el lector o, en el celular, con <b>Cámara</b> (toma la foto del código). Si el juguete ya está en el inventario <b>se le suma una pieza</b> y puedes seguir escaneando; si no, se busca en UPCitemdb y se abre el alta con los datos encontrados.</p>'+
     '<div class="bc"><input class="inp mono" id="scCode" inputmode="numeric" autocomplete="off" maxlength="20" placeholder="Código de barras" style="font-size:1.2rem">'+(window.PCCam?PCCam.boton():'')+'</div>'+
     '<div id="scRes"></div><div class="pf"><span></span><div class="row"><button class="btn" type="button" data-close2>Cancelar</button><button class="btn primary" type="submit" id="scGo">Buscar</button></div></div></form>',function(el){
       var inp=el.querySelector('#scCode'),r=el.querySelector('#scRes'),go=el.querySelector('#scGo');
@@ -987,12 +987,31 @@ function escanearForm(){
       wireForm(el,function(){
         var code=inp.value.trim();if(!code)return;go.disabled=true;r.innerHTML='<p class="small muted">Buscando…</p>';
         buscarBarras(code).then(function(res){
-          if(res.origen==='inventario'){productoForm(res.producto.id);toast('Ya está en el inventario: aumenten la cantidad si encontraron más piezas');}
-          else productoForm(null,{codigoBarras:res.codigo,resultado:res});
+          if(res.origen==='inventario')return sumarPieza(res.producto,el,inp,r,go);
+          productoForm(null,{codigoBarras:res.codigo,resultado:res});
         },function(e){go.disabled=false;r.innerHTML='<p class="warnline bad">'+esc((e&&e.mensaje)||'No se pudo buscar.')+'</p><p class="small"><button class="lnk" type="button" id="scManual">Dar de alta a mano con este código</button></p>';
           r.querySelector('#scManual').addEventListener('click',function(){productoForm(null,{codigoBarras:code})});inp.select()});
       });
     });
+}
+
+/* Código que ya está en el inventario: suma una pieza (movimiento «ajuste» en el kárdex) y deja la ventana lista para
+   el siguiente escaneo, con opción de deshacer y de abrir el juguete. */
+function sumarPieza(prod,el,inp,r,go){
+  return api('POST','productos/'+encodeURIComponent(prod.id)+'/sumar-pieza').then(function(x){
+    return cargar().then(function(){
+      r.innerHTML='<div class="alert ok"><span class="dot"></span><div><b>+1 '+esc(x.nombre)+'</b><br><span class="small">Ahora hay <b>'+num(x.cantidad)+'</b> pieza'+(x.cantidad===1?'':'s')+(x.pallet?' · lote de '+esc(x.pallet):'')+'. Escanea el siguiente código.</span>'+
+        '<div class="row" style="margin-top:6px"><button class="btn sm" type="button" id="scUndo">Deshacer</button><button class="btn sm" type="button" id="scOpen">Abrir juguete</button></div></div></div>';
+      toast('+1 '+x.nombre+' · ahora '+x.cantidad+' piezas');
+      inp.value='';go.disabled=false;inp.focus();
+      r.querySelector('#scOpen').addEventListener('click',function(){productoForm(x.productoId)});
+      r.querySelector('#scUndo').addEventListener('click',function(){var b=this;b.disabled=true;
+        api('POST','lotes/'+encodeURIComponent(x.loteId)+'/ajuste',{cantidad:-1,motivo:'Deshacer escaneo de código de barras'}).then(cargar).then(function(){
+          r.innerHTML='<p class="small muted">Se deshizo: '+esc(x.nombre)+' vuelve a '+num(x.cantidad-1)+' pieza'+(x.cantidad-1===1?'':'s')+'.</p>';toast('Escaneo deshecho');inp.focus()},
+          function(e){b.disabled=false;toast((e&&e.mensaje)||'No se pudo deshacer')})});
+    });
+  },function(e){go.disabled=false;r.innerHTML='<p class="warnline bad">'+esc((e&&e.mensaje)||'No se pudo sumar la pieza.')+'</p><p class="small"><button class="lnk" type="button" id="scOpen2">Abrir el juguete</button></p>';
+    r.querySelector('#scOpen2').addEventListener('click',function(){productoForm(prod.id)});inp.select()});
 }
 
 /* ---- borrar todos los datos (Ajustes) ---- */

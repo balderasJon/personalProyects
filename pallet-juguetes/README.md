@@ -80,7 +80,7 @@ En la ficha del juguete (o **Publicar** en el Inventario) se genera el título, 
 **Cómo se usa con el lector** (USB o Bluetooth en modo teclado):
 
 1. Inventario → **Escanear código** → escaneen la caja.
-2. Si el código ya está en el inventario, se abre ese juguete para aumentar la cantidad.
+2. Si el código ya está en el inventario, **se le suma una pieza** (al lote vendible del pallet más reciente, como movimiento «ajuste» en el kárdex) y la ventana queda lista para el siguiente escaneo; hay botones para **Deshacer** y para abrir el juguete.
 3. Si no está, se consulta **UPCitemdb** y se abre el alta con nombre, categoría, **características** (descripción, marca, modelo, color, tamaño, dimensiones y peso, las que traiga), **imágenes** y precios sugeridos. Revisa, captura el **precio en México** y guarda.
 
 Al guardar, las imágenes de UPCitemdb (hasta 3) se descargan y quedan en `datos/imagenes`, así se ven aunque la tienda de origen las quite. Algunas tiendas bloquean la descarga; en ese caso se avisa y puedes subir tu propia foto. En el formulario también puedes **subir fotos** (JPG, PNG, WEBP o GIF de hasta 5 MB, hasta 12 por juguete), marcar la principal (★) y borrar.

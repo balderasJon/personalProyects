@@ -147,6 +147,26 @@ public static class PalletsApi
             return Results.Ok(lote);
         }));
 
+        // Escanear un código que ya está en el inventario suma una pieza (pedido del usuario, 2026-11-20).
+        // Va al lote vendible del pallet más reciente del juguete y queda como movimiento «ajuste» en el kárdex.
+        api.MapPost("/productos/{id}/sumar-pieza", (string id, AppDbContext db) => Api.Bloqueado(async () =>
+        {
+            var prod = await db.Productos.FindAsync(id);
+            if (prod is null) return Results.NotFound(new Error("El juguete ya no existe."));
+            var lote = await (from l in db.Lotes
+                              join p in db.Pallets on l.PalletId equals p.Id
+                              where l.ProductoId == id && l.Comercializable
+                              orderby p.FechaCompra descending, l.Cantidad descending
+                              select l).FirstOrDefaultAsync();
+            if (lote is null) return Results.Conflict(new Error("Este juguete no tiene un lote vendible: ábrelo y agrega un lote para sumar piezas."));
+            Inventario.Mover(db, lote, 1, "ajuste", "Escaneo de código de barras: +1 pieza");
+            await Inventario.SincronizarProductoAsync(db, id);
+            await Ventas.RevisarPublicacionesAsync(db, id, null, 0);
+            await db.GuardarAsync();
+            var pallet = await db.Pallets.AsNoTracking().Where(p => p.Id == lote.PalletId).Select(p => p.Nombre).FirstOrDefaultAsync();
+            return Results.Ok(new { productoId = id, nombre = prod.Nombre, cantidad = prod.Cantidad, loteId = lote.Id, piezasLote = lote.Cantidad, pallet });
+        }));
+
         api.MapPost("/lotes/{id}/ajuste", (string id, AjusteIn i, AppDbContext db) => Api.Bloqueado(async () =>
         {
             var lote = await db.Lotes.FindAsync(id);

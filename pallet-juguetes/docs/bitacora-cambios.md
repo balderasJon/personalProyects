@@ -2,6 +2,16 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-20 · Escanear un código existente suma una pieza
+
+**Cambiado (a petición del usuario)**
+- En «Escanear código», si el código ya está en el inventario se suma **una pieza** automáticamente (antes se abría el juguete para editar la cantidad). La ventana se queda abierta y vacía para el siguiente escaneo, con **Deshacer** (ajuste de −1) y **Abrir juguete**.
+- `POST /api/productos/{id}/sumar-pieza`: suma al lote vendible del pallet con fecha de compra más reciente; queda como movimiento «ajuste» con motivo «Escaneo de código de barras: +1 pieza» y revisa las publicaciones del juguete.
+- Un código nuevo sigue abriendo el alta con los datos de UPCitemdb.
+- Prueba automática del +1 y del deshacer.
+
+**Impacto en datos**: ninguno en el esquema.
+
 ## 2026-11-20 · Botón «Borrar todos los datos»
 
 **Agregado (a petición del usuario, para quitar datos de prueba)**
