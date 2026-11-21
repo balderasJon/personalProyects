@@ -2,6 +2,15 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-21 · «Completar datos» para todos
+
+**Agregado (a petición del usuario)**
+- Botón **Completar datos (N)** en Inventario, visible cuando hay juguetes con código de barras numérico (8 a 14 dígitos) y datos vacíos (categoría, marca, características, foto, o sin referencia de mercado ni precio en México).
+- Ventana con avance: consulta uno por uno (`POST /api/productos/{id}/completar-datos`), registra qué se llenó en cada juguete, **se detiene sola al agotarse el límite de UPCitemdb** (429, con la hora de reinicio) y se puede detener a mano. Resumen: completados, sin datos, con error y pendientes.
+- Los códigos ya consultados no gastan consultas (caché); los que no están en ninguna base siguen contando como pendientes de datos.
+
+**Impacto en datos**: solo en los juguetes que se completan.
+
 ## 2026-11-21 · «Completar datos desde UPCitemdb»
 
 **Agregado (a petición del usuario)**

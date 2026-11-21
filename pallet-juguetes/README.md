@@ -124,7 +124,7 @@ Solo se llenan los campos vacíos o los que llenó una sugerencia y no has edita
 
 **Si UPCitemdb no lo tiene:** se consulta en automático **Open Products Facts** (base abierta y gratuita de productos no alimenticios; tiene pocos juguetes y no trae precios). También se usa si ya se agotaron las 100 consultas diarias de UPCitemdb o no responde. Si ninguna de las dos lo tiene, aparecen botones para buscar el código en **Google** y **Amazon México** y copiar nombre y precio.
 
-**Completar después:** si diste de alta un juguete a mano (por ejemplo, sin consultas ese día), abre su ficha y usa **Completar datos desde UPCitemdb**: consulta su código y llena **solo los campos vacíos** (categoría, marca, modelo, características, peso, medidas, referencia de mercado, precio de lista y fotos si no tiene). No cambia lo que ya capturaste. Gasta una consulta si el código no estaba guardado.
+**Completar después:** si diste de alta un juguete a mano (por ejemplo, sin consultas ese día), abre su ficha y usa **Completar datos desde UPCitemdb**: consulta su código y llena **solo los campos vacíos** (categoría, marca, modelo, características, peso, medidas, referencia de mercado, precio de lista y fotos si no tiene). No cambia lo que ya capturaste. Gasta una consulta si el código no estaba guardado. Para varios a la vez: **Inventario › Completar datos (N)** recorre todos los juguetes con código y datos vacíos, muestra el avance y se detiene solo si se agotan las consultas del día.
 
 **Limitaciones que hay que conocer:**
 

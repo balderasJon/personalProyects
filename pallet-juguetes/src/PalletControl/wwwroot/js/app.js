@@ -451,8 +451,14 @@ function etiquetasDe(p,d,bajo){
   else if(x.ok&&x.minimo&&po<x.minimo)E.push({k:'bajo',t:'Bajo el mínimo',c:'bad',title:'Tu precio ('+money(po)+') está debajo del mínimo ('+money(x.minimo)+')'});
   return E;
 }
+/** Juguetes con código de barras consultable a los que les falta información que el código puede aportar. */
+function porCompletar(){return list('productos').filter(function(p){var c=String(p.codigoBarras||'');
+  if(!/^\d{8,14}$/.test(c))return false;
+  return !p.categoria||!p.marca||!p.caracteristicas||!imgPrincipal(p.id)||(!(+p.valorReferencia>0)&&!(+p.precioMexico>0))})}
 function renderInv(s){
   renderValor(s);
+  var bct=document.getElementById('btnCompletarTodos'),nct=porCompletar().length;
+  if(bct){bct.hidden=!nct;bct.textContent='Completar datos ('+nct+')';bct.title='Consulta el código de barras de '+nct+' juguete'+(nct===1?'':'s')+' con datos vacíos y llena solo lo que falta'}
   var bajo=+s.c.stockBajo||0;
   var cq=0,cc=0,est=false;s.P.forEach(function(p){var x=PRECIOS[p.id]||{},q=+p.cantidad||0;if(x.ok&&x.costo){cq+=q;cc+=q*x.costo;if(x.origenCosto!=='real')est=true}});
   document.getElementById('invSub').textContent=s.P.length?num(s.P.length)+' juguetes · '+num(s.piezas)+' piezas · '+num(s.disp)+' disponibles'+(cq?' · costo promedio '+money(cc/cq)+' por pieza'+(est?' (estimado)':''):''):'';
@@ -1034,6 +1040,46 @@ function sumarPieza(prod,el,inp,r,go){
     r.querySelector('#scOpen2').addEventListener('click',function(){productoForm(prod.id)});inp.select()});
 }
 
+/* ---- completar datos de varios juguetes (Inventario) ---- */
+function completarTodosForm(){
+  var L=porCompletar(),parar=false,corriendo=false;
+  if(!L.length){toast('No hay juguetes con datos vacíos y código de barras');return}
+  openModal(head('Completar datos desde el código de barras')+'<div style="display:flex;flex-direction:column;gap:12px">'+
+    '<p class="small"><b>'+num(L.length)+' juguete'+(L.length===1?'':'s')+'</b> con código de barras tienen datos vacíos (categoría, marca, características, referencia de mercado o foto). Se consulta cada código en UPCitemdb (y, si no, en Open Products Facts) y se llena <b>solo lo que falta</b>; no se cambia lo que ya capturaste.</p>'+
+    '<p class="small muted" id="ctCupo"></p>'+
+    '<p class="small muted">Cada código que no se haya consultado antes gasta una consulta gratuita de UPCitemdb (100 por día). Si se agotan, la tanda se detiene sola y puedes seguir después.</p>'+
+    '<div class="meter" aria-hidden="true"><i id="ctBar" style="width:0"></i></div><p class="small" id="ctEstado" aria-live="polite">Listo para empezar.</p><ul class="small" id="ctLog" style="max-height:180px;overflow:auto;margin:0;padding-left:18px"></ul>'+
+    '<div class="pf"><span></span><div class="row"><button class="btn" type="button" id="ctCerrar">Cerrar</button><button class="btn primary" type="button" id="ctGo">Completar '+num(L.length)+'</button></div></div></div>',function(el){
+      var go=el.querySelector('#ctGo'),cerrar=el.querySelector('#ctCerrar'),bar=el.querySelector('#ctBar'),est=el.querySelector('#ctEstado'),log=el.querySelector('#ctLog'),cupo=el.querySelector('#ctCupo');
+      api('GET','codigo-barras-estado').then(function(x){if(!cupo.isConnected)return;cupo.innerHTML=x.agotadoHasta?'<span class="tag-w">UPCitemdb sin consultas</span> hasta el '+esc(new Date(x.agotadoHasta).toLocaleString('es-MX',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}))+' h: solo se consultará Open Products Facts.':(x.restantes!=null?'UPCitemdb: quedan <b>'+num(x.restantes)+'</b> consultas hoy.':'')},function(){});
+      function linea(t,cls){log.insertAdjacentHTML('beforeend','<li'+(cls?' class="'+cls+'"':'')+'>'+t+'</li>');log.scrollTop=log.scrollHeight}
+      cerrar.addEventListener('click',function(){if(corriendo){parar=true;cerrar.textContent='Deteniendo…';cerrar.disabled=true}else closeModal()});
+      go.addEventListener('click',function(){
+        corriendo=true;go.disabled=true;cerrar.textContent='Detener';var i=0,ok=0,sin=0,err=0,fin='',limite=false;
+        function sig(){
+          if(!el.isConnected)parar=true;   // se cerró la ventana con la ×
+          if(parar){if(!fin)fin='Detenido.';return terminar()}
+          if(i>=L.length)return terminar();
+          var p=L[i];est.textContent='Consultando '+(i+1)+' de '+L.length+': '+p.nombre+'…';
+          api('POST','productos/'+encodeURIComponent(p.id)+'/completar-datos').then(function(r){
+            if(r.llenos.length||r.fotos){ok++;linea('<b>'+esc(p.nombre)+'</b>: '+esc(r.llenos.concat(r.fotos?[r.fotos+' foto'+(r.fotos>1?'s':'')]:[]).join(', ')),'tone-good')}
+            else linea(esc(p.nombre)+': ya tenía esos datos');
+          },function(e){
+            if(e&&e.status===429){fin=e.mensaje;parar=true;limite=true;linea(esc(e.mensaje),'tone-bad');return}
+            if(e&&e.status===404){sin++;linea(esc(p.nombre)+': sin datos en las bases (búscalo en Google o Amazon desde su ficha)')}
+            else{err++;linea(esc(p.nombre)+': '+esc((e&&e.mensaje)||'error'),'tone-bad')}
+          }).then(function(){i++;bar.style.width=Math.round(i/L.length*100)+'%';sig()});
+        }
+        function terminar(){corriendo=false;cerrar.disabled=false;cerrar.textContent='Cerrar';var pend=L.length-i+(limite?1:0);
+          est.innerHTML=(fin?esc(fin)+'<br>':'')+'<b>'+num(ok)+'</b> completado'+(ok===1?'':'s')+' · '+num(sin)+' sin datos'+(err?' · '+num(err)+' con error':'')+' · '+num(pend)+' pendiente'+(pend===1?'':'s')+(pend?' (vuelve a usar «Completar datos» después)':'')+'.'+
+            (ok?' Como cambió la referencia de mercado de algunos juguetes, usa «Recalcular precios mínimos» (en Valor del pallet) o aplica el costeo.':'');
+          cargar();
+        }
+        sig();
+      });
+    });
+}
+
 /* ---- borrar todos los datos (Ajustes) ---- */
 function borrarTodoForm(){
   var s=stats(),nP=palletsLista().length,nV=s.V.length;
@@ -1144,6 +1190,7 @@ document.addEventListener('click',function(e){
   var act=t.dataset.act;
   if(act==='nuevoProducto')productoForm();
   else if(act==='borrarTodo')borrarTodoForm();
+  else if(act==='completarTodos')completarTodosForm();
   else if(act==='nuevaVenta'){if(!list('productos').length){toast('Primero agreguen juguetes al inventario');go('inventario')}else ventaForm()}
   else if(act==='nuevoGasto')gastoForm();
   else if(act==='nuevaSemana')semanaForm(D.semanas[monday(today())]?monday(today()):null);
