@@ -986,15 +986,19 @@ function escanearForm(){
   openModal(head('Escanear código de barras')+'<form style="display:flex;flex-direction:column;gap:12px">'+
     '<p class="small muted">Escaneen la caja con el lector o, en el celular, con <b>Cámara</b> (toma la foto del código). Si el juguete ya está en el inventario <b>se le suma una pieza</b> y puedes seguir escaneando; si no, se busca en UPCitemdb y se abre el alta con los datos encontrados.</p>'+
     '<div class="bc"><input class="inp mono" id="scCode" inputmode="numeric" autocomplete="off" maxlength="20" placeholder="Código de barras" style="font-size:1.2rem">'+(window.PCCam?PCCam.boton():'')+'</div>'+
-    '<div id="scRes"></div><div class="pf"><span></span><div class="row"><button class="btn" type="button" data-close2>Cancelar</button><button class="btn primary" type="submit" id="scGo">Buscar</button></div></div></form>',function(el){
-      var inp=el.querySelector('#scCode'),r=el.querySelector('#scRes'),go=el.querySelector('#scGo');
+    '<p class="small muted" id="scCupo"></p><div id="scRes"></div><div class="pf"><span></span><div class="row"><button class="btn" type="button" data-close2>Cancelar</button><button class="btn primary" type="submit" id="scGo">Buscar</button></div></div></form>',function(el){
+      var inp=el.querySelector('#scCode'),r=el.querySelector('#scRes'),go=el.querySelector('#scGo'),cupo=el.querySelector('#scCupo');
+      function verCupo(){api('GET','codigo-barras-estado').then(function(x){if(!cupo.isConnected)return;
+        cupo.innerHTML=x.agotadoHasta?'<span class="tag-w">UPCitemdb sin consultas</span> se reinicia el '+esc(new Date(x.agotadoHasta).toLocaleString('es-MX',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}))+' h. Los juguetes ya registrados se siguen sumando sin consultas; los nuevos se buscan en Open Products Facts.'
+          :(x.restantes!=null?'UPCitemdb: quedan <b>'+num(x.restantes)+'</b> consultas gratuitas hoy (solo gastan los códigos nuevos).':'')},function(){})}
+      verCupo();
       if(window.PCCam)PCCam.conectar(el,function(c){inp.value=c;go.disabled=false;el.querySelector('form').requestSubmit()},function(h){r.innerHTML=h});
       wireForm(el,function(){
         var code=inp.value.trim();if(!code)return;go.disabled=true;r.innerHTML='<p class="small muted">Buscando…</p>';
-        buscarBarras(code).then(function(res){
+        buscarBarras(code).then(function(res){verCupo();
           if(res.origen==='inventario')return sumarPieza(res.producto,el,inp,r,go);
           productoForm(null,{codigoBarras:res.codigo,resultado:res});
-        },function(e){go.disabled=false;r.innerHTML='<p class="warnline bad">'+esc((e&&e.mensaje)||'No se pudo buscar.')+'</p>'+buscarCodigoEnWeb(code)+'<p class="small"><button class="lnk" type="button" id="scManual">Dar de alta a mano con este código</button></p>';
+        },function(e){verCupo();go.disabled=false;r.innerHTML='<p class="warnline bad">'+esc((e&&e.mensaje)||'No se pudo buscar.')+'</p>'+buscarCodigoEnWeb(code)+'<p class="small"><button class="lnk" type="button" id="scManual">Dar de alta a mano con este código</button></p>';
           r.querySelector('#scManual').addEventListener('click',function(){productoForm(null,{codigoBarras:code})});inp.select()});
       });
     });

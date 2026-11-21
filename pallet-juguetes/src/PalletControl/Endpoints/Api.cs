@@ -196,6 +196,12 @@ public static class Api
         api.MapPost("/productos/importar", (List<ProductoIn> filas, string? palletId, AppDbContext db) => Bloqueado(() => Importar(db, filas, palletId)));
 
         // ---------- Código de barras: inventario propio y, si no está, UPCitemdb ----------
+        // Estado del límite gratuito de UPCitemdb (para mostrarlo al escanear).
+        api.MapGet("/codigo-barras-estado", () => Results.Ok(new
+        {
+            restantes = BuscadorCodigoBarras.ConsultasRestantes,
+            agotadoHasta = BuscadorCodigoBarras.LimiteHastaUtc,
+        }));
         api.MapGet("/codigo-barras/{codigo}", async (string codigo, AppDbContext db, BuscadorCodigoBarras b, CancellationToken ct) =>
         {
             try { return Results.Ok(await b.BuscarAsync(db, codigo, ct)); }

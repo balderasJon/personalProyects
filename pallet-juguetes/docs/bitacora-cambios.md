@@ -2,6 +2,15 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-21 · Respeto del límite de UPCitemdb
+
+**Cambiado**
+- Verificado con los encabezados reales de la API: el plan gratuito es de 100 consultas por IP y responde 429 con `X-RateLimit-Reset` (hora de reinicio) y `Retry-After`. Su documentación advierte que seguir consultando estando bloqueado puede alargar el bloqueo.
+- Al recibir 429 la aplicación guarda la hora de reinicio y **no vuelve a consultar UPCitemdb hasta entonces**; los códigos nuevos se buscan en Open Products Facts y el mensaje dice a qué hora se reinicia.
+- `GET /api/codigo-barras-estado` y aviso en «Escanear código»: «quedan N consultas gratuitas hoy» (de `X-RateLimit-Remaining`) o «sin consultas, se reinicia el …».
+
+**Impacto en datos**: ninguno.
+
 ## 2026-11-21 · Segunda fuente para códigos de barras
 
 **Agregado (a petición del usuario: varios juguetes no traían resultados)**

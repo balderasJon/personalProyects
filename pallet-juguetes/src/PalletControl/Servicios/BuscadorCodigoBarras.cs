@@ -42,7 +42,7 @@ public record ProductoExterno(
 public record Sugerencia(decimal? PrecioLista, decimal? PrecioObjetivo, decimal? PrecioMinimo, List<string> Explicacion, decimal? PrecioListaUsd = null, decimal? ValorReferencia = null);
 
 public record ResultadoBusqueda(
-    string Origen,                 // inventario | upcitemdb | ninguno
+    string Origen,                 // inventario | upcitemdb | openproductsfacts | ninguno
     string Codigo,
     Producto? Producto,            // cuando ya existe en el inventario
     ProductoExterno? Externo,      // cuando viene de UPCitemdb
@@ -212,8 +212,22 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
         [JsonPropertyName("image_url")] public string? ImageUrl { get; set; }
     }
 
+    /// <summary>
+    /// Hora (UTC) hasta la que UPCitemdb dijo que el límite está agotado (encabezados X-RateLimit-Reset / Retry-After).
+    /// Mientras tanto no se le vuelve a consultar: su documentación advierte que seguir consultando alarga el bloqueo.
+    /// </summary>
+    private static DateTime? limiteHastaUtc;
+    /// <summary>Consultas que UPCitemdb dijo que quedan hoy (X-RateLimit-Remaining de la última respuesta), si las informó.</summary>
+    public static int? ConsultasRestantes { get; private set; }
+    public static DateTime? LimiteHastaUtc => limiteHastaUtc is { } h && h > DateTime.UtcNow ? h : null;
+
+    private static ErrorBusqueda ErrorLimite(DateTime hastaUtc) => new(
+        $"Se agotaron las consultas gratuitas de UPCitemdb (100 por día, por conexión a internet). Se reinician a las {hastaUtc.ToLocalTime():HH:mm} " +
+        $"del {hastaUtc.ToLocalTime():dd/MM}. Mientras tanto se consulta Open Products Facts; los juguetes ya registrados se siguen sumando sin consultas.", 429);
+
     private async Task<ProductoExterno?> ConsultarUpcItemDbAsync(string codigo, CancellationToken ct)
     {
+        if (LimiteHastaUtc is { } bloqueo) throw ErrorLimite(bloqueo);
         var url = config["CodigoBarras:UrlUpcItemDb"] ?? "https://api.upcitemdb.com/prod/trial/lookup";
         HttpResponseMessage r;
         try
@@ -227,7 +241,20 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
         }
 
         if (r.StatusCode == HttpStatusCode.TooManyRequests)
-            throw new ErrorBusqueda("Se alcanzó el límite gratuito de consultas de UPCitemdb (100 por día). Intenten más tarde o capturen los datos a mano.", 429);
+        {
+            DateTime hasta = DateTime.UtcNow.AddHours(1);
+            if (r.Headers.TryGetValues("X-RateLimit-Reset", out var rs) && long.TryParse(rs.FirstOrDefault(), out var unix) && unix > 0)
+                hasta = DateTimeOffset.FromUnixTimeSeconds(unix).UtcDateTime;
+            else if (r.Headers.RetryAfter?.Delta is { } delta) hasta = DateTime.UtcNow + delta;
+            else if (r.Headers.TryGetValues("Retry-After", out var ra) && double.TryParse(ra.FirstOrDefault(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var seg))
+                hasta = DateTime.UtcNow.AddSeconds(seg);
+            if (hasta > DateTime.UtcNow.AddDays(2)) hasta = DateTime.UtcNow.AddDays(1);   // por si llega un valor fuera de rango
+            limiteHastaUtc = hasta;
+            log.LogWarning("UPCitemdb: límite agotado hasta {Hasta:u}", hasta);
+            throw ErrorLimite(hasta);
+        }
+        if (r.Headers.TryGetValues("X-RateLimit-Remaining", out var rem) && int.TryParse(rem.FirstOrDefault(), out var quedan))
+            ConsultasRestantes = quedan;
         if (r.StatusCode == HttpStatusCode.NotFound) return null;
         var cuerpo = await r.Content.ReadAsStringAsync(ct);
         UpcRespuesta? data;
