@@ -2,6 +2,19 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-21 · Segunda fuente para códigos de barras
+
+**Agregado (a petición del usuario: varios juguetes no traían resultados)**
+- **Open Products Facts** (API v2 `https://world.openproductsfacts.org/api/v2/product/<código>.json`, gratuita y sin registro) como segunda fuente: se consulta si UPCitemdb no tiene el código, si se agotó su límite diario (429) o si no responde. Llena nombre, marca, categoría, contenido e imágenes; **no trae precios**.
+- Verificado el 2026-11-21: la API responde; su categoría de juguetes tenía 101 productos, así que su cobertura es baja.
+- Los «no encontrado» guardados antes se vuelven a preguntar solo a Open Products Facts (sin gastar consultas de UPCitemdb); el resultado queda en la caché con su fuente.
+- Si ninguna base lo tiene: botones para buscar el código en Google y en Amazon México (búsqueda por código verificada).
+- Las pruebas automáticas no salen a internet (`CodigoBarras:UrlOpenProductsFacts` a un puerto cerrado).
+
+**Opciones con más cobertura (no implementadas: requieren registro y pago)**: plan de pago de UPCitemdb, Barcode Lookup, Go-UPC, UPC Database.
+
+**Impacto en datos**: ninguno en el esquema.
+
 ## 2026-11-20 · Escanear un código existente suma una pieza
 
 **Cambiado (a petición del usuario)**

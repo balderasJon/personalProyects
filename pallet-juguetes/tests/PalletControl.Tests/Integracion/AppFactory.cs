@@ -23,6 +23,7 @@ public class AppFactory : WebApplicationFactory<Program>
         // Sin internet en las pruebas: las URL externas apuntan a un puerto cerrado.
         b.UseSetting("TipoCambio:UrlDolarDof", "http://127.0.0.1:9/");
         b.UseSetting("CodigoBarras:UrlUpcItemDb", "http://127.0.0.1:9/");
+        b.UseSetting("CodigoBarras:UrlOpenProductsFacts", "http://127.0.0.1:9");
         b.UseSetting("Traduccion:UrlMyMemory", "http://127.0.0.1:9/");
     }
 

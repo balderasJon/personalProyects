@@ -122,6 +122,8 @@ Solo se llenan los campos vacíos o los que llenó una sugerencia y no has edita
 
 **Con el celular (sin lector):** en «Escanear código» o en el alta del juguete, toca **Cámara**: el celular abre su app de cámara, tomas la foto del código y la aplicación lo lee y lo busca. Lee EAN-13, EAN-8, UPC-A, UPC-E y Code 128. Funciona por la dirección de red local (sin HTTPS) y sin internet en el celular; en la computadora el mismo botón se llama «Desde foto». Usa el lector del navegador cuando existe (Chrome en Android) y, si no, la librería ZXing incluida en `wwwroot/vendor/zxing` (Apache-2.0).
 
+**Si UPCitemdb no lo tiene:** se consulta en automático **Open Products Facts** (base abierta y gratuita de productos no alimenticios; tiene pocos juguetes y no trae precios). También se usa si ya se agotaron las 100 consultas diarias de UPCitemdb o no responde. Si ninguna de las dos lo tiene, aparecen botones para buscar el código en **Google** y **Amazon México** y copiar nombre y precio.
+
 **Limitaciones que hay que conocer:**
 
 - El plan gratuito de UPCitemdb permite **100 consultas por día**. Cada código se guarda 30 días en la base local, así que volver a buscarlo no gasta consulta (`appsettings.json` → `CodigoBarras:DiasCache`).

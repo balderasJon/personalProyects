@@ -923,6 +923,10 @@ function guardarImagenes(pid,G){
 
 /* ---- código de barras ---- */
 function buscarBarras(code){return api('GET','codigo-barras/'+encodeURIComponent(code))}
+/** Botones para buscar el código en la web cuando ninguna base lo tiene (búsquedas verificadas el 2026-11-20). */
+function buscarCodigoEnWeb(code){if(!code)return '';var q=encodeURIComponent(code);
+  return '<p class="small">Búscalo por su código: <a class="btn sm" href="https://www.google.com/search?q='+q+'" target="_blank" rel="noopener noreferrer">Google ↗</a> '+
+    '<a class="btn sm" href="https://www.amazon.com.mx/s?k='+q+'" target="_blank" rel="noopener noreferrer">Amazon México ↗</a> y copia el nombre y el precio que encuentres.</p>'}
 function fdt(iso){try{return new Date(iso).toLocaleString('es-MX',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch(e){return ''}}
 function wireBarras(el,id,chk,inicial,G){
   var inp=el.querySelector('#pBar'),btn=el.querySelector('#pBarBtn'),res=el.querySelector('#pBarRes');
@@ -941,7 +945,8 @@ function wireBarras(el,id,chk,inicial,G){
         :'<p class="warnline bad">Ya está registrado en el juguete <b>'+esc(p.codigo+' · '+p.nombre)+'</b>. No lo des de alta otra vez: aumenta la cantidad de ese juguete. <button class="lnk" type="button" data-editp="'+esc(p.id)+'">Abrir ese juguete</button></p>';
       return;
     }
-    if(r.origen==='ninguno'){res.innerHTML='<p class="warnline">'+esc(r.aviso)+'</p>';return}
+    if(r.origen==='ninguno'){res.innerHTML='<p class="warnline">'+esc(r.aviso)+'</p>'+buscarCodigoEnWeb(r.codigo);return}
+    var fuenteN=r.origen==='openproductsfacts'?'Open Products Facts':'UPCitemdb';
     var e=r.externo,sg=r.sugerencia||{},tieneMx=+campo('precioMexico').value>0;
     var nombre=e.marca&&e.titulo.toLowerCase().indexOf(e.marca.toLowerCase())<0?e.marca+' '+e.titulo:e.titulo;
     var datos={nombre:nombre,categoria:e.categoria,caracteristicas:e.caracteristicasEs||e.caracteristicas,precioLista:sg.precioLista,
@@ -956,14 +961,14 @@ function wireBarras(el,id,chk,inicial,G){
     G.upc=(e.imagenes&&e.imagenes.length?e.imagenes:(e.imagen?[e.imagen]:[])).slice(0,6);G.render();
     var rango=(e.precioBajo!=null||e.precioAlto!=null)?'Precios registrados en tiendas de EE. UU.: '+(e.moneda==='USD'?'US$':e.moneda+' ')+[e.precioBajo,e.precioAlto].filter(function(x){return x!=null}).map(function(x){return (+x).toFixed(2)}).join(' – ')+(e.ofertas?' · '+e.ofertas+' oferta'+(e.ofertas>1?'s':''):''):'Sin precios registrados.';
     res.innerHTML='<div class="bcres">'+(e.imagen?'<img class="bcimg" src="'+esc(e.imagen)+'" alt="" referrerpolicy="no-referrer" onerror="this.remove()">':'')+
-      '<div class="bcinfo"><p class="small"><span class="pill nuevo">UPCitemdb</span> <b>'+esc(e.titulo)+'</b></p>'+
+      '<div class="bcinfo"><p class="small"><span class="pill nuevo">'+esc(fuenteN)+'</span> <b>'+esc(e.titulo)+'</b></p>'+(r.aviso?'<p class="warnline small">'+esc(r.aviso)+'</p>':'')+
       '<p class="small muted">'+[e.marca,e.modelo,e.categoria].filter(Boolean).map(esc).join(' · ')+'</p>'+
       '<p class="small muted">'+esc(rango)+'</p>'+
       '<ul class="small sug">'+(sg.explicacion||[]).map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>'+
       (r.avisoTraduccion?'<p class="warnline">'+esc(r.avisoTraduccion)+'</p>':(e.caracteristicasEs?'<p class="small muted">Características traducidas al español con MyMemory: revísalas.</p>':''))+
       '<p class="small"><b>Busca y captura el precio en México</b> (botones “Buscar” de cada tienda) para que el objetivo y el mínimo se sugieran con él.</p>'+
       '<p class="small muted">'+(llenos.length?'Se llenaron: '+esc(llenos.join(', '))+'. ':'No se cambió ningún campo porque ya tenían datos. ')+
-      (G.upc.length?'Las imágenes se guardarán en tu computadora al guardar el juguete. ':'UPCitemdb no tiene imágenes de este juguete. ')+
+      (G.upc.length?'Las imágenes se guardarán en tu computadora al guardar el juguete. ':esc(fuenteN)+' no tiene imágenes de este juguete. ')+
       'Son sugerencias: revísalas antes de guardar. Consultado '+esc(fdt(r.consultadoUtc))+(r.desdeCache?' (guardado, sin gastar consulta)':'')+'.</p>'+
       '<div class="row"><button class="btn sm" type="button" id="pBarForzar">Reemplazar todos los campos con estos datos</button></div></div></div>';
     res.querySelector('#pBarForzar').addEventListener('click',function(){var l=aplicar(datos,true);toast(l.length?'Campos reemplazados':'No hay datos para reemplazar')});
@@ -989,7 +994,7 @@ function escanearForm(){
         buscarBarras(code).then(function(res){
           if(res.origen==='inventario')return sumarPieza(res.producto,el,inp,r,go);
           productoForm(null,{codigoBarras:res.codigo,resultado:res});
-        },function(e){go.disabled=false;r.innerHTML='<p class="warnline bad">'+esc((e&&e.mensaje)||'No se pudo buscar.')+'</p><p class="small"><button class="lnk" type="button" id="scManual">Dar de alta a mano con este código</button></p>';
+        },function(e){go.disabled=false;r.innerHTML='<p class="warnline bad">'+esc((e&&e.mensaje)||'No se pudo buscar.')+'</p>'+buscarCodigoEnWeb(code)+'<p class="small"><button class="lnk" type="button" id="scManual">Dar de alta a mano con este código</button></p>';
           r.querySelector('#scManual').addEventListener('click',function(){productoForm(null,{codigoBarras:code})});inp.select()});
       });
     });

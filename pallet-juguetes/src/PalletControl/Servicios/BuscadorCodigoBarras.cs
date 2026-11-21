@@ -60,6 +60,9 @@ public class ErrorBusqueda(string mensaje, int estado) : Exception(mensaje)
 public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogger<BuscadorCodigoBarras> log, TipoCambioDof tipoCambio, Traductor traductor)
 {
     private const string Fuente = "upcitemdb";
+    /// <summary>Segunda fuente (2026-11-20): Open Products Facts, base abierta de productos no alimenticios, gratuita y
+    /// sin registro. Tiene pocos juguetes y no trae precios; se consulta solo si UPCitemdb no encontró el código.</summary>
+    private const string FuenteOpf = "openproductsfacts";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     public static string Normalizar(string? codigo) => new string((codigo ?? "").Where(char.IsLetterOrDigit).ToArray());
@@ -93,7 +96,19 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
         }
         else
         {
-            ext = await ConsultarUpcItemDbAsync(codigo, ct);
+            try { ext = await ConsultarUpcItemDbAsync(codigo, ct); }
+            catch (ErrorBusqueda e) when (e.Estado is 429 or 503)
+            {
+                // Sin UPCitemdb (límite diario o sin conexión): se intenta la segunda fuente antes de rendirse.
+                var alterno = await ConsultarOpenProductsFactsAsync(codigo, ct);
+                if (alterno is null) throw;
+                if (cache is null) { cache = new ConsultaCodigoBarras { Codigo = codigo }; db.ConsultasCodigoBarras.Add(cache); }
+                cache.Fuente = FuenteOpf; cache.Encontrado = true; cache.Respuesta = JsonSerializer.Serialize(alterno, Json); cache.ConsultadoUtc = DateTime.UtcNow;
+                await db.SaveChangesAsync(ct);
+                await tipoCambio.AsegurarHoyAsync(db, ct);
+                return new ResultadoBusqueda(FuenteOpf, codigo, null, alterno, await SugerirAsync(db, alterno, ct), false, cache.ConsultadoUtc,
+                    e.Message + " Se encontró en Open Products Facts.");
+            }
             if (cache is null) { cache = new ConsultaCodigoBarras { Codigo = codigo }; db.ConsultasCodigoBarras.Add(cache); }
             cache.Fuente = Fuente;
             cache.Encontrado = ext is not null;
@@ -103,9 +118,24 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
             desdeCache = false;
         }
 
+        // Segunda fuente: si UPCitemdb no lo tiene (también para «no encontrado» guardado antes de existir esta fuente),
+        // se pregunta una vez a Open Products Facts; el resultado queda en la caché con su fuente.
+        if (ext is null && cache.Fuente == Fuente)
+        {
+            var opf = await ConsultarOpenProductsFactsAsync(codigo, ct);
+            cache.Fuente = FuenteOpf;   // ya se consultaron las dos fuentes
+            if (opf is not null)
+            {
+                ext = opf; cache.Encontrado = true; cache.Respuesta = JsonSerializer.Serialize(opf, Json);
+                cache.ConsultadoUtc = DateTime.UtcNow; desdeCache = false;
+            }
+            await db.SaveChangesAsync(ct);
+        }
+
         if (ext is null)
             return new ResultadoBusqueda("ninguno", codigo, null, null, null, desdeCache, cache.ConsultadoUtc,
-                "El código no está en el inventario ni en UPCitemdb. Capturen los datos a mano.");
+                "El código no está en el inventario, ni en UPCitemdb ni en Open Products Facts. Búscalo en Google o Amazon con los botones de abajo, o captura los datos a mano.");
+        var fuente = cache.Fuente == FuenteOpf ? FuenteOpf : Fuente;
 
         // Características en español: se traducen una vez y se guardan en la caché.
         string? avisoTrad = null;
@@ -122,7 +152,7 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
 
         await tipoCambio.AsegurarHoyAsync(db, ct);
         var sug = await SugerirAsync(db, ext, ct);
-        return new ResultadoBusqueda(Fuente, codigo, null, ext, sug, desdeCache, cache.ConsultadoUtc, null, avisoTrad);
+        return new ResultadoBusqueda(fuente, codigo, null, ext, sug, desdeCache, cache.ConsultadoUtc, null, avisoTrad);
     }
 
     /// <summary>URLs de imagen que UPCitemdb dio para este código (desde la caché local).</summary>
@@ -134,6 +164,52 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
         if (e is null) return [];
         var lista = e.Imagenes is { Count: > 0 } ? e.Imagenes : (string.IsNullOrEmpty(e.Imagen) ? [] : [e.Imagen]);
         return lista;
+    }
+
+    /// <summary>
+    /// Open Products Facts (API v2, https://world.openproductsfacts.org/api/v2/product/{código}.json): status 1 = encontrado.
+    /// Si no responde o no lo tiene, devuelve null (no impide capturar a mano). No trae precios.
+    /// </summary>
+    private async Task<ProductoExterno?> ConsultarOpenProductsFactsAsync(string codigo, CancellationToken ct)
+    {
+        var baseUrl = (config["CodigoBarras:UrlOpenProductsFacts"] ?? "https://world.openproductsfacts.org").TrimEnd('/');
+        try
+        {
+            using var r = await http.GetAsync($"{baseUrl}/api/v2/product/{Uri.EscapeDataString(codigo)}.json?fields=code,product_name,product_name_es,generic_name,brands,categories,quantity,image_front_url,image_url", ct);
+            if (!r.IsSuccessStatusCode) return null;   // 404 = no lo tiene
+            var d = JsonSerializer.Deserialize<OpfRespuesta>(await r.Content.ReadAsStringAsync(ct), Json);
+            var p = d?.Product;
+            if (d?.Status != 1 || p is null) return null;
+            var titulo = new[] { p.ProductNameEs, p.ProductName, p.GenericName }.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+            if (titulo is null) return null;
+            var imagenes = new[] { p.ImageFrontUrl, p.ImageUrl }.Where(x => !string.IsNullOrWhiteSpace(x) && x!.StartsWith("https://")).Select(x => x!).Distinct().ToList();
+            return new ProductoExterno(
+                Recortar(titulo, 120), Recortar((p.Brands ?? "").Split(',')[0], 60), Recortar(UltimaCategoria((p.Categories ?? "").Replace(',', '>')), 60),
+                "", imagenes.FirstOrDefault() ?? "", null, null, "", 0, Tamano: Recortar(p.Quantity, 60), Imagenes: imagenes);
+        }
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            log.LogWarning(e, "Falló la consulta a Open Products Facts");
+            return null;
+        }
+    }
+
+    private sealed class OpfRespuesta
+    {
+        public int Status { get; set; }
+        public OpfProducto? Product { get; set; }
+    }
+
+    private sealed class OpfProducto
+    {
+        [JsonPropertyName("product_name")] public string? ProductName { get; set; }
+        [JsonPropertyName("product_name_es")] public string? ProductNameEs { get; set; }
+        [JsonPropertyName("generic_name")] public string? GenericName { get; set; }
+        public string? Brands { get; set; }
+        public string? Categories { get; set; }
+        public string? Quantity { get; set; }
+        [JsonPropertyName("image_front_url")] public string? ImageFrontUrl { get; set; }
+        [JsonPropertyName("image_url")] public string? ImageUrl { get; set; }
     }
 
     private async Task<ProductoExterno?> ConsultarUpcItemDbAsync(string codigo, CancellationToken ct)
@@ -197,7 +273,9 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
         decimal? lista = null, objetivo = null, minimo = null, listaUsd = null, referencia = null;
 
         if (e.PrecioBajo is null && e.PrecioAlto is null)
-            notas.Add("UPCitemdb no tiene precios registrados para este código; no se sugieren precio de lista ni objetivo.");
+            notas.Add(e.Ofertas == 0 && e.Moneda.Length == 0
+                ? "Open Products Facts no trae precios: busca el precio en las tiendas (botones «Buscar») y captúralo para que se sugieran el objetivo y el mínimo."
+                : "UPCitemdb no tiene precios registrados para este código; no se sugieren precio de lista ni objetivo.");
         else if (e.Moneda != "USD")
             notas.Add($"Los precios vienen en {e.Moneda}; solo se convierten precios en USD.");
         else if (cfg.TipoCambioUsd <= 0)
