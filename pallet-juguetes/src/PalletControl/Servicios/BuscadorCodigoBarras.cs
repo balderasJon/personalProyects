@@ -70,13 +70,14 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
     /// <summary>Los EAN-8, UPC-A (12), EAN-13 y GTIN-14 son numéricos de 8 a 14 dígitos.</summary>
     public static bool EsConsultable(string codigo) => codigo.Length is >= 8 and <= 14 && codigo.All(char.IsAsciiDigit);
 
-    public async Task<ResultadoBusqueda> BuscarAsync(AppDbContext db, string codigoCrudo, CancellationToken ct)
+    /// <param name="omitirInventario">true para «Completar datos» de un juguete que ya tiene el código: se consulta fuera.</param>
+    public async Task<ResultadoBusqueda> BuscarAsync(AppDbContext db, string codigoCrudo, CancellationToken ct, bool omitirInventario = false)
     {
         var codigo = Normalizar(codigoCrudo);
         if (codigo.Length == 0) throw new ErrorBusqueda("Capturen o escaneen un código de barras.", 400);
 
         // 1) Inventario propio.
-        var propio = await db.Productos.AsNoTracking().FirstOrDefaultAsync(p => p.CodigoBarras == codigo, ct);
+        var propio = omitirInventario ? null : await db.Productos.AsNoTracking().FirstOrDefaultAsync(p => p.CodigoBarras == codigo, ct);
         if (propio is not null)
             return new ResultadoBusqueda("inventario", codigo, propio, null, null, false, null, null);
 
@@ -134,7 +135,7 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
 
         if (ext is null)
             return new ResultadoBusqueda("ninguno", codigo, null, null, null, desdeCache, cache.ConsultadoUtc,
-                "El código no está en el inventario, ni en UPCitemdb ni en Open Products Facts. Búscalo en Google o Amazon con los botones de abajo, o captura los datos a mano.");
+                (omitirInventario ? "No se encontraron datos de este código en UPCitemdb ni en Open Products Facts." : "El código no está en el inventario, ni en UPCitemdb ni en Open Products Facts.") + " Búscalo en Google o Amazon con los botones de abajo, o captura los datos a mano.");
         var fuente = cache.Fuente == FuenteOpf ? FuenteOpf : Fuente;
 
         // Características en español: se traducen una vez y se guardan en la caché.

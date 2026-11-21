@@ -858,8 +858,19 @@ function detalleForm(id){
     (p.accesoriosIncluidos?'<div><h3>Accesorios incluidos</h3><p class="small">'+esc(p.accesoriosIncluidos)+'</p></div>':'')+
     (p.caracteristicas?'<div><h3>Características</h3><p class="pre small">'+esc(p.caracteristicas)+'</p></div>':'')+
     (p.notas?'<div><h3>Notas</h3><p class="pre small">'+esc(p.notas)+'</p></div>':'')+
-    '<div class="pf"><span></span><div class="row"><button class="btn" type="button" data-publicar="'+esc(id)+'"'+(disp<=0?' disabled':'')+'>Preparar publicación</button><button class="btn" type="button" data-sell="'+esc(id)+'"'+(disp<=0?' disabled':'')+'>Vender</button><button class="btn primary" type="button" data-editp="'+esc(id)+'">Editar</button></div></div>',
+    '<div class="pf">'+(p.codigoBarras?'<button class="btn" type="button" id="detCompletar" title="Consulta el código de barras y llena solo los campos vacíos (no cambia lo que ya capturaste)">Completar datos desde UPCitemdb</button>':'<span></span>')+'<div class="row"><button class="btn" type="button" data-publicar="'+esc(id)+'"'+(disp<=0?' disabled':'')+'>Preparar publicación</button><button class="btn" type="button" data-sell="'+esc(id)+'"'+(disp<=0?' disabled':'')+'>Vender</button><button class="btn primary" type="button" data-editp="'+esc(id)+'">Editar</button></div></div>',
   function(el){
+    var bc=el.querySelector('#detCompletar');
+    if(bc)bc.addEventListener('click',function(){bc.disabled=true;bc.textContent='Consultando…';
+      api('POST','productos/'+encodeURIComponent(id)+'/completar-datos').then(function(r){
+        var f=r.fuente==='openproductsfacts'?'Open Products Facts':'UPCitemdb';
+        return cargar().then(function(){detalleForm(id);
+          toast(r.llenos.length||r.fotos?'Datos de '+f+': '+r.llenos.concat(r.fotos?[r.fotos+' foto'+(r.fotos>1?'s':'')]:[]).join(', ')+'.':'No había campos vacíos que llenar ('+f+': «'+r.titulo+'»).')});
+      },function(e){bc.disabled=false;bc.textContent='Completar datos desde UPCitemdb';
+        var m=(e&&e.mensaje)||'No se pudo consultar.';toast(m);
+        var box=el.querySelector('#detCompMsg');if(!box){box=document.createElement('div');box.id='detCompMsg';bc.closest('.pf').insertAdjacentElement('beforebegin',box)}
+        box.innerHTML='<p class="warnline">'+esc(m)+'</p>'+buscarCodigoEnWeb(p.codigoBarras)});
+    });
     var car=el.querySelector('#car'),fotos=el.querySelectorAll('.car-vp img'),dots=el.querySelectorAll('.car-dots button'),cnt=el.querySelector('#carN');
     function ver(n){if(!fotos.length)return;k=(n+fotos.length)%fotos.length;
       fotos.forEach(function(f,i){f.hidden=i!==k});dots.forEach(function(d,i){if(i===k)d.setAttribute('aria-current','true');else d.removeAttribute('aria-current')});

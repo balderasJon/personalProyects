@@ -124,6 +124,8 @@ Solo se llenan los campos vacíos o los que llenó una sugerencia y no has edita
 
 **Si UPCitemdb no lo tiene:** se consulta en automático **Open Products Facts** (base abierta y gratuita de productos no alimenticios; tiene pocos juguetes y no trae precios). También se usa si ya se agotaron las 100 consultas diarias de UPCitemdb o no responde. Si ninguna de las dos lo tiene, aparecen botones para buscar el código en **Google** y **Amazon México** y copiar nombre y precio.
 
+**Completar después:** si diste de alta un juguete a mano (por ejemplo, sin consultas ese día), abre su ficha y usa **Completar datos desde UPCitemdb**: consulta su código y llena **solo los campos vacíos** (categoría, marca, modelo, características, peso, medidas, referencia de mercado, precio de lista y fotos si no tiene). No cambia lo que ya capturaste. Gasta una consulta si el código no estaba guardado.
+
 **Limitaciones que hay que conocer:**
 
 - El plan gratuito de UPCitemdb permite **100 consultas por día**. Cada código se guarda 30 días en la base local, así que volver a buscarlo no gasta consulta (`appsettings.json` → `CodigoBarras:DiasCache`).

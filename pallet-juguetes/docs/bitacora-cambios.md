@@ -2,6 +2,16 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-21 · «Completar datos desde UPCitemdb»
+
+**Agregado (a petición del usuario)**
+- Botón en la ficha del juguete (si tiene código de barras): consulta el código (UPCitemdb y, si no, Open Products Facts; respeta la caché y el límite diario) y llena **solo campos vacíos**: nombre (solo si está vacío o es el mismo código), categoría, marca, modelo, características, peso, medidas, referencia de mercado (si no hay precio en México), precio de lista, y hasta 3 fotos si el juguete no tiene ninguna.
+- `POST /api/productos/{id}/completar-datos`; la descarga de fotos se comparte con «imágenes de UPCitemdb».
+- Sin datos: aviso con botones para buscar el código en Google y Amazon México.
+- Nota: llenar la referencia de mercado cambia el reparto del costo estimado; tras completar varios juguetes conviene «Recalcular precios mínimos» o aplicar el costeo.
+
+**Impacto en datos**: solo en el juguete que se completa.
+
 ## 2026-11-21 · Respeto del límite de UPCitemdb
 
 **Cambiado**

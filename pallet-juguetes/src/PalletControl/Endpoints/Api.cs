@@ -111,6 +111,55 @@ public static class Api
             return Results.Ok(new { guardadas, rechazadas });
         }).DisableAntiforgery();
 
+        // «Completar datos desde UPCitemdb» (2026-11-21): para juguetes dados de alta a mano (p. ej. sin consultas ese día).
+        // Consulta el código del juguete (UPCitemdb y, si no, Open Products Facts) y llena SOLO los campos vacíos.
+        api.MapPost("/productos/{id}/completar-datos", async (string id, AppDbContext db, BuscadorCodigoBarras b, AlmacenImagenes alm,
+            IHttpClientFactory hf, ILoggerFactory lf, CancellationToken ct) =>
+        {
+            var p = await db.Productos.FindAsync([id], ct);
+            if (p is null) return Results.NotFound(new Error("El juguete ya no existe."));
+            if (string.IsNullOrWhiteSpace(p.CodigoBarras)) return Mal("Este juguete no tiene código de barras: captúralo en Editar.");
+            ResultadoBusqueda r;
+            try { r = await b.BuscarAsync(db, p.CodigoBarras, ct, omitirInventario: true); }
+            catch (ErrorBusqueda e) { return Results.Json(new Error(e.Message), statusCode: e.Estado); }
+            if (r.Externo is not { } e2)
+                return Results.Json(new Error((r.Aviso ?? "No se encontraron datos para este código.") ), statusCode: 404);
+
+            var llenos = new List<string>();
+            void Texto(string actual, string? nuevo, Action<string> poner, string nombre)
+            { if (string.IsNullOrWhiteSpace(actual) && !string.IsNullOrWhiteSpace(nuevo)) { poner(nuevo.Trim()); llenos.Add(nombre); } }
+            void Num(decimal? actual, decimal? nuevo, Action<decimal> poner, string nombre)
+            { if ((actual ?? 0) <= 0 && nuevo is > 0) { poner(nuevo.Value); llenos.Add(nombre); } }
+
+            var titulo = !string.IsNullOrWhiteSpace(e2.Marca) && !e2.Titulo.Contains(e2.Marca, StringComparison.OrdinalIgnoreCase) ? $"{e2.Marca} {e2.Titulo}" : e2.Titulo;
+            if (string.IsNullOrWhiteSpace(p.Nombre) || p.Nombre.Trim() == p.CodigoBarras) { p.Nombre = titulo.Length > 120 ? titulo[..120] : titulo; llenos.Add("Nombre"); }
+            Texto(p.Categoria, e2.Categoria, v => p.Categoria = v, "Categoría");
+            Texto(p.Marca, e2.Marca, v => p.Marca = v, "Marca");
+            Texto(p.Modelo, e2.Modelo, v => p.Modelo = v, "Modelo");
+            Texto(p.Caracteristicas, e2.CaracteristicasEs ?? e2.Caracteristicas, v => p.Caracteristicas = v.Length > 2000 ? v[..2000] : v, "Características");
+            Num(p.PesoKg, e2.PesoKg, v => p.PesoKg = v, "Peso");
+            Num(p.LargoCm, e2.LargoCm, v => p.LargoCm = v, "Largo");
+            Num(p.AnchoCm, e2.AnchoCm, v => p.AnchoCm = v, "Ancho");
+            Num(p.AltoCm, e2.AltoCm, v => p.AltoCm = v, "Alto");
+            if ((p.ValorReferencia ?? 0) <= 0 && r.Sugerencia?.ValorReferencia is > 0 && p.PrecioMexico <= 0)
+            { p.ValorReferencia = r.Sugerencia.ValorReferencia; p.ValorReferenciaOrigen = r.Origen; llenos.Add("Referencia de mercado"); }
+            if (p.PrecioLista <= 0 && r.Sugerencia?.PrecioLista is > 0)
+            {
+                p.PrecioLista = r.Sugerencia.PrecioLista.Value; llenos.Add("Precio de lista");
+                if (r.Sugerencia.PrecioListaUsd is > 0) { p.PrecioListaUsd = r.Sugerencia.PrecioListaUsd; p.PrecioListaTipoCambio = (await db.Configuracion.FindAsync([1], ct))?.TipoCambioUsd; }
+            }
+            if (llenos.Count > 0) await db.GuardarAsync();
+
+            // Fotos: solo si el juguete no tiene ninguna.
+            var fotos = 0;
+            if (!await db.Imagenes.AnyAsync(x => x.ProductoId == id, ct))
+            {
+                var urls = await BuscadorCodigoBarras.ImagenesEnCacheAsync(db, p.CodigoBarras, ct);
+                if (urls.Count > 0) { (fotos, _) = await DescargarImagenesAsync(db, alm, hf, lf, id, urls, ct); if (fotos > 0) await db.GuardarAsync(); }
+            }
+            return Results.Ok(new { fuente = r.Origen, titulo, llenos, fotos, aviso = r.Aviso, desdeCache = r.DesdeCache });
+        });
+
         // Descarga a la PC las imágenes que UPCitemdb dio para el código de barras del juguete.
         api.MapPost("/productos/{id}/imagenes/upcitemdb", async (string id, AppDbContext db, AlmacenImagenes alm,
             IHttpClientFactory hf, ILoggerFactory lf, CancellationToken ct) =>
@@ -119,28 +168,7 @@ public static class Api
             if (p is null) return Results.NotFound(new Error("El juguete ya no existe."));
             var urls = await BuscadorCodigoBarras.ImagenesEnCacheAsync(db, p.CodigoBarras, ct);
             if (urls.Count == 0) return Mal("UPCitemdb no tiene imágenes para este código de barras.");
-            var http = hf.CreateClient("imagenes");
-            var guardadas = 0; var fallidas = 0;
-            foreach (var url in urls.Take(3))
-            {
-                if (await db.Imagenes.CountAsync(x => x.ProductoId == id, ct) >= AlmacenImagenes.MaximoPorJuguete) break;
-                try
-                {
-                    using var r = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
-                    if (!r.IsSuccessStatusCode) { fallidas++; continue; }
-                    await using var st = await r.Content.ReadAsStreamAsync(ct);
-                    var datos = await AlmacenImagenes.LeerLimitadoAsync(st, ct);
-                    var ext = datos is null ? null : AlmacenImagenes.Extension(datos);
-                    if (datos is null || ext is null) { fallidas++; continue; }
-                    await AgregarImagenAsync(db, alm, id, datos, ext, "upcitemdb", ct);
-                    guardadas++;
-                }
-                catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
-                {
-                    lf.CreateLogger("Imagenes").LogWarning(e, "No se pudo descargar {Url}", url);
-                    fallidas++;
-                }
-            }
+            var (guardadas, fallidas) = await DescargarImagenesAsync(db, alm, hf, lf, id, urls, ct);
             if (guardadas > 0) await db.GuardarAsync();
             return guardadas == 0
                 ? Results.Json(new Error("No se pudo descargar ninguna imagen de UPCitemdb (la tienda de origen la bloqueó o ya no existe). Puedes subir una foto."), statusCode: 502)
@@ -306,6 +334,35 @@ public static class Api
             corridas = estado,
             lotes = costos.Select(x => new { x.LoteId, x.CorridaId, x.Cantidad, x.CostoTotal, x.CostoUnitario, x.EsMerma, x.Comercializable }),
         };
+    }
+
+    /// <summary>Descarga a la PC hasta 3 imágenes del código de barras (las URL vienen de la caché de la consulta).</summary>
+    private static async Task<(int Guardadas, int Fallidas)> DescargarImagenesAsync(AppDbContext db, AlmacenImagenes alm, IHttpClientFactory hf,
+        ILoggerFactory lf, string id, List<string> urls, CancellationToken ct)
+    {
+        var http = hf.CreateClient("imagenes");
+        var guardadas = 0; var fallidas = 0;
+        foreach (var url in urls.Take(3))
+        {
+            if (await db.Imagenes.CountAsync(x => x.ProductoId == id, ct) >= AlmacenImagenes.MaximoPorJuguete) break;
+            try
+            {
+                using var r = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+                if (!r.IsSuccessStatusCode) { fallidas++; continue; }
+                await using var st = await r.Content.ReadAsStreamAsync(ct);
+                var datos = await AlmacenImagenes.LeerLimitadoAsync(st, ct);
+                var ext = datos is null ? null : AlmacenImagenes.Extension(datos);
+                if (datos is null || ext is null) { fallidas++; continue; }
+                await AgregarImagenAsync(db, alm, id, datos, ext, "upcitemdb", ct);
+                guardadas++;
+            }
+            catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
+            {
+                lf.CreateLogger("Imagenes").LogWarning(e, "No se pudo descargar {Url}", url);
+                fallidas++;
+            }
+        }
+        return (guardadas, fallidas);
     }
 
     private static async Task AgregarImagenAsync(AppDbContext db, AlmacenImagenes alm, string productoId,
