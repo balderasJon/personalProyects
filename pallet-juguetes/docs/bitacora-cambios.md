@@ -2,6 +2,14 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-23 · Textos de precio objetivo y de lotes sin valor
+
+**Cambiado**
+- Al escanear, la explicación ya no dice «Objetivo: precio más bajo registrado × tipo de cambio» (texto antiguo, ese valor no se usaba). Ahora explica que el precio objetivo (sugerido) y el mínimo salen del costo por pieza (prorrateo proporcional al valor) y de los márgenes de «Márgenes y fiscal».
+- El costeo proporcional ya no reporta «El lote 4b80ffc349ed no tiene valor…»: nombra el juguete, su condición y piezas (p. ej. «El juguete 002 · Peluche (Nuevo sellado, 1 pza.)…») y dice cómo resolverlo. Prueba unitaria nueva.
+
+**Impacto en datos**: ninguno.
+
 ## 2026-11-21 · «Completar datos» para todos
 
 **Agregado (a petición del usuario)**

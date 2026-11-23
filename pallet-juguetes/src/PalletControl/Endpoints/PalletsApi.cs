@@ -333,7 +333,8 @@ public static class PalletsApi
         var metodo = i.Metodo ?? entrada.Pallet.MetodoCosteo;
         var modo = i.ModoMerma ?? entrada.Pallet.ModoMerma;
         var lotes = entrada.Lotes.Select(x => new LoteCosteo(x.Lote.Id, x.Lote.Cantidad, x.Lote.Comercializable, x.ValorRelativo,
-            i.CostosManuales is not null && i.CostosManuales.TryGetValue(x.Lote.Id, out var m) ? m : null)).ToList();
+            i.CostosManuales is not null && i.CostosManuales.TryGetValue(x.Lote.Id, out var m) ? m : null,
+            $"{x.Producto.Codigo} · {x.Producto.Nombre} ({Catalogos.Condiciones.FirstOrDefault(c => c.Codigo == x.Lote.Condicion).Nombre ?? x.Lote.Condicion}, {x.Lote.Cantidad} pza.)")).ToList();
         var r = DistribucionCostos.Calcular(entrada.Pallet.InversionTotal, lotes, Inventario.Metodo(metodo), Inventario.Modo(modo));
         return (entrada, r, metodo, modo);
     }

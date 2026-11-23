@@ -319,14 +319,10 @@ public class BuscadorCodigoBarras(HttpClient http, IConfiguration config, ILogge
                 listaUsd = a;
                 notas.Add($"Lista: precio más alto registrado US${a:0.00} × {tc:0.####} = ${lista:N0}.");
             }
-            if (e.PrecioBajo is { } b)
-            {
-                objetivo = Math.Round(b * tc, 0, MidpointRounding.AwayFromZero);
-                notas.Add($"Objetivo: precio más bajo registrado US${b:0.00} × {tc:0.####} = ${objetivo:N0}.");
-            }
+            // El precio objetivo ya no sale del precio más bajo de EE. UU.: es el sugerido (costo por pieza + margen), abajo.
         }
 
-        notas.Add("Precio sugerido y mínimo: se calculan abajo con el costo estimado de la pieza y el motor de precios.");
+        notas.Add("Precio objetivo (sugerido) y mínimo: se calculan abajo con el costo de la pieza (tu parte de la inversión del pallet, repartida según el valor de cada juguete) y tus márgenes de «Márgenes y fiscal» (por omisión: sugerido = costo ÷ 0.70, 30 % con terminación 9; mínimo = costo ÷ 0.90, 10 %).");
 
         return new Sugerencia(lista, objetivo, minimo, notas, listaUsd, referencia);
     }

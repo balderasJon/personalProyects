@@ -158,4 +158,17 @@ public class CosteoTests
     }
 
     private static LoteCosteado Lote(ResultadoCosteo r, string id) => r.Lotes.Single(l => l.LoteId == id);
+
+    // El error del método proporcional nombra el juguete (no solo el Id interno del lote).
+    [Fact]
+    public void Proporcional_SinValor_NombraElJuguete()
+    {
+        var r = DistribucionCostos.Calcular(1000m,
+            [new("lote-a", 2, true, 300m), new("4b80ffc349ed", 1, true, null, null, "003 · Peluche (Nuevo sellado, 1 pza.)")],
+            MetodoCosteo.Proporcional, ModoMerma.Absorber);
+        Assert.False(r.Ok);
+        var e = Assert.Single(r.Errores);
+        Assert.Contains("003 · Peluche", e);
+        Assert.DoesNotContain("4b80ffc349ed", e);
+    }
 }

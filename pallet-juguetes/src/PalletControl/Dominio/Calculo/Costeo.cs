@@ -38,7 +38,9 @@ public static class InversionPallet
 }
 
 /// <summary>Lote a costear. ValorRelativoUnitario se usa en el método proporcional; CostoManualTotal en el manual.</summary>
-public record LoteCosteo(string LoteId, int Cantidad, bool Comercializable, decimal? ValorRelativoUnitario = null, decimal? CostoManualTotal = null);
+/// <param name="Descripcion">Cómo se nombra el lote en los mensajes (código y nombre del juguete, condición). Null = su Id.</param>
+public record LoteCosteo(string LoteId, int Cantidad, bool Comercializable, decimal? ValorRelativoUnitario = null, decimal? CostoManualTotal = null,
+    string? Descripcion = null);
 
 public record LoteCosteado(string LoteId, int Cantidad, bool Comercializable, decimal Peso, decimal CostoTotal, decimal CostoUnitario, bool EsMerma);
 
@@ -111,7 +113,7 @@ public static class DistribucionCostos
 
         if (metodo == MetodoCosteo.Proporcional)
             foreach (var l in activos.Where(Participa).Where(l => Peso(l) is null))
-                errores.Add($"El lote {l.LoteId} no tiene valor comercial relativo (precio en México o valor capturado).");
+                errores.Add($"{(l.Descripcion is null ? $"El lote {l.LoteId}" : $"El juguete {l.Descripcion}")} no tiene valor comercial relativo: captura su precio en México (precios de tiendas), usa «Completar datos» o escribe el valor en su lote.");
         if (errores.Count > 0) return Fallo(total, errores);
 
         var participantes = lotes.Where(Participa).ToList();
