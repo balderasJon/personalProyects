@@ -483,7 +483,7 @@ function renderInv(s){
     ETQ_DEF.filter(function(e){return cuenta[e[0]]}).map(function(e){return '<button type="button" class="etq '+e[2]+'" data-etq="'+e[0]+'" aria-pressed="'+(INV_ETQ===e[0])+'">'+esc(e[1])+' · '+cuenta[e[0]]+'</button>'}).join('');
   var R=INV_ETQ?base.filter(function(r){return r.E.some(function(e){return e.k===INV_ETQ})}):base;
   if(!R.length){body.innerHTML='<div class="empty"><p class="muted">Ningún juguete coincide con los filtros.</p></div>';return}
-  function acciones(p,d,cls){return '<button class="btn '+cls+'" type="button" data-publicar="'+p.id+'"'+(d<=0?' disabled':'')+' title="Texto e imágenes listos para Facebook Marketplace y WhatsApp">Publicar</button><button class="btn '+cls+'" type="button" data-sell="'+p.id+'"'+(d<=0?' disabled':'')+'>Vender</button><button class="btn '+cls+'" type="button" data-editp="'+p.id+'">Editar</button>'}
+  function acciones(p,d,cls){return '<button class="btn '+cls+'" type="button" data-publicar="'+p.id+'"'+(d<=0?' disabled':'')+' title="Texto e imágenes listos para Facebook Marketplace, WhatsApp e Instagram">Publicar</button><button class="btn '+cls+'" type="button" data-sell="'+p.id+'"'+(d<=0?' disabled':'')+'>Vender</button><button class="btn '+cls+'" type="button" data-editp="'+p.id+'">Editar</button>'}
   function etqs(E){return '<div class="etqs">'+E.map(function(e){return etq(e.t,e.c,e.title)}).join('')+'</div>'}
   if(INV_VISTA==='tarjetas'){
     body.innerHTML='<div class="inv-grid">'+R.map(function(r){var p=r.p,d=r.d,x=PRECIOS[p.id]||{},im=imgPrincipal(p.id),po=+p.precioObjetivo||0;

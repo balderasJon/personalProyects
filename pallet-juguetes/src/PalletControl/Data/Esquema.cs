@@ -145,7 +145,7 @@ public static class Esquema
     /// </summary>
     private static void SembrarFase2(AppDbContext db)
     {
-        if (!db.Plataformas.Any())
+        // Se agregan las plataformas del catálogo que falten (p. ej. Instagram en bases creadas antes); nunca se modifican las existentes.
         {
             var semilla = new (string Codigo, string Nombre, string Tipo)[]
             {
@@ -161,9 +161,14 @@ public static class Esquema
                 ("bazar_escuela", "Bazar o escuela", "fisica"),
                 ("instagram", "Instagram", "local"),
             };
+            var existentes = db.Plataformas.Select(p => p.Codigo).ToHashSet();
             var i = 0;
             foreach (var (codigo, nombre, tipo) in semilla)
-                db.Plataformas.Add(new Plataforma { Id = Guid.NewGuid().ToString("N")[..12], Codigo = codigo, Nombre = nombre, Tipo = tipo, Orden = ++i });
+            {
+                i++;
+                if (!existentes.Contains(codigo))
+                    db.Plataformas.Add(new Plataforma { Id = Guid.NewGuid().ToString("N")[..12], Codigo = codigo, Nombre = nombre, Tipo = tipo, Orden = i });
+            }
         }
         if (!db.Parametros.Any(p => p.Categoria == null && p.ProductoId == null && p.PlataformaId == null))
             db.Parametros.Add(new ParametroRentabilidad

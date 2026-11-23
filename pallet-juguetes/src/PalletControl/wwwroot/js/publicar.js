@@ -34,6 +34,9 @@ function textoFacebook(p,precio,pr){
   L.push(pr.cierre||'Envíame mensaje para apartarlo.');
   return L.join('\n');
 }
+function textoInstagram(p,precio,pr){
+  return p.nombre+'\n'+condicion(p)+' · '+money(precio)+(pr.zona?'\n'+pr.zona:'')+'\nEnvíame DM para apartarlo';
+}
 function textoWhatsApp(p,precio,pr){
   return '🧸 '+p.nombre+'\n'+condicion(p)+' · '+money(precio)+(pr.zona?'\n📍 '+pr.zona:'')+'\n'+(pr.cierre||'Escríbeme para apartarlo 📩');
 }
@@ -43,7 +46,10 @@ function cargarImg(url){return new Promise(function(ok){if(!url)return ok(null);
 function lineas(ctx,t,maxW,maxL){var w=String(t).split(/\s+/),L=[],c='';
   w.forEach(function(x){var pr=c?c+' '+x:x;if(ctx.measureText(pr).width>maxW&&c){L.push(c);c=x}else c=pr});if(c)L.push(c);
   if(L.length>maxL){L=L.slice(0,maxL);L[maxL-1]=L[maxL-1].replace(/\s*\S*$/,'')+'…'}return L}
-function dibujar(img,p,precio,pr,W,H){
+/** seguro=true (historia de Instagram): deja libres franjas arriba y abajo, donde Instagram pone el nombre de la cuenta y la barra de respuesta. */
+function dibujar(img,p,precio,pr,W,H,seguro){
+  if(seguro){var m=Math.round(H*0.12),dentro=dibujar(img,p,precio,pr,W,H-2*m),cs=document.createElement('canvas');cs.width=W;cs.height=H;
+    var xs=cs.getContext('2d');xs.fillStyle='#F3F5F9';xs.fillRect(0,0,W,H);xs.drawImage(dentro,0,m);return cs}
   var c=document.createElement('canvas');c.width=W;c.height=H;var x=c.getContext('2d');
   x.fillStyle='#F3F5F9';x.fillRect(0,0,W,H);
   var V=H>W,pad=Math.round(W*0.06),fotoH=Math.round(H*(V?0.58:0.46));
@@ -87,10 +93,11 @@ function compartir(canvas,texto,nombre){
 function abrir(id){
   var p0=d().D.productos[id];if(!p0)return;var p=Object.assign({id:id},p0);
   var pr=prefs(),pc=precioDe(p),fotos=PC.imgsDe(id),disp=disponibles(p),x=d().PRECIOS[id]||{};
-  var plats=d().PLATS,fb=plats.filter(function(q){return q.codigo==='facebook_marketplace'})[0],wa=plats.filter(function(q){return q.codigo==='whatsapp'})[0];
+  var plats=d().PLATS,fb=plats.filter(function(q){return q.codigo==='facebook_marketplace'})[0],wa=plats.filter(function(q){return q.codigo==='whatsapp'})[0],ig=plats.filter(function(q){return q.codigo==='instagram'})[0];
   var yaFb=d().PUBS.some(function(u){return u.productoId===id&&fb&&u.plataformaId===fb.id&&u.estatus==='publicado'}),yaWa=d().PUBS.some(function(u){return u.productoId===id&&wa&&u.plataformaId===wa.id&&u.estatus==='publicado'});
+  var yaIg=d().PUBS.some(function(u){return u.productoId===id&&ig&&u.plataformaId===ig.id&&u.estatus==='publicado'});
   PC.openModal(head('Preparar publicación')+
-    '<p class="small muted">Para <b>Facebook Marketplace</b> y <b>historias de WhatsApp</b>. Estas plataformas no permiten publicar desde otras aplicaciones: copia el texto, descarga las imágenes y pégalos en la app. Después registra la publicación para que la aplicación controle tus existencias.</p>'+
+    '<p class="small muted">Para <b>Facebook Marketplace</b> y <b>historias de WhatsApp e Instagram</b>. Estas plataformas no permiten publicar desde otras aplicaciones: copia el texto, descarga las imágenes y pégalos en la app. Después registra la publicación para que la aplicación controle tus existencias.</p>'+
     '<div class="form">'+
       fld('ppPre','Precio a publicar','<input class="inp num" id="ppPre" type="number" min="0" step="1" value="'+esc(pc.v||'')+'">',
         (pc.o?'Tomado '+pc.o+'. ':'Sin precio: captura uno. ')+(x.ok&&x.minimo?'Tu mínimo es '+money(x.minimo)+' (no se publica).':''))+
@@ -115,13 +122,20 @@ function abrir(id){
         '<div class="row"><button class="btn sm primary" type="button" id="ppImgWa">Descargar historia</button><button class="btn sm" type="button" id="ppCopWa">Copiar texto</button><button class="btn sm" type="button" id="ppShare">Compartir</button></div>'+
         '<p class="small muted">En WhatsApp: Novedades › Mi estado › agrega la imagen descargada (y el texto si quieres). «Compartir» abre directo el menú del celular cuando el navegador lo permite.</p>'+
         '<button class="btn sm" type="button" id="ppRegWa"'+(wa?'':' disabled')+'>Ya lo publiqué: registrar</button></div>'+
+      '<div class="card"><div class="pf"><h3 style="margin:0">Historia de Instagram</h3>'+(yaIg?'<span class="pill entregado">Ya registrada</span>':'')+'</div>'+
+        '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start"><canvas id="ppHistIg" width="1080" height="1920" style="width:150px;height:auto;border:1px solid var(--line);border-radius:10px" aria-label="Vista previa de la historia de Instagram"></canvas>'+
+        '<div style="flex:1;min-width:180px">'+fld('ppIg','Texto para la historia','<textarea class="inp" id="ppIg" rows="5"></textarea>','Agrégalo con la herramienta de texto «Aa» de Instagram si quieres.',true)+'</div></div>'+
+        '<div class="row"><button class="btn sm primary" type="button" id="ppImgIg">Descargar historia</button><button class="btn sm" type="button" id="ppCopIg">Copiar texto</button><button class="btn sm" type="button" id="ppShareIg">Compartir</button></div>'+
+        '<p class="small muted">En Instagram: toca «Tu historia» (o + › Historia), elige la imagen descargada de tu galería y publícala. La imagen deja libres arriba y abajo para que Instagram no tape el precio. <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer">Abrir Instagram</a></p>'+
+        '<button class="btn sm" type="button" id="ppRegIg"'+(ig?'':' disabled')+'>Ya lo publiqué: registrar</button></div>'+
     '</div>',function(el){
       var g=function(s){return el.querySelector(s)},img=null;
       function datosPrefs(){return {zona:g('#ppZon').value.trim(),pago:g('#ppPag').value.trim(),cierre:g('#ppCie').value.trim()}}
       function precio(){return Math.max(0,+g('#ppPre').value||0)}
       function generar(soloImagen){var q=datosPrefs(),pp=precio(),prod=Object.assign({},p,{nombre:g('#ppTit').value.trim()||p.nombre});
-        if(!soloImagen){g('#ppFb').value=textoFacebook(prod,pp,q);g('#ppWa').value=textoWhatsApp(prod,pp,q)}
+        if(!soloImagen){g('#ppFb').value=textoFacebook(prod,pp,q);g('#ppWa').value=textoWhatsApp(prod,pp,q);g('#ppIg').value=textoInstagram(prod,pp,q)}
         var h=dibujar(img,prod,pp,q,1080,1920),cv=g('#ppHist');cv.getContext('2d').drawImage(h,0,0);
+        g('#ppHistIg').getContext('2d').drawImage(dibujar(img,prod,pp,q,1080,1920,true),0,0);
         g('#ppTitN').textContent=g('#ppTit').value.length+' caracteres';}
       cargarImg(fotos[0]&&fotos[0].url).then(function(i){img=i;generar(false)});
       ['#ppPre','#ppZon','#ppPag','#ppCie','#ppTit'].forEach(function(s){g(s).addEventListener('input',function(){guardarPrefs(datosPrefs());generar(false)})});
@@ -139,7 +153,11 @@ function abrir(id){
           .then(function(){return PC.cargar()}).then(function(){PC.toast('Publicación en '+nombre+' registrada: la aplicación te avisará si se vende en otro canal')},function(e){PC.toast((e&&e.mensaje)||'No se pudo registrar')})}
       g('#ppRegFb').addEventListener('click',function(){if(fb)registrar(fb,'Facebook Marketplace')});
       g('#ppRegWa').addEventListener('click',function(){if(wa)registrar(wa,'WhatsApp')});
+      g('#ppCopIg').addEventListener('click',function(){if(!sinPrecio())copiar(g('#ppIg').value,'Texto copiado')});
+      g('#ppImgIg').addEventListener('click',function(){if(!sinPrecio())descargar(dibujar(img,prod(),precio(),datosPrefs(),1080,1920,true),archivoDe(p.nombre)+'-instagram.jpg')});
+      g('#ppShareIg').addEventListener('click',function(){if(!sinPrecio())compartir(dibujar(img,prod(),precio(),datosPrefs(),1080,1920,true),g('#ppIg').value,archivoDe(p.nombre)+'-instagram.jpg')});
+      g('#ppRegIg').addEventListener('click',function(){if(ig)registrar(ig,'Instagram')});
     });
 }
-window.PCPub={abrir:abrir,textoFacebook:textoFacebook,textoWhatsApp:textoWhatsApp};
+window.PCPub={abrir:abrir,textoFacebook:textoFacebook,textoWhatsApp:textoWhatsApp,textoInstagram:textoInstagram};
 })();

@@ -71,9 +71,9 @@ Estas reglas se revisan en el servidor (no solo en la pantalla), así se respeta
 
 Si la tienes abierta en varias pestañas o dispositivos, los demás se actualizan solos en unos 4 segundos.
 
-### Preparar publicación (Facebook Marketplace y WhatsApp)
+### Preparar publicación (Facebook Marketplace, WhatsApp e Instagram)
 
-En la ficha del juguete (o **Publicar** en el Inventario) se genera el título, la descripción y dos imágenes con foto, condición y precio: cuadrada para **Marketplace** y vertical para **historia de WhatsApp**. Copia el texto, descarga las imágenes y pégalos en la app. Después usa **Ya lo publiqué: registrar** para que la aplicación controle las existencias de esa publicación. Marketplace personal y los estados de WhatsApp no tienen API para publicar desde otra aplicación, por eso este paso es manual.
+En la ficha del juguete (o **Publicar** en el Inventario) se genera el título, la descripción y dos imágenes con foto, condición y precio: cuadrada para **Marketplace** y vertical para **historias de WhatsApp e Instagram** (la de Instagram deja libres arriba y abajo para que su interfaz no tape el precio). Copia el texto, descarga las imágenes y pégalos en la app. Después usa **Ya lo publiqué: registrar** para que la aplicación controle las existencias de esa publicación. Marketplace personal y los estados de WhatsApp no tienen API para publicar desde otra aplicación, por eso este paso es manual.
 
 ### Código de barras
 

@@ -2,6 +2,15 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-23 · Historia de Instagram en «Preparar publicación»
+
+**Agregado (a petición del usuario)**
+- Sección **Historia de Instagram**: imagen vertical 1080×1920 con franjas libres arriba y abajo (12 % cada una) para que el nombre de la cuenta y la barra de respuesta de Instagram no tapen el precio; texto corto para agregar con «Aa»; descargar, copiar, compartir y «Ya lo publiqué: registrar» (plataforma Instagram).
+- Como en WhatsApp, la publicación es manual: la aplicación prepara la imagen y el texto.
+- El catálogo de plataformas agrega las que falten (p. ej. Instagram en bases creadas antes), sin modificar las existentes.
+
+**Impacto en datos**: puede agregar la plataforma «Instagram» si no existía.
+
 ## 2026-11-23 · Sin IVA ni promoción en los precios
 
 **Cambiado (a petición del usuario: lo que costó el pallet ya incluye IVA)**
