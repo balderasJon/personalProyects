@@ -220,7 +220,14 @@ function renderAll(){
   else if(TAB==='ajustes')renderAjustes(s);
   else if(TAB==='analisis'&&window.PCA)window.PCA.render(s);
 }
-function kpi(l,v,n,tone){return '<div class="kpi"><div class="l">'+l+'</div><div class="v'+(tone?' '+tone:'')+'">'+v+'</div><div class="n">'+n+'</div></div>'}
+/* Ícono de cada indicador según su etiqueta (solo presentación). */
+var KPI_IC=[[/p[eé]rdida|dañad|sin movimiento|sin datos|margen bajo/i,'exclamation-triangle','t-sun'],[/utilidad|ganancia|margen|roi|rentable/i,'graph-up-arrow','t-good'],
+  [/recuperad|cobrad|efectivo|ingreso|dinero|por cobrar|pendiente de recuperar/i,'cash-coin','t-good'],[/invers|compra|capital/i,'wallet2',''],
+  [/gasto|costo de lo vendido/i,'receipt',''],[/costo|equilibrio/i,'calculator',''],[/precio|valor|mediana|rango|posici/i,'tag',''],
+  [/pallet/i,'boxes',''],[/pieza|juguete|disponible|vendid|porcentaje/i,'box-seam',''],[/mensaje/i,'chat-dots',''],
+  [/semana|antig/i,'calendar3',''],[/canal|publicad/i,'megaphone',''],[/competencia/i,'shop',''],[/costeo/i,'clipboard-check','']];
+function kpiIcono(l){var t=String(l).replace(/<[^>]*>/g,'');for(var i=0;i<KPI_IC.length;i++)if(KPI_IC[i][0].test(t))return '<span class="kpi-ic '+KPI_IC[i][2]+'" aria-hidden="true"><i class="bi bi-'+KPI_IC[i][1]+'"></i></span>';return ''}
+function kpi(l,v,n,tone){return '<div class="kpi">'+kpiIcono(l)+'<div class="l">'+l+'</div><div class="v'+(tone?' '+tone:'')+'">'+v+'</div><div class="n">'+n+'</div></div>'}
 
 /* ================= Inicio guiado ================= */
 function palletsConLotes(){var k={};Object.keys(LOTES).forEach(function(pid){LOTES[pid].forEach(function(l){k[l.palletId]=1})});return Object.keys(k)}
@@ -604,7 +611,7 @@ function openModal(html,onMount){lastFocus=document.activeElement;panel.innerHTM
 function closeModal(){modal.hidden=true;panel.innerHTML='';if(lastFocus&&lastFocus.focus)lastFocus.focus()}
 modal.addEventListener('click',function(e){if(e.target===modal)closeModal()});
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!modal.hidden)closeModal()});
-function head(t){return '<div class="ph"><h2 id="mTitle" style="font-size:1.35rem">'+t+'</h2><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>'}
+function head(t){return '<div class="ph"><h2 id="mTitle" style="font-size:1.35rem">'+t+'</h2><button class="x" type="button" data-close aria-label="Cerrar"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>'}
 function fld(id,label,input,hint,full){return '<div class="f'+(full?' full':'')+'"><label for="'+id+'">'+label+'</label>'+input+(hint?'<span class="hint">'+hint+'</span>':'')+'</div>'}
 function opt(list,cur,txt){return list.map(function(v){return '<option value="'+esc(v)+'"'+(v===cur?' selected':'')+'>'+esc(txt?txt[v]:v)+'</option>'}).join('')}
 function footer(isEdit){return '<div class="pf"><div>'+(isEdit?'<button class="btn danger" type="button" id="mDel">Eliminar</button>':'')+'</div><div class="row"><button class="btn" type="button" data-close2>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>'}

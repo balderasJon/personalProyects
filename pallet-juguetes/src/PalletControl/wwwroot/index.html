@@ -7,33 +7,55 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect width='9' height='9' rx='2' fill='%232750D8'/%3E%3Crect x='11' width='9' height='9' rx='2' fill='%23B87400'/%3E%3Crect y='11' width='9' height='9' rx='2' fill='%23DCE4FB'/%3E%3Crect x='11' y='11' width='9' height='9' rx='2' fill='%23101A33'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="vendor/bootstrap/bootstrap-5.3.3.min.css">
+<link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons-1.11.3.min.css">
 <link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/tema.css">
 </head>
 <body>
-<header class="top"><div class="wrap">
-  <div class="brandrow">
-    <div class="brand"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>Control Pallet de Juguetes</b></div>
-    <div class="toprt"><button class="tcbtn" id="tcBtn" type="button" aria-label="Tipo de cambio del día. Editar">Tipo de cambio…</button><span class="status" id="status">Conectando…</span><button class="userbtn" id="userBtn" type="button" hidden aria-label="Tu cuenta"></button></div>
+<div class="app-shell" id="appShell">
+<!-- Barra lateral: navegación principal (los botones .tab y sus data-tab los usa app.js) -->
+<aside class="sidebar" id="sidebar" aria-label="Navegación principal">
+  <div class="sb-brand">
+    <span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+    <div class="sb-brand-t"><b>Control Pallet</b><span>de Juguetes</span></div>
   </div>
-  <nav class="tabs" role="tablist" aria-label="Secciones">
-    <button class="tab" role="tab" data-tab="resumen" aria-selected="true">Inicio</button>
-    <button class="tab" role="tab" data-tab="inventario">Inventario</button>
-    <button class="tab" role="tab" data-tab="ventas">Ventas<span class="cnt" id="cntApartado" hidden></span></button>
-    <button class="tab" role="tab" data-tab="gastos">Gastos</button>
-    <button class="tab" role="tab" data-tab="semana">Semana</button>
-    <button class="tab" role="tab" data-tab="analisis">Análisis comercial</button>
-    <button class="tab" role="tab" data-tab="ajustes">Ajustes</button>
+  <nav class="tabs" role="tablist" aria-label="Secciones" aria-orientation="vertical">
+    <span class="sb-sec">General</span>
+    <button class="tab" role="tab" data-tab="resumen" aria-selected="true" title="Inicio"><i class="bi bi-house-door" aria-hidden="true"></i><span class="tl">Inicio</span></button>
+    <button class="tab" role="tab" data-tab="inventario" title="Inventario"><i class="bi bi-box-seam" aria-hidden="true"></i><span class="tl">Inventario</span></button>
+    <button class="tab" role="tab" data-tab="ventas" title="Ventas"><i class="bi bi-bag-check" aria-hidden="true"></i><span class="tl">Ventas</span><span class="cnt" id="cntApartado" hidden></span></button>
+    <button class="tab" role="tab" data-tab="gastos" title="Gastos"><i class="bi bi-receipt" aria-hidden="true"></i><span class="tl">Gastos</span></button>
+    <button class="tab" role="tab" data-tab="semana" title="Semana"><i class="bi bi-calendar-week" aria-hidden="true"></i><span class="tl">Semana</span></button>
+    <span class="sb-sec">Gestión</span>
+    <button class="tab" role="tab" data-tab="analisis" title="Análisis comercial"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i><span class="tl">Análisis comercial</span></button>
+    <button class="tab" role="tab" data-tab="ajustes" title="Ajustes"><i class="bi bi-gear" aria-hidden="true"></i><span class="tl">Ajustes</span></button>
   </nav>
-</div></header>
+  <div class="sb-foot">
+    <button class="sb-collapse" id="sbCollapse" type="button" aria-label="Contraer la barra lateral" title="Contraer o expandir"><i class="bi bi-chevron-double-left" aria-hidden="true"></i><span class="tl">Contraer</span></button>
+  </div>
+</aside>
+<div class="sb-backdrop" id="sbBackdrop" hidden></div>
 
-<main class="wrap">
+<div class="app-main">
+  <!-- Barra superior: sección, migas de pan, tipo de cambio, estado y usuario -->
+  <header class="topbar">
+    <button class="tb-menu" id="sbOpen" type="button" aria-label="Abrir el menú" aria-controls="sidebar" aria-expanded="false"><i class="bi bi-list" aria-hidden="true"></i></button>
+    <div class="tb-title">
+      <nav aria-label="Ruta"><ol class="breadcrumb" id="crumbs"><li class="breadcrumb-item">Inicio</li></ol></nav>
+      <h1 id="tbTitle">Inicio</h1>
+    </div>
+    <div class="toprt"><button class="tcbtn" id="tcBtn" type="button" aria-label="Tipo de cambio del día. Editar">Tipo de cambio…</button><span class="status" id="status">Conectando…</span><button class="userbtn" id="userBtn" type="button" hidden aria-label="Tu cuenta"></button></div>
+  </header>
+
+<main class="wrap content">
 
 <!-- INICIO -->
 <section class="view" data-view="resumen">
   <div class="head"><div><p class="eyebrow" id="hoyTxt"></p><h2>Tu negocio hoy</h2>
       <p class="muted small">Aquí ves de un vistazo cuántos juguetes tienes, cuánto invertiste, cuánto te cuesta cada uno y en cuánto venderlo.</p></div>
-    <div class="row"><button class="btn" data-act="escanear">Escanear juguete</button><button class="btn" data-act="nuevoGasto">+ Gasto</button><button class="btn primary" data-act="nuevaVenta">+ Venta</button></div></div>
+    <div class="row"><button class="btn" data-act="escanear"><i class="bi bi-upc-scan" aria-hidden="true"></i>Escanear juguete</button><button class="btn" data-act="nuevoGasto"><i class="bi bi-receipt" aria-hidden="true"></i>+ Gasto</button><button class="btn primary" data-act="nuevaVenta"><i class="bi bi-bag-plus" aria-hidden="true"></i>+ Venta</button></div></div>
 
   <div id="guia"></div>
 
@@ -79,7 +101,7 @@
 <!-- INVENTARIO -->
 <section class="view" data-view="inventario" hidden>
   <div class="head"><div><p class="eyebrow">Hoja de inventario</p><h2>Juguetes del pallet</h2><p class="muted small" id="invSub"></p></div>
-    <div class="row"><button class="btn" data-act="importar">Importar desde Excel</button><button class="btn" data-act="completarTodos" id="btnCompletarTodos" hidden>Completar datos</button><button class="btn" data-act="escanear">Escanear código</button><button class="btn primary" data-act="nuevoProducto">+ Juguete</button></div></div>
+    <div class="row"><button class="btn" data-act="importar"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>Importar desde Excel</button><button class="btn" data-act="completarTodos" id="btnCompletarTodos" hidden>Completar datos</button><button class="btn" data-act="escanear"><i class="bi bi-upc-scan" aria-hidden="true"></i>Escanear código</button><button class="btn primary" data-act="nuevoProducto"><i class="bi bi-plus-lg" aria-hidden="true"></i>Juguete</button></div></div>
   <div id="invValor"></div>
   <div class="filters">
     <input class="inp" id="fBuscar" type="search" placeholder="Buscar por código, código de barras, nombre o categoría" aria-label="Buscar">
@@ -97,7 +119,7 @@
 <section class="view" data-view="ventas" hidden>
   <div class="head"><div><p class="eyebrow">Del mensaje a la entrega</p><h2>Ventas</h2><p class="muted small" id="venSub"></p></div>
     <div class="row"><div class="seg" role="group" aria-label="Vista"><button id="vBoard" aria-pressed="true">Tablero</button><button id="vList" aria-pressed="false">Lista</button></div>
-      <button class="btn primary" data-act="nuevaVenta">+ Venta</button></div></div>
+      <button class="btn primary" data-act="nuevaVenta"><i class="bi bi-plus-lg" aria-hidden="true"></i>Venta</button></div></div>
   <div class="callout sun"><b>Regla de oro:</b> una venta solo cuenta como dinero recuperado cuando registran su cobro con el importe que apareció en su banca (en marketplaces, el depósito ya sin comisiones). Una captura de pantalla no demuestra que el pago llegó.</div>
   <div class="filters">
     <input class="inp" id="vBuscar" type="search" placeholder="Buscar cliente o juguete" aria-label="Buscar venta">
@@ -109,7 +131,7 @@
 <!-- GASTOS -->
 <section class="view" data-view="gastos" hidden>
   <div class="head"><div><p class="eyebrow">Costos de operar</p><h2>Gastos</h2><p class="muted small">Empaque, traslados, publicidad, comisiones e impuestos. Se restan del dinero recuperado.</p></div>
-    <button class="btn primary" data-act="nuevoGasto">+ Gasto</button></div>
+    <button class="btn primary" data-act="nuevoGasto"><i class="bi bi-plus-lg" aria-hidden="true"></i>Gasto</button></div>
   <div class="grid g4" id="gasKpis"></div>
   <div id="gasBody"></div>
 </section>
@@ -117,7 +139,7 @@
 <!-- SEMANA -->
 <section class="view" data-view="semana" hidden>
   <div class="head"><div><p class="eyebrow">Revisión de 20 minutos</p><h2>Indicadores semanales</h2><p class="muted small">Anoten publicaciones, mensajes y horas cada semana. Ventas y dinero se calculan solos.</p></div>
-    <button class="btn primary" data-act="nuevaSemana">+ Registrar semana</button></div>
+    <button class="btn primary" data-act="nuevaSemana"><i class="bi bi-plus-lg" aria-hidden="true"></i>Registrar semana</button></div>
   <div class="grid g4" id="semKpis"></div>
   <div id="semBody"></div>
 </section>
@@ -125,16 +147,16 @@
 <!-- ANÁLISIS COMERCIAL -->
 <section class="view" data-view="analisis" hidden>
   <nav class="subnav" aria-label="Análisis comercial">
-    <button class="subtab" type="button" data-sub="dashboard">Dashboard</button>
-    <button class="subtab" type="button" data-sub="productos">Análisis de productos</button>
-    <button class="subtab" type="button" data-sub="simulador">Simulador de precios</button>
-    <button class="subtab" type="button" data-sub="pallets">Pallets y costos</button>
-    <button class="subtab" type="button" data-sub="plataformas">Márgenes</button>
-    <button class="subtab" type="button" data-sub="competencia">Competencia</button>
-    <button class="subtab" type="button" data-sub="publicaciones">Publicaciones</button>
-    <button class="subtab" type="button" data-sub="real">Rentabilidad real</button>
-    <button class="subtab" type="button" data-sub="reportes">Reportes</button>
-    <button class="subtab" type="button" data-sub="integraciones">Integraciones</button>
+    <button class="subtab" type="button" data-sub="dashboard"><i class="bi bi-speedometer2" aria-hidden="true"></i>Dashboard</button>
+    <button class="subtab" type="button" data-sub="productos"><i class="bi bi-bar-chart" aria-hidden="true"></i>Análisis de productos</button>
+    <button class="subtab" type="button" data-sub="simulador"><i class="bi bi-calculator" aria-hidden="true"></i>Simulador de precios</button>
+    <button class="subtab" type="button" data-sub="pallets"><i class="bi bi-boxes" aria-hidden="true"></i>Pallets y costos</button>
+    <button class="subtab" type="button" data-sub="plataformas"><i class="bi bi-percent" aria-hidden="true"></i>Márgenes</button>
+    <button class="subtab" type="button" data-sub="competencia"><i class="bi bi-shop" aria-hidden="true"></i>Competencia</button>
+    <button class="subtab" type="button" data-sub="publicaciones"><i class="bi bi-megaphone" aria-hidden="true"></i>Publicaciones</button>
+    <button class="subtab" type="button" data-sub="real"><i class="bi bi-cash-stack" aria-hidden="true"></i>Rentabilidad real</button>
+    <button class="subtab" type="button" data-sub="reportes"><i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i>Reportes</button>
+    <button class="subtab" type="button" data-sub="integraciones"><i class="bi bi-plug" aria-hidden="true"></i>Integraciones</button>
   </nav>
   <div id="anBody"></div>
 </section>
@@ -150,7 +172,7 @@
         <div class="f full"><label for="cBajo">Aviso de pocas piezas</label><input class="inp num" id="cBajo" type="number" min="0" step="1"><span class="hint">Avisa cuando quedan esta cantidad o menos.</span></div>
         <div class="f full"><label for="cMeta">Meta de venta mensual (MXN)</label><input class="inp num" id="cMeta" type="number" min="0" step="500"><span class="hint">Opcional. Defínanla tras dos semanas de datos.</span></div>
       </div>
-      <div class="row"><button class="btn primary" type="submit">Guardar ajustes</button></div>
+      <div class="row"><button class="btn primary" type="submit"><i class="bi bi-check2" aria-hidden="true"></i>Guardar ajustes</button></div>
     </form>
     <div class="card">
       <h3>Exportar a Excel (CSV)</h3>
@@ -158,19 +180,21 @@
       <div class="row"><button class="btn" data-exp="inventario">Inventario</button><button class="btn" data-exp="ventas">Ventas</button><button class="btn" data-exp="gastos">Gastos</button><button class="btn" data-exp="semanas">Semanas</button></div>
       <h3 style="margin-top:8px">Respaldo completo</h3>
       <p class="small muted">Todos los datos en un archivo JSON, para guardarlo fuera de esta computadora.</p>
-      <div class="row"><a class="btn" href="/api/respaldo" download>Descargar respaldo</a></div>
+      <div class="row"><a class="btn" href="/api/respaldo" download><i class="bi bi-download" aria-hidden="true"></i>Descargar respaldo</a></div>
       <h3 style="margin-top:8px">Dónde se guardan los datos</h3>
       <p class="small muted" id="modoTxt"></p>
     </div>
     <div class="card" style="border-color:var(--bad)">
       <h3 style="color:var(--bad)">Borrar todos los datos y empezar de cero</h3>
-      <p class="small muted">Para quitar datos de prueba: borra pallets, juguetes, fotos, ventas, gastos, publicaciones y costeos. Se conservan los ajustes, los márgenes, la situación fiscal y las plataformas. Antes de borrar se guarda una copia en la carpeta de respaldos.</p>
-      <div class="row"><button class="btn danger" type="button" data-act="borrarTodo">Borrar todos los datos…</button></div>
+      <p class="small muted">Para quitar datos de prueba: borra pallets, juguetes, fotos, ventas, gastos, publicaciones y costeos. Se conservan los ajustes, los márgenes y las plataformas. Antes de borrar se guarda una copia en la carpeta de respaldos.</p>
+      <div class="row"><button class="btn danger" type="button" data-act="borrarTodo"><i class="bi bi-trash3" aria-hidden="true"></i>Borrar todos los datos…</button></div>
     </div>
   </div>
 </section>
 
 </main>
+</div><!-- /app-main -->
+</div><!-- /app-shell -->
 
 <div class="acceso" id="acceso" hidden></div>
 <div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="panel" id="mPanel"></div></div>
@@ -184,5 +208,6 @@
 <script src="js/integraciones.js"></script>
 <script src="js/publicar.js"></script>
 <script src="js/analisis.js"></script>
+<script src="js/layout.js"></script>
 </body>
 </html>
