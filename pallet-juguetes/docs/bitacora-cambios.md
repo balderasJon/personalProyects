@@ -2,6 +2,31 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-23 · Rediseño de la interfaz con Bootstrap 5.3
+
+**Objetivo**: apariencia de producto empresarial moderno (SaaS/ERP), navegación clara y consistencia entre módulos, sin tocar la lógica.
+
+**Diagnóstico previo**
+- Navegación en pestañas horizontales que se desbordaban en pantallas medianas; sin iconografía ni migas de pan.
+- Tres familias tipográficas (Bricolage Grotesque, Figtree, IBM Plex Mono) y etiquetas en mayúsculas monoespaciadas: jerarquía poco clara.
+- Botones con solo dos variantes; formularios sin anillo de foco ni estados de validación; tablas con encabezados monoespaciados.
+- Análisis comercial con 10 pastillas en dos renglones; indicadores sin íconos; modales sin separación de encabezado y acciones.
+- Choques de nombres con Bootstrap detectados: `.row`, `.btn`, `.card`, `.alert`, `.modal`, `.toast`, `.col`, `.small`.
+
+**Cambiado**
+- **Bootstrap 5.3.3** y **Bootstrap Icons 1.11.3** como archivos locales en `wwwroot/vendor/` (funcionan sin internet), con sus licencias MIT. Sin JavaScript de Bootstrap (no hace falta).
+- **Layout**: barra lateral oscura con íconos y secciones (General / Gestión), contraíble a solo íconos en escritorio (se recuerda en el equipo) y panel deslizable con ☰ en celular y tableta; barra superior fija con migas de pan, título de la sección, tipo de cambio, estado y usuario.
+- **Sistema de diseño** en `css/tema.css`: paleta sobria (azul #2750D8), tipografía Inter con escala consistente, sombras suaves, radios uniformes, modo oscuro automático.
+- **Componentes**: botones con jerarquía (primario, secundario, éxito, peligro, advertencia) sobre variables de Bootstrap; campos y selectores tipo `form-control`/`form-select` con foco y validación visual; filtros agrupados en tarjeta con ícono de búsqueda; tablas con encabezado diferenciado y hover; insignias para estados; indicadores con ícono según su tipo; modales con encabezado y pie separados; avisos con ícono; pestañas de Análisis comercial con ícono y subrayado.
+- **Capa de compatibilidad** para las clases propias que coinciden con Bootstrap (no se renombró nada que use la lógica).
+
+**Archivos**
+- Nuevos: `wwwroot/css/tema.css`, `wwwroot/js/layout.js` (solo presentación: barra lateral, menú móvil, migas de pan), `wwwroot/vendor/bootstrap/`, `wwwroot/vendor/bootstrap-icons/`.
+- Modificados: `wwwroot/index.html` (estructura del layout, carga de estilos, íconos en navegación y acciones), `wwwroot/js/app.js` (ícono en cada indicador `kpi()` y en el botón de cerrar de los modales).
+- Sin cambios: backend, reglas de negocio, ids, `data-tab`, `data-act`, `data-sub` y eventos.
+
+**Validación**: 103 pruebas automáticas; 15 pruebas de navegador de módulos anteriores sin errores (en celular, la navegación se abre con ☰); capturas en escritorio, barra contraída, celular y modo oscuro.
+
 ## 2026-11-23 · «Recalcular precios» (objetivo y mínimo) y actualización al cambiar márgenes
 
 **Por qué**: el precio objetivo se guardaba una sola vez (al escanear o con «Usar precio sugerido») y «Recalcular precios mínimos» solo tocaba el mínimo. Sin manifiesto, los primeros juguetes escaneados cargaban casi toda la inversión, y su objetivo quedaba muy alto aunque el costo bajara después.

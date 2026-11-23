@@ -135,6 +135,10 @@ Solo se llenan los campos vacíos o los que llenó una sugerencia y no has edita
 
 ---
 
+### Interfaz
+
+Diseño con **Bootstrap 5.3.3** y **Bootstrap Icons 1.11.3** (incluidos en `wwwroot/vendor`, sin internet). Barra lateral con las secciones (contraíble con «Contraer»; en celular se abre con ☰), barra superior con migas de pan, y modo oscuro automático según el sistema. Los estilos propios están en `wwwroot/css/app.css` (módulos) y `wwwroot/css/tema.css` (sistema de diseño y layout).
+
 ## 2. Cómo ejecutarla
 
 La aplicación corre en tu computadora y ahí se guardan los datos. Para abrirla desde el celular solo necesitas un navegador.
