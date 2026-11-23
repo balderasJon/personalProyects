@@ -158,6 +158,35 @@ public static class SugerenciaPrecioApi
             return Results.Ok(new { actualizados = n, sinDatos = ps.Count - n });
         })).RequireAuthorization();
 
+        // «Recalcular precios» (2026-11-23): mínimo Y precio objetivo de TODOS los juguetes con el costo actual (real o estimado)
+        // y los márgenes vigentes. Con aplicar=false solo devuelve la vista previa (antes → después); con true los guarda.
+        // Los juguetes sin datos suficientes conservan sus precios.
+        app.MapPost("/api/productos/recalcular-precios", (RecalcularPreciosIn i, AppDbContext db) => Api.Bloqueado(async () =>
+        {
+            var sug = new SugeridorPrecios(db);
+            var ps = await db.Productos.OrderBy(p => p.Codigo).ToListAsync();
+            var pubs = await db.Publicaciones.AsNoTracking().Where(u => u.Estatus == "publicado").ToListAsync();
+            var cambios = new List<object>(); var sinDatos = new List<string>(); int iguales = 0, conPublicacion = 0;
+            foreach (var p in ps)
+            {
+                var r = await sug.SugerirAsync(new SugerirPrecioIn(p.Id, null, Math.Max(1, p.Cantidad), p.PrecioMexico, p.ValorReferencia,
+                    p.Categoria, p.PesoKg, p.LargoCm, p.AnchoCm, p.AltoCm), p);
+                if (!r.Ok || r.PrecioObjetivo is not { } obj || r.PrecioMinimo is not { } min) { sinDatos.Add(p.Codigo); continue; }
+                if (obj == p.PrecioObjetivo && min == p.PrecioMinimo) { iguales++; continue; }
+                var publicada = pubs.Where(u => u.ProductoId == p.Id && u.PrecioPublicado != obj).ToList();
+                if (publicada.Count > 0) conPublicacion++;
+                cambios.Add(new
+                {
+                    productoId = p.Id, p.Codigo, p.Nombre, costo = r.Costo, origenCosto = r.OrigenCosto,
+                    objetivoAntes = p.PrecioObjetivo, objetivoNuevo = obj, minimoAntes = p.PrecioMinimo, minimoNuevo = min,
+                    publicadoA = publicada.Select(u => u.PrecioPublicado).Distinct().ToList(),
+                });
+                if (i.Aplicar) { p.PrecioObjetivo = obj; p.PrecioMinimo = min; p.ActualizadoUtc = DateTime.UtcNow; }
+            }
+            if (i.Aplicar && cambios.Count > 0) await db.GuardarAsync();
+            return Results.Ok(new { aplicado = i.Aplicar, cambios, iguales, conPublicacion, sinDatos = sinDatos.Count, sinDatosCodigos = sinDatos.Take(20) });
+        })).RequireAuthorization();
+
         // Recalcula el precio mínimo de todos los juguetes con el mismo criterio del escaneo: mínimo del mejor canal
         // (costo real o estimado + comisiones y envíos + margen mínimo). Sin datos suficientes, el mínimo actual no se toca.
         app.MapPost("/api/productos/recalcular-minimos", (AppDbContext db) => Api.Bloqueado(async () =>
@@ -179,3 +208,5 @@ public static class SugerenciaPrecioApi
         })).RequireAuthorization();
     }
 }
+
+public record RecalcularPreciosIn(bool Aplicar = false);

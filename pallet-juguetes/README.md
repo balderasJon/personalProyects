@@ -112,7 +112,7 @@ Si el mínimo queda arriba de la referencia de mercado, la aplicación avisa que
 
 **Precio mínimo.** Es el **mínimo del mejor canal**, el mismo criterio de la sugerencia al escanear: el precio que cubre el costo de la pieza (real si el pallet ya tiene costeo; si no, estimado con su valor de mercado), las comisiones y envíos de la plataforma y tu margen mínimo (10 %). Sin tarifas capturadas se calcula como venta directa sin comisiones.
 
-- En Inventario → *Valor del pallet* → **Recalcular precios mínimos** se actualizan todos los mínimos con ese criterio (reemplaza los capturados a mano; pide confirmación). Los juguetes sin precio en México, sin valor de referencia y sin costeo conservan su mínimo y se listan en el aviso.
+- En Inventario → *Valor del pallet* → **Recalcular precios** se recalculan el **precio objetivo y el mínimo** de todos los juguetes con su costo actual y los márgenes vigentes: primero muestra la lista de cambios (antes → después, y si un anuncio publicado tiene otro precio) y luego se aplica. Reemplaza también los precios objetivo escritos a mano. En *Análisis comercial › Márgenes*, al guardar un objetivo se abre esta misma revisión, y el botón **Actualizar precios con estos márgenes** la abre cuando quieras.
 - Si el precio objetivo queda por debajo del mínimo, el formulario lo advierte.
 - El *factor proporcional* (inversión ÷ valor en México) se sigue mostrando como indicador del pallet y para las alertas de venta "por debajo de su parte de la inversión".
 

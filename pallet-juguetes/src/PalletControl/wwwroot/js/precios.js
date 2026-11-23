@@ -185,7 +185,8 @@ function vistaPlataformas(n){
 }
 function pintaPlataformas(pl,pars){
   cuerpo.innerHTML='<div class="head"><div><p class="eyebrow">Análisis comercial</p><h2>Márgenes</h2>'+
-      '<p class="muted small">El precio mínimo y el sugerido (precio objetivo) de cada juguete se calculan como venta directa: costo de la pieza + el margen que definas aquí. No se suma IVA (lo que costó el pallet ya lo incluye) ni comisiones de plataformas.</p></div></div>'+
+      '<p class="muted small">El precio mínimo y el sugerido (precio objetivo) de cada juguete se calculan como venta directa: costo de la pieza + el margen que definas aquí. No se suma IVA (lo que costó el pallet ya lo incluye) ni comisiones de plataformas.</p></div>'+
+      '<button class="btn primary" type="button" id="mgAplicar" title="Recalcula el precio objetivo y el mínimo de todos los juguetes con estos márgenes">Actualizar precios con estos márgenes</button></div>'+
     '<div class="card"><div class="pf"><h3>Objetivos de rentabilidad</h3><button class="btn sm" type="button" id="parNuevo">+ Objetivo</button></div>'+
       '<p class="small muted">Gana el más específico: juguete › categoría › general. Margen sobre precio: el sugerido deja ese % del precio de venta como ganancia (30 % de margen = costo ÷ 0.70).</p>'+
       '<div class="scroll"><table><thead><tr><th>Ámbito</th><th>Objetivo</th><th class="r">Mínimo</th><th>Redondeo</th><th></th></tr></thead><tbody>'+
@@ -195,6 +196,7 @@ function pintaPlataformas(pl,pars){
       '</tbody></table></div></div>';
 
   cuerpo.querySelector('#parNuevo').addEventListener('click',function(){parametroForm(null)});
+  cuerpo.querySelector('#mgAplicar').addEventListener('click',function(){PC.recalcularPrecios()});
   cuerpo.querySelectorAll('[data-par]').forEach(function(b){b.addEventListener('click',function(){parametroForm(pars.filter(function(x){return x.parametro.id===b.dataset.par})[0])})});
 }
 function parametroForm(x){
@@ -215,10 +217,10 @@ function parametroForm(x){
       var b={esquema:f.elements.esquema.value,valor:+f.elements.valor.value||0,margenMinimoPct:+f.elements.margenMinimoPct.value||0,descuentoPromocionalPct:0,
         redondeo:f.elements.redondeo.value,activo:general?true:f.elements.activo.checked,
         productoId:general?null:(f.elements.productoId.value||null),categoria:general?null:(f.elements.categoria.value||null),plataformaId:null};
-      (x?PC.api('PUT','parametros-rentabilidad/'+p.id,b):PC.api('POST','parametros-rentabilidad',b)).then(function(){PC.closeModal();PC.toast('Objetivo guardado');render('plataformas',cuerpo)},function(e){msg.innerHTML='<p class="warnline bad">'+esc(e.mensaje)+'</p>'});
+      (x?PC.api('PUT','parametros-rentabilidad/'+p.id,b):PC.api('POST','parametros-rentabilidad',b)).then(function(){render('plataformas',cuerpo);PC.recalcularPrecios('Guardaste el objetivo: revisa cómo cambian los precios y aplica para actualizarlos (o cancela para dejarlos como están).')},function(e){msg.innerHTML='<p class="warnline bad">'+esc(e.mensaje)+'</p>'});
     });
     var d=el.querySelector('#paDel');if(d)d.addEventListener('click',function(){if(!d.classList.contains('armed')){d.classList.add('armed');d.textContent='Confirmar: eliminar';return}
-      PC.api('DELETE','parametros-rentabilidad/'+p.id).then(function(){PC.closeModal();PC.toast('Objetivo eliminado');render('plataformas',cuerpo)},function(e){msg.innerHTML='<p class="warnline bad">'+esc(e.mensaje)+'</p>'})});
+      PC.api('DELETE','parametros-rentabilidad/'+p.id).then(function(){render('plataformas',cuerpo);PC.recalcularPrecios('Eliminaste un objetivo: revisa cómo cambian los precios y aplica para actualizarlos.')},function(e){msg.innerHTML='<p class="warnline bad">'+esc(e.mensaje)+'</p>'})});
   });
 }
 

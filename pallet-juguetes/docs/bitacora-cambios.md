@@ -2,6 +2,18 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-23 · «Recalcular precios» (objetivo y mínimo) y actualización al cambiar márgenes
+
+**Por qué**: el precio objetivo se guardaba una sola vez (al escanear o con «Usar precio sugerido») y «Recalcular precios mínimos» solo tocaba el mínimo. Sin manifiesto, los primeros juguetes escaneados cargaban casi toda la inversión, y su objetivo quedaba muy alto aunque el costo bajara después.
+
+**Cambiado (a petición del usuario)**
+- Inventario › Valor del pallet › **Recalcular precios**: muestra la lista de cambios (costo, objetivo y mínimo antes → después; aviso si un anuncio publicado tiene otro precio) y, al aplicar, actualiza el **precio objetivo y el mínimo de todos** los juguetes con su costo actual (real o estimado) y los márgenes vigentes. Reemplaza también los objetivos escritos a mano. Sin datos suficientes, el juguete conserva sus precios.
+- Análisis comercial › Márgenes: al guardar o eliminar un objetivo se abre esa revisión; botón **Actualizar precios con estos márgenes**.
+- `POST /api/productos/recalcular-precios` (`{ aplicar: false|true }`). Prueba automática nueva.
+- Los precios de los anuncios ya publicados no cambian solos: hay que actualizarlos en cada plataforma.
+
+**Impacto en datos**: solo al aplicar.
+
 ## 2026-11-23 · Historia de Instagram en «Preparar publicación»
 
 **Agregado (a petición del usuario)**

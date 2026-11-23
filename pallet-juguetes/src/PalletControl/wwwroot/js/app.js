@@ -416,16 +416,10 @@ function renderValor(s){
         return 'Es lo menos que debes aceptar: cubre el costo de la pieza y tu margen mínimo (igual que la sugerencia al escanear). '+
           (con?'<b>'+num(con)+' de '+num(s.P.length)+'</b> juguetes tienen costo real (costeo de su pallet); los demás usan un costo estimado con su valor de mercado.':'Aún no hay costeos aplicados: se usa un costo estimado con el valor de mercado de cada juguete. Calcula el costeo de cada pallet en Análisis comercial › Pallets y costos.');
       })()+'</p></div>'+
-      '<button class="btn" type="button" id="recalcMin">Recalcular precios mínimos</button></div></details>';
+      '<button class="btn" type="button" id="recalcMin">Recalcular precios</button></div></details>';
   el.querySelector('details').addEventListener('toggle',function(){try{localStorage.setItem(LKEY+'-invvalor',this.open?'1':'0')}catch(e){}});
   var rb=el.querySelector('#recalcMin');
-  if(rb)rb.addEventListener('click',function(){
-    if(!confirm('Se reemplazará el precio mínimo de todos los juguetes con el mismo criterio de la sugerencia al escanear: costo de la pieza (real o estimado) + margen mínimo, como venta directa. Los mínimos que capturaste a mano se perderán; los juguetes sin datos suficientes conservan el suyo. ¿Continuar?'))return;
-    rb.disabled=true;
-    api('POST','productos/recalcular-minimos').then(function(r){return cargar().then(function(){
-      toast(r.actualizados+' mínimo'+(r.actualizados===1?'':'s')+' actualizado'+(r.actualizados===1?'':'s')+' · '+r.conCostoReal+' con costo real · '+r.conCostoEstimado+' con costo estimado'+
-        (r.sinDatos?' · '+r.sinDatos+' sin datos suficientes (captura el precio en México o escanea su código): '+r.sinDatosCodigos.join(', '):''))})},function(e){toast((e&&e.mensaje)||'No se pudo recalcular')}).then(function(){rb.disabled=false});
-  });
+  if(rb)rb.addEventListener('click',function(){recalcularPreciosForm()});
 }
 /* ---- inventario: tarjetas con foto y etiquetas de estado ---- */
 var INV_VISTA='tarjetas',INV_ETQ='';
@@ -1040,6 +1034,33 @@ function sumarPieza(prod,el,inp,r,go){
     r.querySelector('#scOpen2').addEventListener('click',function(){productoForm(prod.id)});inp.select()});
 }
 
+/* ---- recalcular precio objetivo y mínimo de todos los juguetes ---- */
+/** Vista previa (antes → después) y aplicar. motivo: texto opcional arriba (p. ej. «Cambiaste los márgenes»). */
+function recalcularPreciosForm(motivo){
+  openModal(head('Recalcular precios')+'<div style="display:flex;flex-direction:column;gap:12px">'+
+    (motivo?'<p class="warnline">'+esc(motivo)+'</p>':'')+
+    '<p class="small">Se calculan de nuevo el <b>precio objetivo</b> y el <b>mínimo</b> de todos los juguetes con su costo actual (real si ya aplicaste el costeo, estimado si no) y los márgenes de <b>Análisis comercial › Márgenes</b>. Revisa los cambios y aplica.</p>'+
+    '<div id="rpBody"><p class="small muted">Calculando…</p></div></div>',function(el){
+      var body=el.querySelector('#rpBody');
+      api('POST','productos/recalcular-precios',{aplicar:false}).then(function(r){
+        var C=r.cambios||[];
+        if(!C.length){body.innerHTML='<p class="small">Todos los precios ya están al día ('+num(r.iguales)+' juguete'+(r.iguales===1?'':'s')+').'+(r.sinDatos?' '+num(r.sinDatos)+' sin datos suficientes: '+esc(r.sinDatosCodigos.join(', '))+'.':'')+'</p><div class="pf"><span></span><button class="btn" type="button" data-close2>Cerrar</button></div>';return}
+        function flecha(a,b){var cls=b<a?'tone-good':(b>a?'tone-bad':'');return (a>0?money(a):'<span class="zero">—</span>')+' → <b class="'+cls+'">'+money(b)+'</b>'}
+        body.innerHTML='<div class="scroll" style="max-height:340px;overflow:auto"><table><thead><tr><th>Juguete</th><th class="r">Costo pieza</th><th class="r">Precio objetivo</th><th class="r">Mínimo</th></tr></thead><tbody>'+
+          C.map(function(x){return '<tr><td class="wrap"><b>'+esc(x.nombre)+'</b><span class="sub">'+esc(x.codigo)+(x.publicadoA&&x.publicadoA.length?' · publicado a '+x.publicadoA.map(function(v){return money(v)}).join(', ')+': actualiza el anuncio':'')+'</span></td>'+
+            '<td class="r">'+money2(x.costo)+(x.origenCosto==='real'?'':' <span class="tag-w">est.</span>')+'</td><td class="r">'+flecha(x.objetivoAntes,x.objetivoNuevo)+'</td><td class="r">'+flecha(x.minimoAntes,x.minimoNuevo)+'</td></tr>'}).join('')+
+          '</tbody></table></div>'+
+          '<p class="small muted">'+num(C.length)+' juguete'+(C.length===1?'':'s')+' cambia'+(C.length===1?'':'n')+(r.iguales?' · '+num(r.iguales)+' ya al día':'')+(r.sinDatos?' · '+num(r.sinDatos)+' sin datos (conservan su precio): '+esc(r.sinDatosCodigos.join(', ')):'')+'.'+
+            (r.conPublicacion?' <b>'+num(r.conPublicacion)+'</b> tiene'+(r.conPublicacion===1?'':'n')+' publicaciones con otro precio: cambia el precio en el anuncio después.':'')+' Se reemplaza también el precio objetivo que hayas escrito a mano.</p>'+
+          '<div id="rpMsg"></div><div class="pf"><span></span><div class="row"><button class="btn" type="button" data-close2>Cancelar</button><button class="btn primary" type="button" id="rpGo">Aplicar a '+num(C.length)+' juguete'+(C.length===1?'':'s')+'</button></div></div>';
+        var go=body.querySelector('#rpGo');
+        go.addEventListener('click',function(){go.disabled=true;
+          api('POST','productos/recalcular-precios',{aplicar:true}).then(function(x){closeModal();return cargar().then(function(){toast('Precios actualizados: '+x.cambios.length+' juguete'+(x.cambios.length===1?'':'s'))})},
+            function(e){go.disabled=false;body.querySelector('#rpMsg').innerHTML='<p class="warnline bad">'+esc((e&&e.mensaje)||'No se pudo aplicar')+'</p>'})});
+      },function(e){body.innerHTML='<p class="warnline bad">'+esc((e&&e.mensaje)||'No se pudo calcular')+'</p>'});
+    });
+}
+
 /* ---- completar datos de varios juguetes (Inventario) ---- */
 function completarTodosForm(){
   var L=porCompletar(),parar=false,corriendo=false;
@@ -1072,7 +1093,7 @@ function completarTodosForm(){
         }
         function terminar(){corriendo=false;cerrar.disabled=false;cerrar.textContent='Cerrar';var pend=L.length-i+(limite?1:0);
           est.innerHTML=(fin?esc(fin)+'<br>':'')+'<b>'+num(ok)+'</b> completado'+(ok===1?'':'s')+' · '+num(sin)+' sin datos'+(err?' · '+num(err)+' con error':'')+' · '+num(pend)+' pendiente'+(pend===1?'':'s')+(pend?' (vuelve a usar «Completar datos» después)':'')+'.'+
-            (ok?' Como cambió la referencia de mercado de algunos juguetes, usa «Recalcular precios mínimos» (en Valor del pallet) o aplica el costeo.':'');
+            (ok?' Como cambió la referencia de mercado de algunos juguetes, usa «Recalcular precios» (en Valor del pallet) para actualizar el objetivo y el mínimo.':'');
           cargar();
         }
         sig();
@@ -1290,7 +1311,7 @@ window.PC={api:api,go:go,cargar:function(){return cargar()},openModal:openModal,
   toast:toast,money:money,money2:money2,num:num,pct:pct,esc:esc,fdate:fdate,kpi:kpi,today:today,nf4:nf4,cfg:cfg,TC:function(){return TC},
   productoForm:productoForm,detalleForm:detalleForm,condNombre:condNombre,optConds:optConds,optPallets:optPallets,palletsLista:palletsLista,
   datos:function(){return {D:D,LOTES:LOTES,PALLETS:PALLETS,COSTOS:COSTOS,CORRIDAS:CORRIDAS,CONDS:CONDS,RES:RES,VDET:VDET,PUBS:PUBS,PLATS:PLATS,PRECIOS:PRECIOS}},
-  imgsDe:imgsDe,lotesDe:lotesDe,
+  imgsDe:imgsDe,lotesDe:lotesDe,recalcularPrecios:function(m){recalcularPreciosForm(m)},
   stats:stats,vendidasDe:vendidasDe,pname:pname,folio:folio,canalDe:canalDe,cobrada:cobrada,totalVenta:totalVenta,netas:netas,costoDe:costoDe,
   ESTADOS_V:ESTADOS_V,EST_V_TXT:EST_V_TXT,CANALES:function(){return CANALES},val:val};
 
