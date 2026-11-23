@@ -1,4 +1,4 @@
-/* Análisis comercial — Fase 2: Márgenes y fiscal (las tarifas por plataforma se retiraron), Análisis de productos y Simulador de precios.
+/* Análisis comercial — Fase 2: Márgenes (sin tarifas por plataforma, sin IVA ni promoción), Análisis de productos y Simulador de precios.
    Todos los cálculos los hace el servidor (motor de precios). Esta capa solo pide, muestra y captura. */
 (function(){
 'use strict';
@@ -13,7 +13,7 @@ function pill(e){var x=ESTADO[e]||['C',e];return '<span class="pill '+x[0]+'">'+
 function err(e){PC.toast((e&&e.mensaje)||'No se pudo completar la operación.')}
 function pct(v){return v==null?'—':(+v).toLocaleString('es-MX',{maximumFractionDigits:2})+' %'}
 function m(v){return v==null?'—':money2(v)}
-var avisoFiscal='<div class="callout sun small"><b>Régimen fiscal sin definir:</b> los precios no incluyen IVA ni ISR. Defínelo en Análisis comercial › Márgenes y fiscal cuando lo valides con tu contador.</div>';
+var avisoFiscal='';   // sin IVA: lo que costó el pallet ya lo incluye (decisión del usuario, 2026-11-23)
 
 var st={prod:{q:'',categoria:'',palletId:'',estado:'',orden:'codigo',desc:false,pagina:1,tam:25,fecha:''},sim:{},plat:{sel:null},pide:0};
 var cuerpo=null;
@@ -176,34 +176,26 @@ function pintaSimulacion(d,precio,piezas){
     '</tbody></table></div><p class="small muted">Ganancia = precio − costo por pieza, antes de impuestos y de los gastos que registres en la venta (envío, empaque). No se usan comisiones ni tarifas de plataformas.</p></div>';
 }
 
-/* ================= Plataformas, tarifas, objetivos y fiscal ================= */
+/* ================= Márgenes (objetivos de rentabilidad) ================= */
 function vistaPlataformas(n){
-  Promise.all([PC.api('GET','plataformas'),PC.api('GET','parametros-rentabilidad'),PC.api('GET','fiscal')]).then(function(x){if(n!==st.pide)return;
+  Promise.all([PC.api('GET','plataformas'),PC.api('GET','parametros-rentabilidad')]).then(function(x){if(n!==st.pide)return;
     plats=x[0].plataformas.map(function(y){return y.plataforma});opciones=x[0].opciones;
-    pintaPlataformas(x[0],x[1],x[2]);
+    pintaPlataformas(x[0],x[1]);
   },err);
 }
-function pintaPlataformas(pl,pars,fis){
-  cuerpo.innerHTML='<div class="head"><div><p class="eyebrow">Análisis comercial</p><h2>Márgenes y fiscal</h2>'+
-      '<p class="muted small">El precio mínimo y el sugerido de cada juguete se calculan como venta directa: costo de la pieza + el margen que definas aquí. No se usan comisiones ni envíos de plataformas.</p></div></div>'+
-    '<div class="grid g2"><div class="card"><div class="pf"><h3>Objetivos de rentabilidad</h3><button class="btn sm" type="button" id="parNuevo">+ Objetivo</button></div>'+
-      '<p class="small muted">Gana el más específico: juguete y plataforma › juguete › categoría y plataforma › categoría › plataforma › general.</p>'+
-      '<div class="scroll"><table><thead><tr><th>Ámbito</th><th>Objetivo</th><th class="r">Mínimo</th><th class="r">Promoción</th><th>Redondeo</th><th></th></tr></thead><tbody>'+
+function pintaPlataformas(pl,pars){
+  cuerpo.innerHTML='<div class="head"><div><p class="eyebrow">Análisis comercial</p><h2>Márgenes</h2>'+
+      '<p class="muted small">El precio mínimo y el sugerido (precio objetivo) de cada juguete se calculan como venta directa: costo de la pieza + el margen que definas aquí. No se suma IVA (lo que costó el pallet ya lo incluye) ni comisiones de plataformas.</p></div></div>'+
+    '<div class="card"><div class="pf"><h3>Objetivos de rentabilidad</h3><button class="btn sm" type="button" id="parNuevo">+ Objetivo</button></div>'+
+      '<p class="small muted">Gana el más específico: juguete › categoría › general. Margen sobre precio: el sugerido deja ese % del precio de venta como ganancia (30 % de margen = costo ÷ 0.70).</p>'+
+      '<div class="scroll"><table><thead><tr><th>Ámbito</th><th>Objetivo</th><th class="r">Mínimo</th><th>Redondeo</th><th></th></tr></thead><tbody>'+
       pars.map(function(x){var p=x.parametro,amb=[x.producto,p.categoria,x.plataforma].filter(Boolean).join(' · ')||'General';
         return '<tr><td>'+esc(amb)+'<span class="sub">'+esc(x.ambito)+(p.activo?'':' · inactivo')+'</span></td><td>'+esc(ESQ[p.esquema])+': <b>'+(p.esquema==='utilidad_fija'?money2(p.valor):pct(p.valor))+'</b></td>'+
-          '<td class="r">'+pct(p.margenMinimoPct)+'</td><td class="r">'+pct(p.descuentoPromocionalPct)+'</td><td>'+esc(RED[p.redondeo])+'</td><td class="r"><button class="btn sm" type="button" data-par="'+esc(p.id)+'">Editar</button></td></tr>'}).join('')+
-      '</tbody></table></div></div>'+
-    '<form class="card" id="fisF"><h3>Situación fiscal</h3>'+(fis.regimen==='pendiente'?'<p class="warnline small">Pendiente: los precios no incluyen IVA ni ISR hasta que lo definas con tu contador.</p>':'')+
-      '<div class="form">'+fld('fReg','Régimen','<select class="sel" id="fReg" name="regimen">'+PC.opt(Object.keys(REG),fis.regimen,REG)+'</select>')+
-        fld('fTas','Tasa de IVA (%)','<input class="inp num" id="fTas" name="tasaIvaPct" type="number" min="0" max="100" step="0.01" value="'+esc(fis.tasaIvaPct)+'">')+
-        '<div class="f full"><label class="chk"><input type="checkbox" name="cobraIva"'+(fis.cobraIva?' checked':'')+'> Cobro IVA en mis ventas (el precio al cliente lo incluye)</label></div>'+
-        fld('fNot','Notas','<input class="inp" id="fNot" name="notas" maxlength="500" value="'+esc(fis.notas||'')+'" placeholder="Lo que te indicó tu contador">',null,true)+
-      '</div><p class="small muted">Esta información no es asesoría fiscal.</p><div class="row"><button class="btn" type="submit">Guardar</button></div></form></div>';
+          '<td class="r">'+pct(p.margenMinimoPct)+'</td><td>'+esc(RED[p.redondeo])+'</td><td class="r"><button class="btn sm" type="button" data-par="'+esc(p.id)+'">Editar</button></td></tr>'}).join('')+
+      '</tbody></table></div></div>';
 
   cuerpo.querySelector('#parNuevo').addEventListener('click',function(){parametroForm(null)});
   cuerpo.querySelectorAll('[data-par]').forEach(function(b){b.addEventListener('click',function(){parametroForm(pars.filter(function(x){return x.parametro.id===b.dataset.par})[0])})});
-  cuerpo.querySelector('#fisF').addEventListener('submit',function(e){e.preventDefault();var f=this;
-    PC.api('PUT','fiscal',{regimen:f.elements.regimen.value,cobraIva:f.elements.cobraIva.checked,tasaIvaPct:+f.elements.tasaIvaPct.value||0,notas:f.elements.notas.value}).then(function(){PC.toast('Situación fiscal guardada');render('plataformas',cuerpo)},err)});
 }
 function parametroForm(x){
   var p=x?x.parametro:{esquema:'margen',valor:30,margenMinimoPct:10,descuentoPromocionalPct:0,redondeo:'terminacion9',activo:true},general=x&&x.ambito==='general';
@@ -211,20 +203,18 @@ function parametroForm(x){
   PC.openModal(head(x?'Editar objetivo':'Nuevo objetivo')+'<form style="display:flex;flex-direction:column;gap:14px"><div class="form">'+
     (general?'<p class="full small muted">Objetivo general: aplica cuando no hay uno más específico.</p>':
       fld('paPro','Juguete','<select class="sel" id="paPro" name="productoId"><option value="">Todos</option>'+prods.map(function(q){return '<option value="'+esc(q.id)+'"'+(q.id===p.productoId?' selected':'')+'>'+esc(q.codigo+' · '+q.nombre)+'</option>'}).join('')+'</select>')+
-      fld('paCat','Categoría','<select class="sel" id="paCat" name="categoria"><option value="">Todas</option>'+categorias().map(function(c){return '<option'+(c===p.categoria?' selected':'')+'>'+esc(c)+'</option>'}).join('')+'</select>','Se ignora si eliges un juguete.')+
-      fld('paPla','Plataforma','<select class="sel" id="paPla" name="plataformaId"><option value="">Todas</option>'+(plats||[]).map(function(q){return '<option value="'+esc(q.id)+'"'+(q.id===p.plataformaId?' selected':'')+'>'+esc(q.nombre)+'</option>'}).join('')+'</select>'))+
+      fld('paCat','Categoría','<select class="sel" id="paCat" name="categoria"><option value="">Todas</option>'+categorias().map(function(c){return '<option'+(c===p.categoria?' selected':'')+'>'+esc(c)+'</option>'}).join('')+'</select>','Se ignora si eliges un juguete.'))+
     fld('paEsq','Esquema','<select class="sel" id="paEsq" name="esquema">'+PC.opt(Object.keys(ESQ),p.esquema,ESQ)+'</select>')+
     fld('paVal','Valor','<input class="inp num" id="paVal" name="valor" type="number" min="0" step="0.01" required value="'+esc(p.valor)+'">','% para margen y markup; pesos para utilidad fija.')+
     fld('paMin','Margen mínimo (%)','<input class="inp num" id="paMin" name="margenMinimoPct" type="number" min="0" max="99" step="0.01" value="'+esc(p.margenMinimoPct)+'">','Nunca se sugiere vender por debajo.')+
-    fld('paPro2','Descuento promocional (%)','<input class="inp num" id="paPro2" name="descuentoPromocionalPct" type="number" min="0" max="99" step="0.01" value="'+esc(p.descuentoPromocionalPct)+'">','Se limita al mínimo.')+
     fld('paRed','Redondeo','<select class="sel" id="paRed" name="redondeo">'+PC.opt(Object.keys(RED),p.redondeo,RED)+'</select>','Siempre hacia arriba.')+
     (general?'':'<div class="f"><label class="chk"><input type="checkbox" name="activo"'+(p.activo?' checked':'')+'> Activo</label></div>')+
     '</div><div id="paM"></div><div class="pf"><div>'+(x&&!general?'<button class="btn danger" type="button" id="paDel">Eliminar</button>':'')+'</div><div class="row"><button class="btn" type="button" data-close2>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div></form>',
   function(el){var f=el.querySelector('form'),msg=el.querySelector('#paM');
     PC.wireForm(el,function(){
-      var b={esquema:f.elements.esquema.value,valor:+f.elements.valor.value||0,margenMinimoPct:+f.elements.margenMinimoPct.value||0,descuentoPromocionalPct:+f.elements.descuentoPromocionalPct.value||0,
+      var b={esquema:f.elements.esquema.value,valor:+f.elements.valor.value||0,margenMinimoPct:+f.elements.margenMinimoPct.value||0,descuentoPromocionalPct:0,
         redondeo:f.elements.redondeo.value,activo:general?true:f.elements.activo.checked,
-        productoId:general?null:(f.elements.productoId.value||null),categoria:general?null:(f.elements.categoria.value||null),plataformaId:general?null:(f.elements.plataformaId.value||null)};
+        productoId:general?null:(f.elements.productoId.value||null),categoria:general?null:(f.elements.categoria.value||null),plataformaId:null};
       (x?PC.api('PUT','parametros-rentabilidad/'+p.id,b):PC.api('POST','parametros-rentabilidad',b)).then(function(){PC.closeModal();PC.toast('Objetivo guardado');render('plataformas',cuerpo)},function(e){msg.innerHTML='<p class="warnline bad">'+esc(e.mensaje)+'</p>'});
     });
     var d=el.querySelector('#paDel');if(d)d.addEventListener('click',function(){if(!d.classList.contains('armed')){d.classList.add('armed');d.textContent='Confirmar: eliminar';return}

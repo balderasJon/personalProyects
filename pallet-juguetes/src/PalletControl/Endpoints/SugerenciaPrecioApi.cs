@@ -30,7 +30,6 @@ public class SugeridorPrecios(AppDbContext db)
     // Se reutiliza para muchos juguetes (Recalcular mínimos): tarifas, objetivos y costos se cargan una vez.
     private readonly Rentabilidad rent = new(db);
     private List<ParametroRentabilidad>? parametros;
-    private ConfiguracionFiscal? fiscal;
 
     public async Task<Resultado> SugerirAsync(SugerirPrecioIn i, Producto? existente)
     {
@@ -86,20 +85,19 @@ public class SugeridorPrecios(AppDbContext db)
         // sin comisiones, con el objetivo de rentabilidad aplicable y la situación fiscal.
         Canal? mejor = null; var canales = new List<Canal>();
         parametros ??= await db.Parametros.AsNoTracking().Where(x => x.Activo).ToListAsync();
-        fiscal ??= await db.Fiscal.AsNoTracking().OrderBy(x => x.Id).FirstOrDefaultAsync() ?? new ConfiguracionFiscal();
         if (Rentabilidad.ParametroPara(parametros, p, "") is { } par)
         {
-            var d = MotorPrecios.Calcular(costo.Value, new ComponentesTarifa(), Rentabilidad.Fiscal(fiscal), Rentabilidad.Objetivo(par));
+            var d = MotorPrecios.Calcular(costo.Value, new ComponentesTarifa(), new ConfigFiscal(), Rentabilidad.Objetivo(par));   // sin IVA: el costo del pallet ya lo incluye (2026-11-23)
             if (d.Ok) { mejor = new Canal("", "Venta directa sin comisiones", Math.Ceiling(d.Minimo!.Value), d.Sugerido, d.AlSugerido?.Utilidad, d.AlSugerido?.MargenPct, true, null); canales.Add(mejor); }
         }
-        else avisos.Add("No hay un objetivo de rentabilidad activo: defínelo en Análisis comercial › Márgenes y fiscal.");
+        else avisos.Add("No hay un objetivo de rentabilidad activo: defínelo en Análisis comercial › Márgenes.");
         if (mejor is not null && referencia is { } rf)
         {
             if (mejor.Minimo > rf) avisos.Add($"El mínimo (${mejor.Minimo:N0}) es mayor que la referencia de mercado (${rf:N0}): a precio de mercado este juguete no recupera su costo; considera otro canal o liquidarlo.");
             else if (mejor.Sugerido > rf) avisos.Add($"El sugerido (${mejor.Sugerido:N0}) está arriba de la referencia de mercado (${rf:N0}): publícalo entre el mínimo y la referencia.");
         }
         return new Resultado(mejor is not null, referencia, origenRef, costo, origenCosto, est, mejor,
-            canales, fiscal.Regimen == "pendiente", avisos);
+            canales, false, avisos);
     }
 }
 

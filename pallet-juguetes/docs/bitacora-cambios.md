@@ -2,6 +2,15 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-23 · Sin IVA ni promoción en los precios
+
+**Cambiado (a petición del usuario: lo que costó el pallet ya incluye IVA)**
+- El precio mínimo y el sugerido ya no suman IVA aunque haya datos fiscales guardados de antes. Se quita la sección «Situación fiscal»; la pestaña se llama **Márgenes**.
+- Se quita el campo «Descuento promocional» (no se usaba en ningún precio que muestre la aplicación) y el campo «Plataforma» de los objetivos (sin tarifas no tenía efecto).
+- Prueba nueva: con «cobro IVA» guardado, el sugerido sigue siendo costo ÷ 0.70.
+
+**Impacto en datos**: ninguno; la configuración fiscal y los descuentos guardados se conservan sin uso.
+
 ## 2026-11-23 · Textos de precio objetivo y de lotes sin valor
 
 **Cambiado**

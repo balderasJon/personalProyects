@@ -806,7 +806,7 @@ function wireMx(el,chk,id,G){
     box.innerHTML='<div class="sugbox"><p><b>Precio sugerido: '+money(r.precioObjetivo)+'</b> · <b>Precio mínimo: '+money(r.precioMinimo)+'</b> <span class="small muted">('+esc(ca.plataforma)+')</span></p>'+
       '<ul class="small sug">'+notas.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>'+
       (otros.length?'<p class="small muted">Otros canales: '+otros.map(function(x){return esc(x.plataforma)+' '+money(x.sugerido)+' (mín. '+money(x.minimo)+')'}).join(' · ')+'</p>':'')+av+
-      (r.fiscalPendiente?'<p class="small muted">Régimen fiscal pendiente: sin IVA ni ISR.</p>':'')+
+      
       (aplicados.length?'<p class="small muted">Se llenó: precio '+aplicados.join(' y ')+'.</p>':'')+
       '<div class="row"><button class="btn sm" type="button" id="pMxAplicar">Usar estos precios</button></div></div>';
     box.querySelector('#pMxAplicar').addEventListener('click',function(){poner(ob,r.precioObjetivo);poner(mn,r.precioMinimo);chk();toast('Precios sugeridos aplicados')});
@@ -1085,7 +1085,7 @@ function borrarTodoForm(){
   var s=stats(),nP=palletsLista().length,nV=s.V.length;
   openModal(head('Borrar todos los datos')+'<form style="display:flex;flex-direction:column;gap:14px">'+
     '<p class="warnline bad">Se borrarán <b>'+num(nP)+' pallet'+(nP===1?'':'s')+'</b>, <b>'+num(s.P.length)+' juguete'+(s.P.length===1?'':'s')+'</b> con sus fotos, lotes y costeos, <b>'+num(nV)+' venta'+(nV===1?'':'s')+'</b>, gastos, semanas, publicaciones, competencia y la bitácora.</p>'+
-    '<p class="small">Se conservan: Ajustes, márgenes y situación fiscal, plataformas y los códigos de barras ya consultados (para no gastar consultas otra vez).</p>'+
+    '<p class="small">Se conservan: Ajustes, márgenes, plataformas y los códigos de barras ya consultados (para no gastar consultas otra vez).</p>'+
     '<p class="small"><b>1.</b> Si quieres guardar una copia fuera de esta computadora, descárgala primero: <a class="btn sm" href="/api/respaldo" download>Descargar respaldo</a></p>'+
     '<p class="small"><b>2.</b> La aplicación también guarda una copia de la base y de las fotos en la carpeta <span class="mono">datos/respaldos</span> antes de borrar.</p>'+
     fld('btConf','<b>3.</b> Para confirmar escribe BORRAR','<input class="inp mono" id="btConf" autocomplete="off" autocapitalize="characters" placeholder="BORRAR">',null,true)+

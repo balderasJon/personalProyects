@@ -28,7 +28,7 @@ Es la versión instalable del artefacto **Control Pallet de Juguetes**. Usa la m
 | **Semana** | Publicaciones, mensajes y horas dedicadas; ventas y dinero de la semana se calculan solos. |
 | **Análisis comercial › Análisis de productos** | Mejor canal de cada juguete, precio sugerido, mínimo, utilidad y estado (rentable, margen bajo, pérdida), con filtros, orden y paginación. Detalle por canal y precios recomendados guardados. Detalle en [`docs/02-fase2-plataformas-y-precios.md`](docs/02-fase2-plataformas-y-precios.md). |
 | **Análisis comercial › Simulador de precios** | Solo el juguete: escribe un precio y cuántas piezas, y te dice si **ganas o pierdes** y cuánto, con su costo, mínimo, sugerido y precio de equilibrio. Sin tarifas de plataforma, peso, categoría ni tipo de publicación. |
-| **Análisis comercial › Márgenes y fiscal** | Objetivos de rentabilidad por ámbito y situación fiscal. Las tarifas por plataforma se retiraron: el mínimo y el sugerido se calculan como venta directa (costo + margen). |
+| **Análisis comercial › Márgenes** | Objetivos de rentabilidad (general, por categoría o por juguete): margen objetivo, margen mínimo y redondeo. El mínimo y el sugerido se calculan como venta directa (costo + margen), sin tarifas de plataformas y **sin sumar IVA** (lo que costó el pallet ya lo incluye). |
 | **Análisis comercial › Pallets y costos** | Pallets (moneda, tipo de cambio, gastos adicionales, inversión total), juguetes por lote y condición, costeo **equitativo, proporcional o manual** con cuadre al centavo, simulación, historial de costeos y costo real por pieza. Detalle en [`docs/01-fase1-pallets-y-costeo.md`](docs/01-fase1-pallets-y-costeo.md). |
 | **Ajustes** | Inversión (con pallets, es la suma de sus inversiones), aviso de pocas piezas, meta mensual. Exportación a CSV por hoja y respaldo completo en JSON. |
 
@@ -225,7 +225,7 @@ Ventas, gastos y semanas no tienen importación automática; se recapturan.
 
 ### Borrar todos los datos (empezar de cero)
 
-**Ajustes › Borrar todos los datos…** quita los datos capturados (por ejemplo, los de prueba): pallets, juguetes con sus fotos, lotes y costeos, ventas, gastos, semanas, publicaciones, competencia, integraciones y la bitácora. Se conservan Ajustes, márgenes, situación fiscal, plataformas, usuarios y la caché de códigos de barras. Pide escribir **BORRAR** y, antes de borrar, guarda `datos/respaldos/pallet-antes-de-borrar-AAAA-MM-DD-HHMMSS.db` y mueve las fotos a `datos/respaldos/imagenes-antes-de-borrar-…`. Si ya no las necesitas, borra esas copias a mano (los respaldos diarios automáticos anteriores también contienen los datos de prueba).
+**Ajustes › Borrar todos los datos…** quita los datos capturados (por ejemplo, los de prueba): pallets, juguetes con sus fotos, lotes y costeos, ventas, gastos, semanas, publicaciones, competencia, integraciones y la bitácora. Se conservan Ajustes, márgenes, plataformas, usuarios y la caché de códigos de barras. Pide escribir **BORRAR** y, antes de borrar, guarda `datos/respaldos/pallet-antes-de-borrar-AAAA-MM-DD-HHMMSS.db` y mueve las fotos a `datos/respaldos/imagenes-antes-de-borrar-…`. Si ya no las necesitas, borra esas copias a mano (los respaldos diarios automáticos anteriores también contienen los datos de prueba).
 
 ---
 
