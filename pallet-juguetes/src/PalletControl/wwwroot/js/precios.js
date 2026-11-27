@@ -2,7 +2,7 @@
    Todos los cálculos los hace el servidor (motor de precios). Esta capa solo pide, muestra y captura. */
 (function(){
 'use strict';
-var PC=window.PC,esc=PC.esc,money=PC.money,money2=PC.money2,num=PC.num,kpi=PC.kpi,fld=PC.fld,head=PC.head;
+var PC=window.PC,interm=PC.precioIntermediario,esc=PC.esc,money=PC.money,money2=PC.money2,num=PC.num,kpi=PC.kpi,fld=PC.fld,head=PC.head;
 var ESTADO={rentable:['entregado','Rentable'],margen_bajo:['apartado','Margen bajo'],bajo_minimo:['apartado','Bajo el mínimo'],perdida:['danado','Pérdida'],
   no_rentable:['danado','No rentable'],sin_costo:['C','Sin costo'],sin_tarifa:['C','Sin tarifa'],sin_objetivo:['C','Sin objetivo']};
 var ESQ={margen:'Margen sobre precio',markup:'Markup sobre costo',utilidad_fija:'Utilidad fija ($)'};
@@ -161,7 +161,7 @@ function pintaSimulacion(d,precio,piezas){
   else if(precio<x.minimo){veredicto='Ganas '+money2(tot)+', pero menos de tu margen mínimo';tono='warn'}
   else{veredicto='Ganas '+money2(tot);tono='good'}
   var col={good:['var(--good-soft)','var(--good)'],warn:['var(--sun-soft)','var(--sun)'],bad:['var(--bad-soft)','var(--bad)']}[tono];
-  var filas=[['Tu precio',tu],['Precio sugerido',x.sugerido],['Precio mínimo',x.minimo],['Precio de mercado (referencia)',ref]].filter(function(r){return r[1]>0});
+  var filas=[['Tu precio',tu],['Precio sugerido',x.sugerido],['Precio mínimo',x.minimo],['Precio intermediario (mínimo + 50 %)',interm(x.minimo)],['Precio de mercado (referencia)',ref]].filter(function(r){return r[1]>0});
   el.innerHTML=
     '<div class="card" style="background:'+col[0]+';border-color:transparent"><p class="small" style="margin:0;color:'+col[1]+'"><b>'+(piezas>1?'Vendiendo '+piezas+' piezas a '+money2(precio)+' cada una':'Vendiendo a '+money2(precio))+'</b></p>'+
       '<p style="margin:0;font-family:var(--f-display);font-weight:800;font-size:2rem;color:'+col[1]+'">'+esc(veredicto)+'</p>'+

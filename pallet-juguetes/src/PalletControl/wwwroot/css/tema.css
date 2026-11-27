@@ -297,3 +297,8 @@ table.dtab td{padding:.5rem .25rem}
 :root[data-theme="dark"] .sidebar .tab[aria-selected="true"]{color:var(--accent-fg)}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .sidebar .tab[aria-selected="true"]{color:var(--accent-fg);box-shadow:none}}
 a.btn{display:inline-flex}
+
+/* Inventario: botón para regresar al inicio de la lista */
+.al-inicio{position:fixed;right:24px;bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:30;width:46px;height:46px;padding:0;border-radius:50%;justify-content:center;box-shadow:var(--sh-lg);font-size:1.15rem}
+.al-inicio[hidden]{display:none}
+@media (max-width:575.98px){.al-inicio{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}}

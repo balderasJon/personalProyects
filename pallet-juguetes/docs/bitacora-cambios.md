@@ -2,6 +2,22 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-27 · Precio intermediario, filtro de foto y botón «al inicio»
+
+**Agregado**
+- **Precio intermediario** = precio mínimo + 50 % de ese mínimo (mínimo × 1.5). Se calcula al vuelo, no se guarda en la base de datos: si cambia el mínimo, cambia solo. Aparece en:
+  - Inventario: tarjetas («Mínimo · Intermediario · costo») y columna «Intermediario» en la vista de tabla.
+  - Inicio: columna en la tabla de precios.
+  - Ficha del juguete: renglón «Precio intermediario (mínimo + 50 %)», calculado sobre el precio mínimo guardado del juguete.
+  - Simulador: renglón en la comparación por pieza (cuánto ganas y con qué margen).
+  - Exportación de inventario a Excel: columna «Precio intermediario» al final (las columnas anteriores no cambian de lugar).
+- **Filtro de foto** en Inventario: «Con y sin foto», «Con foto» o «Sin foto»; se combina con los demás filtros y etiquetas.
+- **Botón para regresar al inicio de la lista** en Inventario: flecha ↑ que aparece al bajar y lleva arriba, con el cursor en la búsqueda.
+
+**Archivos**: `wwwroot/index.html` (filtro `fFoto` y botón `invArriba`), `wwwroot/js/app.js` (`precioIntermediario`, columnas, filtro y botón), `wwwroot/js/precios.js` (simulador), `wwwroot/css/tema.css` (botón flotante). Sin cambios en backend ni en reglas de negocio.
+
+**Validación**: 103 pruebas automáticas; prueba de navegador nueva (valores en tarjetas, tabla, inicio, ficha y simulador; filtro con/sin foto; botón en computadora y celular) y regresión de inventario, inicio, simulador y completar datos sin errores.
+
 ## 2026-11-23 · Rediseño de la interfaz con Bootstrap 5.3
 
 **Objetivo**: apariencia de producto empresarial moderno (SaaS/ERP), navegación clara y consistencia entre módulos, sin tocar la lógica.

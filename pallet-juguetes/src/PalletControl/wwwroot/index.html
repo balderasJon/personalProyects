@@ -108,11 +108,13 @@
     <select class="sel" id="fClase" aria-label="Clase"><option value="">Todas las clases</option><option>A</option><option>B</option><option>C</option></select>
     <select class="sel" id="fCond" aria-label="Condición"><option value="">Toda condición</option><option value="nuevo_sellado">Nuevo sellado</option><option value="nuevo_caja_abierta">Nuevo con caja abierta</option><option value="usado_bueno">Usado en buenas condiciones</option><option value="usado_detalles">Usado con detalles</option><option value="incompleto">Incompleto</option><option value="danado">Dañado</option><option value="no_comercializable">No comercializable</option></select>
     <select class="sel" id="fPallet" aria-label="Pallet"><option value="">Todos los pallets</option></select>
+    <select class="sel" id="fFoto" aria-label="Foto"><option value="">Con y sin foto</option><option value="con">Con foto</option><option value="sin">Sin foto</option></select>
     <label class="chk"><input type="checkbox" id="fStock"> Solo con piezas disponibles</label>
     <div class="seg" role="group" aria-label="Vista del inventario"><button type="button" id="invCards" aria-pressed="true">Tarjetas</button><button type="button" id="invTabla" aria-pressed="false">Tabla</button></div>
   </div>
   <div class="etq-ley" id="invLeyenda"></div>
   <div id="invBody"></div>
+  <button class="btn primary al-inicio" type="button" id="invArriba" hidden title="Regresar al inicio de la lista" aria-label="Regresar al inicio de la lista"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
 </section>
 
 <!-- VENTAS -->
