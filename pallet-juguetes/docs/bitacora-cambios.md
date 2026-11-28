@@ -2,6 +2,12 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-28 · Precio en México como opción de «Precio a publicar»
+
+**Agregado**: debajo de «Precio a publicar» hay botones de un clic: **Tu precio objetivo**, **Sugerido** y **Precio en México** (solo los que existan para el juguete). El campo sigue tomando por defecto tu precio objetivo; el botón del precio elegido queda marcado. Si publicas al precio en México o más, el estilo OFERTA no muestra «en tiendas» tachado ni % de ahorro (solo aparece cuando hay ahorro real).
+
+**Archivos**: `wwwroot/js/publicar.js` (`opcionesPrecio`), `wwwroot/css/tema.css` (`.pub-pre`).
+
 ## 2026-11-28 · «Preparar publicación» con formatos y estilos creativos
 
 **Cambiado**

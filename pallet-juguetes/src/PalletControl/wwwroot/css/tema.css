@@ -334,3 +334,5 @@ a.btn{display:inline-flex}
 .pubx>.pf{display:flex;align-items:center;gap:12px;border-top:1px solid var(--line);padding-top:14px;flex-wrap:wrap}
 @media (max-width:767.98px){.pub-cols{grid-template-columns:1fr}.pub-prev canvas.v{width:220px}.pub-prev canvas.s{width:100%;max-width:340px}.pub-fmts{grid-template-columns:repeat(2,minmax(0,1fr))}.pub-ests{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:420px){.pub-fmt{padding:8px}.pub-fmt small{display:none}.pub-est small{display:none}.pub-est canvas{max-height:150px}}
+.pub-pre{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.pub-pre .btn[aria-pressed=true]{border-color:var(--accent);background:var(--accent-soft);color:var(--fg)}

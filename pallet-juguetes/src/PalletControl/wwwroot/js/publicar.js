@@ -73,6 +73,9 @@ function descBreve(p){var t=p.descripcionComercial?String(p.descripcionComercial
   var s=t.match(/^.{20,140}?[.!?](\s|$)/);return recortar(s?s[0]:t,140)}
 /** Precio de referencia en tiendas (precio en México capturado), solo si es mayor que el precio a publicar. */
 function referencia(p,precio){var r=+p.precioMexico||0;return r>precio&&precio>0?{v:r,ah:Math.round((1-precio/r)*100)}:null}
+/** Precios de un clic para «Precio a publicar»: tu precio objetivo, el sugerido y el precio en México (solo los capturados o calculados). */
+function opcionesPrecio(p,x){var O=[];function add(t,v){v=Math.round(+v||0);if(v>0&&!O.some(function(o){return o.v===v&&o.t===t}))O.push({t:t,v:v})}
+  add('Tu precio objetivo',p.precioObjetivo);if(x&&x.ok)add('Sugerido',x.sugerido);add('Precio en México',p.precioMexico);return O}
 function oportunidad(disp){return disp>0&&disp<=3?(disp===1?'¡Última pieza!':'¡Últimas '+disp+' piezas!'):'¡Aprovecha!'}
 
 /* ---------- textos ---------- */
@@ -302,8 +305,9 @@ function abrir(id){
     '<div class="pub-paso"><h3><span class="pub-n">2</span>Estilo creativo</h3><div class="pub-ests" role="radiogroup" aria-label="Estilo creativo">'+
       ESTILOS.map(function(e){return '<button type="button" class="pub-est" role="radio" data-est="'+e.k+'" aria-checked="'+(e.k===est.k)+'" title="'+esc(e.d)+'"><canvas data-mini="'+e.k+'" aria-hidden="true"></canvas><b>'+esc(e.n)+'</b><small>'+esc(e.d)+'</small></button>'}).join('')+'</div></div>'+
     '<div class="pub-paso"><h3><span class="pub-n">3</span>Datos y diseño</h3><div class="pub-cols"><div class="form">'+
-      fld('ppPre','Precio a publicar','<input class="inp num" id="ppPre" type="number" min="0" step="1" value="'+esc(pc.v||'')+'">',
-        (pc.o?'Tomado '+pc.o+'. ':'Sin precio: captura uno. ')+(x.ok&&x.minimo?'Tu mínimo es '+money(x.minimo)+' (no se publica).':''))+
+      fld('ppPre','Precio a publicar','<input class="inp num" id="ppPre" type="number" min="0" step="1" value="'+esc(pc.v||'')+'">'+
+        (opcionesPrecio(p,x).length?'<div class="pub-pre" role="group" aria-label="Elegir precio">'+opcionesPrecio(p,x).map(function(o){return '<button type="button" class="btn sm" data-pp="'+o.v+'" aria-pressed="'+(o.v===Math.round(pc.v||0))+'">'+esc(o.t)+' <b>'+money(o.v)+'</b></button>'}).join('')+'</div>':''),
+        (pc.o?'Tomado '+pc.o+'. ':'Sin precio: captura uno. ')+(x.ok&&x.minimo?'Tu mínimo es '+money(x.minimo)+' (no se publica).':''),true)+
       fld('ppDis','Piezas disponibles','<input class="inp" id="ppDis" value="'+disp+'" readonly>',disp?'':'No hay piezas disponibles.')+
       fld('ppTit','Nombre a publicar','<input class="inp" id="ppTit" maxlength="150" value="'+esc(p.nombre)+'">','<span id="ppTitN"></span>',true)+
       fld('ppZon','Zona de entrega','<input class="inp" id="ppZon" maxlength="80" value="'+esc(pr.zona||'')+'" placeholder="Ej. Metro Coyoacán o envío por paquetería">','Se guarda en este equipo para la próxima vez.')+
@@ -337,6 +341,9 @@ function abrir(id){
       function todo(){pintar();pintarMinis()}
       var listo=(document.fonts&&document.fonts.ready)||Promise.resolve();
       Promise.all([cargarImg(fotos[0]&&fotos[0].url),listo]).then(function(r){img=r[0];todo()});
+      function marcarPrecio(){var v=Math.round(precio());el.querySelectorAll('[data-pp]').forEach(function(b){b.setAttribute('aria-pressed',+b.dataset.pp===v?'true':'false')})}
+      el.querySelectorAll('[data-pp]').forEach(function(b){b.addEventListener('click',function(){g('#ppPre').value=b.dataset.pp;g('#ppPre').dispatchEvent(new Event('input',{bubbles:true}))})});
+      g('#ppPre').addEventListener('input',marcarPrecio);
       ['#ppPre','#ppZon','#ppPag','#ppCie','#ppTit'].forEach(function(s){g(s).addEventListener('input',function(){guardarPrefs({zona:g('#ppZon').value.trim(),pago:g('#ppPag').value.trim(),cierre:g('#ppCie').value.trim()});pintar();clearTimeout(timer);timer=setTimeout(pintarMinis,300)})});
       el.querySelectorAll('[data-fmt]').forEach(function(b){b.addEventListener('click',function(){fmt=fmtDe(b.dataset.fmt);guardarPrefs({formato:fmt.k});el.querySelectorAll('[data-fmt]').forEach(function(z){z.setAttribute('aria-checked',z===b?'true':'false')});todo()})});
       el.querySelectorAll('[data-est]').forEach(function(b){b.addEventListener('click',function(){est=estDe(b.dataset.est);guardarPrefs({estilo:est.k});el.querySelectorAll('[data-est]').forEach(function(z){z.setAttribute('aria-checked',z===b?'true':'false')});pintar()})});
