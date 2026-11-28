@@ -73,9 +73,12 @@ function descBreve(p){var t=p.descripcionComercial?String(p.descripcionComercial
   var s=t.match(/^.{20,140}?[.!?](\s|$)/);return recortar(s?s[0]:t,140)}
 /** Precio de referencia en tiendas (precio en México capturado), solo si es mayor que el precio a publicar. */
 function referencia(p,precio){var r=+p.precioMexico||0;return r>precio&&precio>0?{v:r,ah:Math.round((1-precio/r)*100)}:null}
-/** Precios de un clic para «Precio a publicar»: tu precio objetivo, el sugerido y el precio en México (solo los capturados o calculados). */
-function opcionesPrecio(p,x){var O=[];function add(t,v){v=Math.round(+v||0);if(v>0&&!O.some(function(o){return o.v===v&&o.t===t}))O.push({t:t,v:v})}
-  add('Tu precio objetivo',p.precioObjetivo);if(x&&x.ok)add('Sugerido',x.sugerido);add('Precio en México',p.precioMexico);return O}
+/** Precios de un clic para «Precio a publicar»: tu precio objetivo, el sugerido, el intermediario, el mínimo y el precio en México (solo los capturados o calculados). */
+function opcionesPrecio(p,x){var O=[];function add(t,v,arriba){v=(arriba?Math.ceil:Math.round)(+v||0);if(v>0&&!O.some(function(o){return o.v===v&&o.t===t}))O.push({t:t,v:v})}
+  var min=x&&x.ok&&+x.minimo>0?+x.minimo:+p.precioMinimo||0;   // el mismo mínimo que muestra el inventario
+  add('Tu precio objetivo',p.precioObjetivo);if(x&&x.ok)add('Sugerido',x.sugerido);
+  add('Intermediario',PC.precioIntermediario(min),true);add('Mínimo',min,true);   // hacia arriba: nunca queda debajo del mínimo
+  add('Precio en México',p.precioMexico);return O}
 function oportunidad(disp){return disp>0&&disp<=3?(disp===1?'¡Última pieza!':'¡Últimas '+disp+' piezas!'):'¡Aprovecha!'}
 
 /* ---------- textos ---------- */
