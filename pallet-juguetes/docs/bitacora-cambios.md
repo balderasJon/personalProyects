@@ -2,6 +2,22 @@
 
 Formato: fecha · versión · cambios · impacto en datos.
 
+## 2026-11-28 · «Preparar publicación» con formatos y estilos creativos
+
+**Cambiado**
+- La ventana ahora tiene 4 pasos: **formato** → **estilo creativo** → **datos y vista previa** → **textos**.
+- **Formatos**: historia de WhatsApp (1080 × 1920), publicación de Facebook (1080 × 1080), grupos de Facebook (1080 × 1080, con disponibilidad y llamado a comentar o enviar inbox), Facebook Marketplace (1080 × 1080, condición; título para copiar y fotos originales) e historia de Instagram (se conserva la que ya existía, con zona segura).
+- **Estilos**: BOOM, OFERTA, DIVERTIDO, PREMIUM, SORPRESA y MINIMALISTA, cada uno con una composición distinta (no es la misma plantilla con otros colores). Miniaturas con la foto real para elegir.
+- **OFERTA**: si el juguete tiene «precio en México» mayor que el precio a publicar, muestra «En tiendas $X» tachado y el % de ahorro; con 3 piezas o menos, «¡Últimas N piezas!». Nada se inventa: sin esos datos no se muestran.
+- **Textos**: 4 o 5 alternativas por canal (curiosidad, descripción comercial, divertido, venta directa, llamado a la acción), con emojis y hashtags según el tipo de juguete, el canal y el estilo. Editables antes de copiar.
+- **Llamado a la acción** automático por canal (p. ej. «Comenta «LO QUIERO» o envíame inbox» en grupos), con opción de escribir uno propio.
+- Se recuerdan en el equipo el último formato y estilo.
+- Nueva plataforma en el catálogo: **Facebook (perfil o página)**, para registrar las publicaciones normales de Facebook (se agrega sola al iniciar, sin tocar lo capturado).
+
+**Archivos**: `wwwroot/js/publicar.js` (reescrito), `wwwroot/css/tema.css` (ventana de publicación), `wwwroot/js/app.js` (etiqueta «En Marketplace»/«En Facebook» y texto del botón), `Data/Esquema.cs` (plataforma «facebook»), `README.md`.
+
+**Validación**: 103 pruebas automáticas; prueba de navegador que genera las 30 combinaciones (5 formatos × 6 estilos) y las revisa visualmente, descarga, registro en WhatsApp y Facebook, textos y celular sin desbordes; regresión de inventario sin errores.
+
 ## 2026-11-27 · Precio intermediario, filtro de foto y botón «al inicio»
 
 **Agregado**

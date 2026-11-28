@@ -160,6 +160,7 @@ public static class Esquema
                 ("conocidos", "Conocidos", "local"),
                 ("bazar_escuela", "Bazar o escuela", "fisica"),
                 ("instagram", "Instagram", "local"),
+                ("facebook", "Facebook (perfil o página)", "local"),
             };
             var existentes = db.Plataformas.Select(p => p.Codigo).ToHashSet();
             var i = 0;

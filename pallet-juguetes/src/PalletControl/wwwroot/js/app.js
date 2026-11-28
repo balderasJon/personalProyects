@@ -446,7 +446,7 @@ function etiquetasDe(p,d,bajo){
   if(ap>0)E.push({k:'apartado',t:'Apartado ('+ap+')',c:'warn',title:'Piezas apartadas sin entregar'});
   var pubs=PUBS.filter(function(u){return u.productoId===p.id&&u.estatus==='publicado'}),vistos={};
   pubs.forEach(function(u){var pl=PLATS.filter(function(q){return q.id===u.plataformaId})[0];if(!pl||vistos[pl.id])return;vistos[pl.id]=1;
-    var cod=pl.codigo||'',n=cod.indexOf('facebook')===0?'Facebook':cod==='whatsapp'?'WhatsApp':cod.indexOf('ml_')===0?'Mercado Libre':pl.nombre;
+    var cod=pl.codigo||'',n=cod==='facebook_marketplace'?'Marketplace':cod==='facebook'?'Facebook':cod==='whatsapp'?'WhatsApp':cod.indexOf('ml_')===0?'Mercado Libre':pl.nombre;
     E.push({k:'publicado',t:'En '+n,c:'info',title:'Publicado en '+pl.nombre})});
   if(!pubs.length&&d>0)E.push({k:'sinpub',t:'Sin publicar',c:'gris'});
   if(!imgPrincipal(p.id))E.push({k:'sinfoto',t:'Sin foto',c:'warn',title:'Agrega una foto: se vende mejor'});
@@ -487,7 +487,7 @@ function renderInv(s){
     ETQ_DEF.filter(function(e){return cuenta[e[0]]}).map(function(e){return '<button type="button" class="etq '+e[2]+'" data-etq="'+e[0]+'" aria-pressed="'+(INV_ETQ===e[0])+'">'+esc(e[1])+' · '+cuenta[e[0]]+'</button>'}).join('');
   var R=INV_ETQ?base.filter(function(r){return r.E.some(function(e){return e.k===INV_ETQ})}):base;
   if(!R.length){body.innerHTML='<div class="empty"><p class="muted">Ningún juguete coincide con los filtros.</p></div>';return}
-  function acciones(p,d,cls){return '<button class="btn '+cls+'" type="button" data-publicar="'+p.id+'"'+(d<=0?' disabled':'')+' title="Texto e imágenes listos para Facebook Marketplace, WhatsApp e Instagram">Publicar</button><button class="btn '+cls+'" type="button" data-sell="'+p.id+'"'+(d<=0?' disabled':'')+'>Vender</button><button class="btn '+cls+'" type="button" data-editp="'+p.id+'">Editar</button>'}
+  function acciones(p,d,cls){return '<button class="btn '+cls+'" type="button" data-publicar="'+p.id+'"'+(d<=0?' disabled':'')+' title="Elige formato y estilo: historia de WhatsApp o Instagram, Facebook, grupos o Marketplace">Publicar</button><button class="btn '+cls+'" type="button" data-sell="'+p.id+'"'+(d<=0?' disabled':'')+'>Vender</button><button class="btn '+cls+'" type="button" data-editp="'+p.id+'">Editar</button>'}
   function etqs(E){return '<div class="etqs">'+E.map(function(e){return etq(e.t,e.c,e.title)}).join('')+'</div>'}
   if(INV_VISTA==='tarjetas'){
     body.innerHTML='<div class="inv-grid">'+R.map(function(r){var p=r.p,d=r.d,x=PRECIOS[p.id]||{},im=imgPrincipal(p.id),po=+p.precioObjetivo||0;

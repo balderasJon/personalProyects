@@ -71,9 +71,15 @@ Estas reglas se revisan en el servidor (no solo en la pantalla), así se respeta
 
 Si la tienes abierta en varias pestañas o dispositivos, los demás se actualizan solos en unos 4 segundos.
 
-### Preparar publicación (Facebook Marketplace, WhatsApp e Instagram)
+### Preparar publicación (formato, estilo creativo y textos)
 
-En la ficha del juguete (o **Publicar** en el Inventario) se genera el título, la descripción y dos imágenes con foto, condición y precio: cuadrada para **Marketplace** y vertical para **historias de WhatsApp e Instagram** (la de Instagram deja libres arriba y abajo para que su interfaz no tape el precio). Copia el texto, descarga las imágenes y pégalos en la app. Después usa **Ya lo publiqué: registrar** para que la aplicación controle las existencias de esa publicación. Marketplace personal y los estados de WhatsApp no tienen API para publicar desde otra aplicación, por eso este paso es manual.
+En la ficha del juguete (o **Publicar** en el Inventario):
+
+1. **Formato**: historia de WhatsApp (9:16, 1080 × 1920), publicación de Facebook (1:1, 1080 × 1080), grupos de Facebook (1:1, con disponibilidad y «Comenta LO QUIERO o envíame inbox»), Facebook Marketplace (1:1, título, precio, condición y descripción; descarga también las fotos originales) e historia de Instagram (9:16 con franjas libres arriba y abajo).
+2. **Estilo creativo**, cada uno con su propia composición: **BOOM** (rayos, estallido y sello de precio), **OFERTA** (precio protagonista; si el juguete tiene «precio en México» mayor, muestra el precio de tiendas tachado y el % de ahorro), **DIVERTIDO** (confeti, foto en círculo, onda y burbuja), **PREMIUM** (fondo oscuro, dorado y tipografía con serifa), **SORPRESA** («¿Adivina qué llegó?», reflector y moño) y **MINIMALISTA** (fondo claro y foto grande). Cada estilo se ve en miniatura con la foto real.
+3. **Textos listos para copiar**: 4 o 5 alternativas (curiosidad, descripción comercial, divertido, venta directa, llamado a la acción) adaptadas al tipo de juguete (por categoría y nombre: vehículos, muñecas, peluches, construcción, rompecabezas, juegos de mesa, figuras, bebé, aire libre, electrónicos, arte, educativos), al canal (largo, hashtags) y al estilo (emojis y tono). Solo usan datos capturados del juguete: no inventan características.
+
+La imagen se dibuja en el navegador (sin internet ni servicios externos). Después usa **Ya lo publiqué: registrar** para que la aplicación controle las existencias (se agregó la plataforma «Facebook (perfil o página)» para las publicaciones normales).
 
 ### Código de barras
 
